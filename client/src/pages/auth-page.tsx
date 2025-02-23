@@ -8,8 +8,7 @@ import { Label } from '@/components/ui/label';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { insertUserSchema } from '@shared/schema';
-import { SiMicrosoftdynamics365 } from 'react-icons/si';
-import { ShieldCheck, Building2, Users } from 'lucide-react';
+import { ShieldCheck, Building2, Users, Box } from 'lucide-react';
 
 export default function AuthPage() {
   const { user, loginMutation, registerMutation } = useAuth();
@@ -35,9 +34,9 @@ export default function AuthPage() {
         <Card className="w-full max-w-md shadow-xl border-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <CardHeader className="space-y-1">
             <div className="flex items-center gap-2 mb-2">
-              <SiMicrosoftdynamics365 className="h-6 w-6 text-primary" />
+              <Box className="h-6 w-6 text-primary" />
               <CardTitle className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-                Chain ERP
+                Chains ERP
               </CardTitle>
             </div>
             <CardDescription className="text-muted-foreground">
