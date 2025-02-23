@@ -1,0 +1,94 @@
+Generate a highly scalable, Web3-integrated, modular, and all-encompassing ERP system designed for both NGOs and businesses of all sizes. This system must be built using Next.js (frontend), Node.js (backend), and Prisma with MongoDB (database).
+
+The ERP should cover all essential modules from Odoo, Oracle NetSuite, and other leading ERP solutions to ensure businesses never need an external module provider. The super admin controls which modules are available to a business, while core modules remain accessible by default and can be disabled if not needed. The ERP should be future-proof, fully modular, and adaptable to all industries, handling B2B, B2C, C2B transactions, tax compliance, and blockchain innovations.
+
+🎯 High-Level System Architecture
+Frontend: Next.js with Tailwind CSS (for modern UI/UX).
+Backend: Node.js with Express.js (REST API structure).
+Database: Prisma ORM with MongoDB (for flexibility and scalability).
+Authentication & Roles: JWT-based authentication with different user roles:
+Super Admin: Highest authority (e.g., business owner, NGO director).
+Admin: Business-level administrator managing users and settings.
+Employee/User: General user with restricted access.
+Guest: Temporary users with view-only access (if applicable).
+Static Data First: The MVP should use static data while maintaining dormant API endpoints that will be activated once the backend is fully integrated.
+🔑 Core Modules (Must-Have)
+Each module should be highly modular, and only developers can enable or disable them per business. The system should allow businesses to scale without external dependencies.
+
+1️⃣ Dashboard & Reporting
+A real-time dashboard showing key financial, sales, inventory, and HR metrics.
+Customizable widgets for different users (e.g., Finance sees financial reports, Sales sees revenue).
+Advanced analytics & AI-driven insights for better decision-making.
+2️⃣ Accounting & Finance
+Double-entry accounting system like NetSuite & Odoo.
+Multi-currency support and exchange rate tracking.
+Invoice & Billing management (automatic recurring billing, B2B invoicing).
+Tax compliance & reporting for different regions.
+Ledger, trial balance, profit & loss, and balance sheet generation.
+Payment integrations with banks, crypto wallets, and fintech providers.
+3️⃣ POS (Point of Sale) – The Best in the World 🌍
+Connects to external providers via REST APIs.
+Omnichannel sales (retail, online, subscription, etc.).
+Fully scalable & customizable for any business type.
+Offline mode with automatic sync when online.
+Multi-terminal, multi-store support for franchises.
+Customer profiles, loyalty programs & rewards tracking.
+Multiple payment methods (cash, card, crypto, mobile money).
+4️⃣ CRM (Customer Relationship Management)
+Customer data management & segmentation
+Lead tracking & sales funnel
+Automated email & SMS marketing campaigns
+AI-driven customer insights
+5️⃣ Inventory & Supply Chain
+Warehouse management with multiple locations.
+Stock level alerts & demand forecasting.
+Barcode & QR code scanning for inventory tracking.
+Supplier and purchase order management.
+Blockchain-powered supply chain verification.
+6️⃣ HR & Payroll
+Employee database & document storage.
+Payroll processing with tax deductions & crypto payments.
+Attendance tracking & shift management.
+Performance reviews & training modules.
+7️⃣ Project & Task Management
+Kanban-style task tracking (like Trello).
+Time tracking & employee productivity monitoring.
+Integration with invoices & payroll (billable hours).
+8️⃣ Blockchain & Web3 Features
+B2B, B2C, and C2B smart contracts.
+Tokenized assets & DeFi lending integration.
+Decentralized identity (DID) for secure user authentication.
+Automated tax compliance with blockchain verification.
+⚡ Future-Proof Features
+AI-Powered Chatbot & Support Desk.
+IoT Integration for Smart Warehouses & Real-time POS tracking.
+Automated fraud detection & risk analysis.
+Machine learning-powered financial forecasting.
+👨‍💻 DevOps & Scalability
+API-First Design: All modules must have REST API endpoints for future external integrations.
+Microservices-ready architecture for future scalability.
+Multi-tenant support: Allow multiple businesses to run within the same system.
+Containerized deployment options (Docker-ready but optional).
+CI/CD pipelines for automated deployment & updates.
+🔒 Security & Compliance
+Role-based access control (RBAC) & MFA authentication.
+GDPR, HIPAA, and SOC 2 compliance.
+Automated encrypted backups & disaster recovery.
+Real-time audit logs for all system activities.
+🎯 MVP Goals
+Build a fully functional ERP with static data first, ensuring all modules interact properly.
+Develop a high-fidelity prototype using Next.js, Node.js, and Prisma with MongoDB.
+Set up dormant API endpoints so the system is ready for full backend activation.
+Ensure the POS module is the most advanced, flexible, and scalable solution in the industry.
+Ensure all blockchain and Web3 features are in place for future transactions.
+🚀 Generate a complete, scalable, and modular ERP system based on the above requirements, ensuring it is the most modernized and future-proof solution available today!
+
+💡 Why This Prompt Works
+This prompt is extremely detailed and provides:
+
+A clear tech stack for development.
+A structured roadmap from MVP to full-scale ERP.
+Comprehensive module coverage, ensuring nothing is left behind.
+A mix of Web2 and Web3 innovations, making it future-proof.
+High scalability and modularity, making it adaptable to all business types.
+This ERP system will disrupt the industry by bringing everything businesses need under one unified platform. 🚀

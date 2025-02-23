@@ -1,0 +1,265 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model Company {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  companyName    String
+  password       String
+  ownerName      String
+  domain         String
+  email          String   @unique
+  phoneNumber    String?
+  subscriptions  CompanySubscription[]  // Reverse relation to CompanySubscription
+  posSystems     POS[]
+  hr             HR[]
+  blockchain     Blockchain[]
+  payment        Payment[]
+  accounting     Accounting[]
+  address        String?
+  industry       String?  // Optional industry field
+  companySize    String?  // e.g., "Small", "Medium", "Large", can be updated later
+  walletAddress  String?  // Blockchain wallet address (can remain empty until created)
+  users          Users[]
+  modules        Module[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Module {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String   // e.g., "POS", "HR", "Accounting"
+  description String?
+  company     Company  @relation(fields: [companyId], references: [id]) 
+  companyId   String  @db.ObjectId
+  settings    Json     // Custom settings per module
+  createdAt   DateTime @default(now())
+}
+
+model Users {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  firstName      String
+  phoneNumber    String
+  lastName       String
+  email          String   @unique
+  password       String
+  role           String   // e.g., "Admin", "Manager", "Employee"
+  company        Company? @relation(fields: [companyId], references: [id])
+  companyId      String? @db.ObjectId
+  walletAddress  String?  // For personal blockchain wallet integration
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+///////////////////////
+//POS
+//////////////////////
+
+model POS {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  company     Company?  @relation(fields: [companyId], references: [id])
+  companyId   String? @db.ObjectId
+  orders      POSOrder[]
+  inventory   POSInventory[]
+  createdAt   DateTime @default(now())
+}
+
+model POSOrder {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  pos         POS      @relation(fields: [posId], references: [id])
+  posId       String @db.ObjectId
+  customerId  String?  // Link to customer if necessary
+  totalAmount Float
+  status      String   // e.g., "Completed", "Pending"
+  items       POSOrderItem[]
+  createdAt   DateTime @default(now())
+}
+
+model POSOrderItem {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  order       POSOrder @relation(fields: [orderId], references: [id])
+  orderId     String @db.ObjectId
+  productId   String
+  quantity    Int
+  price       Float
+}
+
+model POSInventory {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  pos         POS      @relation(fields: [posId], references: [id])
+  posId       String @db.ObjectId
+  productId   String
+  stockLevel  Int
+  updatedAt   DateTime @updatedAt
+}
+
+/////////////
+//HR
+//////////////
+
+model HR {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  company     Company?  @relation(fields: [companyId], references: [id])
+  companyId   String? @db.ObjectId
+  employees   Employee[]
+  payroll     Payroll[] @relation("HRToPayroll")
+  attendance  Attendance[] @relation("HRToAttendance")
+  createdAt   DateTime @default(now())
+}
+
+model Employee {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  hr          HR?     @relation(fields: [hrId], references: [id])
+  hrId        String? @db.ObjectId
+  firstName   String
+  lastName    String
+  attendance  Attendance[]
+  payRoll     Payroll[]
+  email       String   @unique
+  role        String   // e.g., "Manager", "Staff"
+  walletAddress String? // Blockchain integration for payments
+  createdAt   DateTime @default(now())
+}
+
+model Payroll {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  employee    Employee? @relation(fields: [employeeId], references: [id])
+  employeeId  String @db.ObjectId
+  amount      Float
+  hr          HR?     @relation("HRToPayroll", fields: [hrId], references: [id]) // Reverse relation to HR
+  hrId        String? @db.ObjectId
+  currency    String
+  status      String   // e.g., "Paid", "Pending"
+  createdAt   DateTime @default(now())
+}
+
+model Attendance {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  employee    Employee @relation(fields: [employeeId], references: [id])
+  employeeId  String @db.ObjectId
+  hr          HR?     @relation("HRToAttendance", fields: [hrId], references: [id]) // Reverse relation to HR
+  hrId        String? @db.ObjectId
+  checkInTime DateTime
+  checkOutTime DateTime?
+}
+
+model Accounting {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  company     Company  @relation(fields: [companyId], references: [id])
+  companyId   String @db.ObjectId
+  invoices    Invoice[]
+  ledger      LedgerEntry[]
+  createdAt   DateTime @default(now())
+}
+
+model Invoice {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  accounting  Accounting @relation(fields: [accountingId], references: [id])
+  accountingId String @db.ObjectId
+  customerId  String
+  amount      Float
+  status      String   // e.g., "Paid", "Pending"
+  createdAt   DateTime @default(now())
+}
+
+model LedgerEntry {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  accounting  Accounting @relation(fields: [accountingId], references: [id])
+  accountingId String @db.ObjectId
+  type        String   // e.g., "Credit", "Debit"
+  description String
+  amount      Float
+  createdAt   DateTime @default(now())
+}
+
+
+///////////////
+//BlockChain
+///////////////
+
+model Blockchain {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  company        Company  @relation(fields: [companyId], references: [id])
+  companyId      String @db.ObjectId
+  network        String   // e.g., "Ethereum", "Celo"
+  walletAddress  String
+  contractAddress String?
+  transactions   BlockchainTransaction[]
+  createdAt      DateTime @default(now())
+}
+
+model BlockchainTransaction {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  blockchain     Blockchain @relation(fields: [blockchainId], references: [id])
+  blockchainId   String @db.ObjectId
+  txHash         String
+  type           String   // e.g., "Payment", "Stake"
+  amount         Float
+  createdAt      DateTime @default(now())
+}
+
+
+///////////////////////////////////
+//Additional system failures
+///////////////////////////////////
+
+model Notification {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String
+  message     String
+  type        String   // e.g., "Info", "Error"
+  createdAt   DateTime @default(now())
+}
+
+model SystemLog {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  companyId   String
+  action      String   // e.g., "Login", "ModuleUpdate"
+  description String
+  createdAt   DateTime @default(now())
+}
+
+model SubscriptionTier {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  name           String   // e.g., "Free", "Basic", "Premium"
+  description    String?  // Description of the tier
+  trialdays      Int?
+  companysub     CompanySubscription[]  // Reverse relation to CompanySubscription
+  price          Float    // Price of the subscription (0 for free tiers)
+  durationMonths Int      // Duration of the subscription in months (e.g., 1, 12)
+  allowedModules String[] // Array of module names that are accessible in this tier
+  createdAt      DateTime @default(now())
+}
+
+model CompanySubscription {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  company        Company  @relation(fields: [companyId], references: [id])
+  companyId      String   @db.ObjectId
+  tier           SubscriptionTier @relation(fields: [tierId], references: [id])
+  tierId         String   @db.ObjectId
+  startDate      DateTime @default(now()) // When the subscription starts
+  endDate        DateTime // When the subscription ends
+  status         String   // e.g., "Active", "Expired", "Canceled"
+  createdAt      DateTime @default(now())
+}
+
+model Payment {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  company        Company  @relation(fields: [companyId], references: [id])
+  companyId      String   @db.ObjectId
+  amount         Float
+  paymentDate    DateTime @default(now())
+  method         String   // e.g., "Credit Card", "PayPal"
+  status         String   // e.g., "Completed", "Failed"
+}
