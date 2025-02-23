@@ -139,6 +139,39 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/logout", (req, res, next) => {
+
+
+// Middleware to check if user has access to specific module
+export function hasModuleAccess(module: string) {
+  return async (req: any, res: any, next: any) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const org = await storage.getOrganization(req.user.organizationId);
+    if (!org.activeModules.includes(module)) {
+      return res.status(403).json({ message: "Module access not permitted" });
+    }
+
+    next();
+  };
+}
+
+// Middleware to check user role
+export function hasRole(roles: string[]) {
+  return (req: any, res: any, next: any) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({ message: "Insufficient permissions" });
+    }
+
+    next();
+  };
+}
+
     req.logout((err) => {
       if (err) {
         console.error('Logout error:', err);
