@@ -21,13 +21,88 @@ export const staticData = {
         assetsValue: 2000000,
         liabilities: 800000,
         equity: 1200000
+      },
+      aiAnalytics: {
+        marketTrends: {
+          growthOpportunities: [
+            "Expansion into renewable energy sector",
+            "Digital transformation services",
+            "Sustainable supply chain solutions"
+          ],
+          riskFactors: [
+            "Market volatility in traditional sectors",
+            "Emerging competitors in tech space",
+            "Regulatory changes in finance sector"
+          ],
+          recommendedActions: [
+            "Invest in AI/ML capabilities",
+            "Strengthen digital presence",
+            "Develop sustainable practices"
+          ]
+        },
+        performanceInsights: {
+          strengths: [
+            "Strong cash flow position",
+            "High employee satisfaction",
+            "Efficient operations"
+          ],
+          improvements: [
+            "Inventory turnover could be optimized",
+            "Customer acquisition cost is above industry average",
+            "Digital marketing ROI needs improvement"
+          ]
+        },
+        blockchainMetrics: {
+          walletHealth: {
+            securityScore: 95,
+            transactionEfficiency: 98,
+            gasOptimization: 92
+          },
+          smartContractAnalysis: {
+            activeContracts: 3,
+            avgExecutionCost: "0.002 ETH",
+            successRate: 99.9,
+            recommendedOptimizations: [
+              "Implement batch transactions",
+              "Upgrade to newer contract standards",
+              "Enable gas price optimization"
+            ]
+          }
+        },
+        industryComparison: {
+          revenuePercentile: 85,
+          growthPercentile: 92,
+          efficiencyScore: 88,
+          sustainabilityRank: "A-",
+          competitiveAdvantages: [
+            "Advanced blockchain integration",
+            "Automated operations",
+            "Strong customer relationships"
+          ]
+        },
+        growthProjections: {
+          shortTerm: {
+            expectedRevenue: 1800000,
+            projectedGrowth: 20,
+            potentialMarkets: ["Asia-Pacific", "European Union"],
+            riskLevel: "Moderate"
+          },
+          longTerm: {
+            marketPotential: 5000000,
+            sustainableGrowthRate: 15,
+            requiredInvestments: [
+              "R&D in blockchain technology",
+              "Sustainable infrastructure",
+              "Talent acquisition"
+            ]
+          }
+        }
       }
     }
   ],
-
   users: [
     {
-      id: "1", 
+      id: "1",
       firstName: "John",
       lastName: "Doe",
       email: "john@chain.erp",
@@ -55,13 +130,12 @@ export const staticData = {
       updatedAt: new Date().toISOString()
     }
   ],
-
   pos: {
     orders: [
       {
         id: "1",
         posId: "1",
-        customerId: "1", 
+        customerId: "1",
         totalAmount: 299.99,
         status: "Completed",
         items: [
@@ -96,7 +170,7 @@ export const staticData = {
       {
         id: "1",
         posId: "1",
-        productId: "1", 
+        productId: "1",
         stockLevel: 100,
         reorderPoint: 20,
         optimalStock: 150,
@@ -113,7 +187,6 @@ export const staticData = {
       conversionRate: 65
     }
   },
-
   hr: {
     employees: [
       {
@@ -166,7 +239,6 @@ export const staticData = {
       satisfactionScore: 4.2
     }
   },
-
   accounting: {
     invoices: [
       {
@@ -207,7 +279,6 @@ export const staticData = {
       accountsPayable: 30000
     }
   },
-
   blockchain: {
     transactions: [
       {

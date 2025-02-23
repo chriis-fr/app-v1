@@ -2,6 +2,7 @@ import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { staticData } from '@/data/static';
 import { useAuth } from '@/hooks/use-auth';
+import { AIInsights } from '@/components/dashboard/AIInsights';
 import POSMain from '@/components/modules/pos/POSMain';
 import HRMain from '@/components/modules/hr/HRMain';
 import AccountingMain from '@/components/modules/accounting/AccountingMain';
@@ -30,7 +31,7 @@ export default function Dashboard() {
 
       return (
         <DashboardLayout>
-          <div className="space-y-6">
+          <div className="space-y-8">
             <h2 className="text-3xl font-bold tracking-tight">Company Overview</h2>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -82,6 +83,8 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
             </div>
+
+            <AIInsights />
 
             <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
               <Card className="col-span-2">
