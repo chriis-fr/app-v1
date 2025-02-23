@@ -1,4 +1,4 @@
-// Static data matching Prisma schema structure
+// Static data matching schema structure
 export const staticData = {
   companies: [
     {
@@ -11,7 +11,17 @@ export const staticData = {
       modules: ["POS", "HR", "Accounting", "CRM", "Blockchain"],
       walletAddress: "0x123...",
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
+      businessMetrics: {
+        revenue: 1500000,
+        expenses: 1000000,
+        profit: 500000,
+        growthRate: 15,
+        cashFlow: 250000,
+        assetsValue: 2000000,
+        liabilities: 800000,
+        equity: 1200000
+      }
     }
   ],
 
@@ -24,8 +34,23 @@ export const staticData = {
       password: "hashed_password",
       phoneNumber: "1234567890",
       role: "SuperAdmin",
+      department: "Executive",
       companyId: "1",
       walletAddress: "0x123...",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    },
+    {
+      id: "2",
+      firstName: "Jane",
+      lastName: "Smith",
+      email: "jane@chain.erp",
+      password: "hashed_password",
+      phoneNumber: "0987654321",
+      role: "Manager",
+      department: "POS",
+      companyId: "1",
+      walletAddress: "0x456...",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     }
@@ -47,7 +72,24 @@ export const staticData = {
             quantity: 2,
             price: 149.99
           }
-        ]
+        ],
+        createdAt: new Date().toISOString(),
+        paymentMethod: "Credit Card",
+        tax: 30.00,
+        discount: 0,
+        netAmount: 269.99
+      }
+    ],
+    products: [
+      {
+        id: "1",
+        name: "Premium Widget",
+        category: "Electronics",
+        basePrice: 149.99,
+        currentPrice: 149.99,
+        costPrice: 100.00,
+        margin: 49.99,
+        sku: "WDG001"
       }
     ],
     inventory: [
@@ -56,9 +98,20 @@ export const staticData = {
         posId: "1",
         productId: "1", 
         stockLevel: 100,
-        updatedAt: new Date().toISOString()
+        reorderPoint: 20,
+        optimalStock: 150,
+        updatedAt: new Date().toISOString(),
+        location: "Main Warehouse",
+        value: 10000.00
       }
-    ]
+    ],
+    analytics: {
+      dailySales: 2999.90,
+      weeklyGrowth: 15,
+      popularProducts: ["Premium Widget", "Basic Widget"],
+      averageOrderValue: 299.99,
+      conversionRate: 65
+    }
   },
 
   hr: {
@@ -71,6 +124,10 @@ export const staticData = {
         email: "jane@chain.erp",
         role: "Manager",
         walletAddress: "0x456...",
+        department: "Sales",
+        salary: 75000,
+        joinDate: new Date().toISOString(),
+        performanceScore: 4.5,
         createdAt: new Date().toISOString()
       }
     ],
@@ -82,6 +139,10 @@ export const staticData = {
         hrId: "1",
         currency: "USD",
         status: "Paid",
+        type: "Salary",
+        deductions: 1000,
+        benefits: 500,
+        netPay: 4500,
         createdAt: new Date().toISOString()
       }
     ],
@@ -91,9 +152,19 @@ export const staticData = {
         employeeId: "1",
         hrId: "1",
         checkInTime: new Date().toISOString(),
-        checkOutTime: new Date().toISOString()
+        checkOutTime: new Date().toISOString(),
+        status: "Present",
+        workHours: 8,
+        overtime: 1
       }
-    ]
+    ],
+    analytics: {
+      headcount: 50,
+      turnoverRate: 5,
+      avgTenure: 2.5,
+      trainingCosts: 25000,
+      satisfactionScore: 4.2
+    }
   },
 
   accounting: {
@@ -104,6 +175,14 @@ export const staticData = {
         customerId: "1",
         amount: 999.99,
         status: "Paid",
+        dueDate: new Date().toISOString(),
+        items: [
+          {
+            description: "Consulting Services",
+            amount: 999.99,
+            quantity: 1
+          }
+        ],
         createdAt: new Date().toISOString()
       }
     ],
@@ -114,9 +193,19 @@ export const staticData = {
         type: "Credit",
         description: "Sales Revenue",
         amount: 999.99,
+        category: "Revenue",
+        account: "Sales",
         createdAt: new Date().toISOString()
       }
-    ]
+    ],
+    analytics: {
+      revenueGrowth: 25,
+      profitMargin: 35,
+      operatingExpenses: 750000,
+      cashflowHealth: "Positive",
+      accountsReceivable: 50000,
+      accountsPayable: 30000
+    }
   },
 
   blockchain: {
@@ -127,8 +216,29 @@ export const staticData = {
         txHash: "0x789...",
         type: "Payment",
         amount: 1.5,
+        status: "Confirmed",
+        from: "0x123...",
+        to: "0x456...",
+        gasUsed: 21000,
         createdAt: new Date().toISOString()
       }
-    ]
+    ],
+    contracts: [
+      {
+        id: "1",
+        name: "PaymentProcessor",
+        address: "0x789...",
+        network: "Ethereum",
+        status: "Active",
+        deployedAt: new Date().toISOString()
+      }
+    ],
+    analytics: {
+      totalTransactions: 150,
+      averageGasUsed: 21000,
+      successRate: 99.9,
+      activeContracts: 3,
+      dailyVolume: 25.5
+    }
   }
 };
