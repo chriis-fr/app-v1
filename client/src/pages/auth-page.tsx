@@ -5,9 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { insertUserSchema } from '@shared/schema';
+import { insertUserSchema, registerOrganizationSchema, availableModules } from '@shared/schema';
 import { ShieldCheck, Building2, Users, Box } from 'lucide-react';
 
 export default function AuthPage() {
@@ -25,7 +27,10 @@ export default function AuthPage() {
   });
 
   const registerForm = useForm({
-    resolver: zodResolver(insertUserSchema),
+    resolver: zodResolver(registerOrganizationSchema),
+    defaultValues: {
+      selectedModules: [],
+    }
   });
 
   return (
@@ -47,7 +52,7 @@ export default function AuthPage() {
             <Tabs defaultValue="login" className="space-y-4">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="login">Login</TabsTrigger>
-                <TabsTrigger value="register">Register</TabsTrigger>
+                <TabsTrigger value="register">Register Organization</TabsTrigger>
               </TabsList>
 
               <TabsContent value="login">
@@ -69,15 +74,55 @@ export default function AuthPage() {
               <TabsContent value="register">
                 <form onSubmit={registerForm.handleSubmit((data) => registerMutation.mutate(data))} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="register-username">Username</Label>
-                    <Input id="register-username" {...registerForm.register('username')} />
+                    <Label>Organization Details</Label>
+                    <Input placeholder="Organization Name" {...registerForm.register('name')} />
+                    <Select onValueChange={value => registerForm.setValue('type', value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Organization Type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="business">Business</SelectItem>
+                        <SelectItem value="ngo">NGO</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Input placeholder="Industry" {...registerForm.register('industry')} />
                   </div>
+
                   <div className="space-y-2">
-                    <Label htmlFor="register-password">Password</Label>
-                    <Input id="register-password" type="password" {...registerForm.register('password')} />
+                    <Label>Admin Account</Label>
+                    <Input placeholder="First Name" {...registerForm.register('firstName')} />
+                    <Input placeholder="Last Name" {...registerForm.register('lastName')} />
+                    <Input placeholder="Email" type="email" {...registerForm.register('email')} />
+                    <Input placeholder="Username" {...registerForm.register('username')} />
+                    <Input placeholder="Password" type="password" {...registerForm.register('password')} />
                   </div>
+
+                  <div className="space-y-2">
+                    <Label>Select Initial Modules (Max 2)</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {availableModules.map((module) => (
+                        <label key={module} className="flex items-center space-x-2">
+                          <Checkbox
+                            onCheckedChange={(checked) => {
+                              const current = registerForm.getValues('selectedModules') || [];
+                              if (checked && current.length < 2) {
+                                registerForm.setValue('selectedModules', [...current, module]);
+                              } else if (!checked) {
+                                registerForm.setValue(
+                                  'selectedModules',
+                                  current.filter(m => m !== module)
+                                );
+                              }
+                            }}
+                          />
+                          <span className="text-sm">{module.replace('_', ' ').toUpperCase()}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
                   <Button type="submit" className="w-full" disabled={registerMutation.isPending}>
-                    {registerMutation.isPending ? 'Creating account...' : 'Create account'}
+                    {registerMutation.isPending ? 'Creating Organization...' : 'Create Organization'}
                   </Button>
                 </form>
               </TabsContent>
