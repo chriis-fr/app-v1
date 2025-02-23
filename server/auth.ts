@@ -29,8 +29,12 @@ async function comparePasswords(supplied: string, stored: string) {
 }
 
 export function setupAuth(app: Express) {
+  if (!process.env.SESSION_SECRET) {
+    throw new Error("SESSION_SECRET must be set");
+  }
+
   const sessionSettings: session.SessionOptions = {
-    secret: process.env.SESSION_SECRET!,
+    secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     store: storage.sessionStore,
@@ -49,12 +53,16 @@ export function setupAuth(app: Express) {
   passport.use(
     new LocalStrategy(async (username, password, done) => {
       try {
+        console.log(`Attempting login for user: ${username}`);
         const user = await storage.getUserByUsername(username);
         if (!user || !(await comparePasswords(password, user.password))) {
+          console.log(`Login failed for user: ${username}`);
           return done(null, false, { message: "Invalid username or password" });
         }
+        console.log(`Login successful for user: ${username}`);
         return done(null, user);
       } catch (err) {
+        console.error('Login error:', err);
         return done(err);
       }
     }),
@@ -72,14 +80,21 @@ export function setupAuth(app: Express) {
       }
       done(null, user);
     } catch (err) {
+      console.error('Session deserialization error:', err);
       done(err);
     }
   });
 
   app.post("/api/register", async (req, res, next) => {
     try {
+      console.log('Registration attempt with data:', {
+        ...req.body,
+        password: '[REDACTED]'
+      });
+
       const existingUser = await storage.getUserByUsername(req.body.username);
       if (existingUser) {
+        console.log(`Registration failed - username ${req.body.username} already exists`);
         return res.status(400).json({ message: "Username already exists" });
       }
 
@@ -88,23 +103,36 @@ export function setupAuth(app: Express) {
         password: await hashPassword(req.body.password),
       });
 
+      console.log(`User registered successfully: ${user.username}`);
+
       req.login(user, (err) => {
-        if (err) return next(err);
+        if (err) {
+          console.error('Login after registration failed:', err);
+          return next(err);
+        }
         res.status(201).json(user);
       });
     } catch (err) {
+      console.error('Registration error:', err);
       next(err);
     }
   });
 
   app.post("/api/login", (req, res, next) => {
     passport.authenticate("local", (err, user, info) => {
-      if (err) return next(err);
+      if (err) {
+        console.error('Authentication error:', err);
+        return next(err);
+      }
       if (!user) {
+        console.log('Authentication failed:', info?.message);
         return res.status(401).json({ message: info?.message || "Authentication failed" });
       }
       req.logIn(user, (err) => {
-        if (err) return next(err);
+        if (err) {
+          console.error('Login error:', err);
+          return next(err);
+        }
         res.json(user);
       });
     })(req, res, next);
@@ -112,13 +140,19 @@ export function setupAuth(app: Express) {
 
   app.post("/api/logout", (req, res, next) => {
     req.logout((err) => {
-      if (err) return next(err);
+      if (err) {
+        console.error('Logout error:', err);
+        return next(err);
+      }
       res.sendStatus(200);
     });
   });
 
   app.get("/api/user", (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.isAuthenticated()) {
+      console.log('Unauthorized access attempt to /api/user');
+      return res.sendStatus(401);
+    }
     res.json(req.user);
   });
 }
