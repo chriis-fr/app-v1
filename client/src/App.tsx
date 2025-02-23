@@ -8,23 +8,19 @@ import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth-page";
 import Dashboard from "@/pages/dashboard";
 
-function Router() {
-  return (
-    <Switch>
-      <ProtectedRoute path="/dashboard" component={Dashboard} />
-      <Route path="/auth" component={AuthPage} />
-      <Route path="/" component={Dashboard} />
-      <Route component={NotFound} />
-    </Switch>
-  );
-}
-
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <Router />
-        <Toaster />
+        <>
+          <Switch>
+            <Route path="/auth" component={AuthPage} />
+            <ProtectedRoute path="/dashboard" component={Dashboard} />
+            <ProtectedRoute path="/" component={Dashboard} />
+            <Route component={NotFound} />
+          </Switch>
+          <Toaster />
+        </>
       </AuthProvider>
     </QueryClientProvider>
   );
