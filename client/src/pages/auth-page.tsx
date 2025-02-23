@@ -9,8 +9,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { insertUserSchema, registerOrganizationSchema, availableModules } from '@shared/schema';
+import { insertUserSchema, registerOrganizationSchema, availableModules, organizationTypes } from '@shared/schema';
 import { ShieldCheck, Building2, Users, Box } from 'lucide-react';
+import type { RegisterOrganization } from '@shared/schema';
 
 export default function AuthPage() {
   const { user, loginMutation, registerMutation } = useAuth();
@@ -26,10 +27,11 @@ export default function AuthPage() {
     resolver: zodResolver(insertUserSchema.pick({ username: true, password: true })),
   });
 
-  const registerForm = useForm({
+  const registerForm = useForm<RegisterOrganization>({
     resolver: zodResolver(registerOrganizationSchema),
     defaultValues: {
-      selectedModules: [],
+      selectedModules: ['dashboard'],
+      type: 'business',
     }
   });
 
@@ -76,16 +78,20 @@ export default function AuthPage() {
                   <div className="space-y-2">
                     <Label>Organization Details</Label>
                     <Input placeholder="Organization Name" {...registerForm.register('name')} />
-                    <Select onValueChange={value => registerForm.setValue('type', value)}>
+                    <Select onValueChange={value => registerForm.setValue('type', value as RegisterOrganization['type'])}>
                       <SelectTrigger>
                         <SelectValue placeholder="Organization Type" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="business">Business</SelectItem>
-                        <SelectItem value="ngo">NGO</SelectItem>
+                        {organizationTypes.map(type => (
+                          <SelectItem key={type} value={type}>{type.toUpperCase()}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <Input placeholder="Industry" {...registerForm.register('industry')} />
+                    <Input placeholder="Address" {...registerForm.register('address')} />
+                    <Input placeholder="Country" {...registerForm.register('country')} />
+                    <Input placeholder="Website" {...registerForm.register('website')} />
                   </div>
 
                   <div className="space-y-2">
@@ -93,6 +99,7 @@ export default function AuthPage() {
                     <Input placeholder="First Name" {...registerForm.register('firstName')} />
                     <Input placeholder="Last Name" {...registerForm.register('lastName')} />
                     <Input placeholder="Email" type="email" {...registerForm.register('email')} />
+                    <Input placeholder="Phone Number" {...registerForm.register('phoneNumber')} />
                     <Input placeholder="Username" {...registerForm.register('username')} />
                     <Input placeholder="Password" type="password" {...registerForm.register('password')} />
                   </div>
@@ -103,6 +110,7 @@ export default function AuthPage() {
                       {availableModules.map((module) => (
                         <label key={module} className="flex items-center space-x-2">
                           <Checkbox
+                            checked={registerForm.watch('selectedModules')?.includes(module)}
                             onCheckedChange={(checked) => {
                               const current = registerForm.getValues('selectedModules') || [];
                               if (checked && current.length < 2) {
