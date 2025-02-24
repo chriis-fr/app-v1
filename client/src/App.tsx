@@ -7,6 +7,8 @@ import { ProtectedRoute } from "./lib/protected-route";
 import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth-page";
 import Dashboard from "@/pages/dashboard";
+import LandingPage from "@/pages/landing-page";
+import Book from "@/pages/book";
 
 function App() {
   return (
@@ -14,9 +16,10 @@ function App() {
       <AuthProvider>
         <>
           <Switch>
+            <Route path="/" component={LandingPage} />
             <Route path="/auth" component={AuthPage} />
             <ProtectedRoute path="/dashboard" component={Dashboard} />
-            <ProtectedRoute path="/" component={Dashboard} />
+            <Route path="/book" component={Book} />
             <Route component={NotFound} />
           </Switch>
           <Toaster />

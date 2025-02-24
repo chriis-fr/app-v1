@@ -1,4 +1,3 @@
-
 // Middleware to check if user has access to specific module
 export function hasModuleAccess(module: string) {
   return async (req: any, res: any, next: any) => {
@@ -7,7 +6,7 @@ export function hasModuleAccess(module: string) {
     }
 
     const org = await storage.getOrganization(req.user.organizationId);
-    if (!org.activeModules.includes(module)) {
+    if (!org || !org.activeModules || !org.activeModules.includes(module)) {
       return res.status(403).json({ message: "Module access not permitted" });
     }
 
@@ -16,7 +15,7 @@ export function hasModuleAccess(module: string) {
 }
 
 // Middleware to check user role
-export function hasRole(roles: string[]) {
+export function hasRole(roles: string[]) { 
   return (req: any, res: any, next: any) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "Unauthorized" });
@@ -39,6 +38,32 @@ import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
+import { IUserDocument } from "./storage";
+
+// Helper function to normalize a raw IUserDocument into a SelectUser.
+function normalizeUser(user: IUserDocument): SelectUser {
+  return {
+    // Convert _id (of unknown type) to a string
+    id: String(user._id),
+    username: user.username,
+    password: user.password,
+    role: user.role,
+    department: user.department,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    email: user.email,
+    // Ensure phoneNumber is never undefined:
+    phoneNumber: user.phoneNumber ?? null,
+    // organizationId should be a string:
+    organizationId: String(user.organizationId),
+    // isOwner should be a boolean; default to false if null:
+    isOwner: user.isOwner ?? false,
+    // createdAt and updatedAt should be non-null Dates;
+    // if null, you can choose a default (e.g., current date)
+    createdAt: user.createdAt ?? new Date(),
+    updatedAt: user.updatedAt ?? new Date(),
+  };
+}
 
 declare global {
   namespace Express {
@@ -93,9 +118,10 @@ export function setupAuth(app: Express) {
           return done(null, false, { message: "Invalid username or password" });
         }
         console.log(`Login successful for user: ${username}`);
-        return done(null, user);
+        // Normalize user before returning
+        return done(null, normalizeUser(user));
       } catch (err) {
-        console.error('Login error:', err);
+        console.error("Login error:", err);
         return done(err);
       }
     }),
@@ -107,27 +133,31 @@ export function setupAuth(app: Express) {
 
   passport.deserializeUser(async (id: number, done) => {
     try {
-      const user = await storage.getUser(id);
+      // Convert id to string as required by storage.getUser
+      const user = await storage.getUser(String(id));
       if (!user) {
         return done(null, false);
       }
-      done(null, user);
+      // Normalize user before returning
+      done(null, normalizeUser(user));
     } catch (err) {
-      console.error('Session deserialization error:', err);
+      console.error("Session deserialization error:", err);
       done(err);
     }
   });
 
   app.post("/api/register", async (req, res, next) => {
     try {
-      console.log('Registration attempt with data:', {
+      console.log("Registration attempt with data:", {
         ...req.body,
-        password: '[REDACTED]'
+        password: "[REDACTED]",
       });
 
       const existingUser = await storage.getUserByUsername(req.body.username);
       if (existingUser) {
-        console.log(`Registration failed - username ${req.body.username} already exists`);
+        console.log(
+          `Registration failed - username ${req.body.username} already exists`
+        );
         return res.status(400).json({ message: "Username already exists" });
       }
 
@@ -138,43 +168,49 @@ export function setupAuth(app: Express) {
 
       console.log(`User registered successfully: ${user.username}`);
 
-      req.login(user, (err) => {
+      // Normalize the user before logging in
+      req.login(normalizeUser(user), (err) => {
         if (err) {
-          console.error('Login after registration failed:', err);
+          console.error("Login after registration failed:", err);
           return next(err);
         }
         res.status(201).json(user);
       });
     } catch (err) {
-      console.error('Registration error:', err);
+      console.error("Registration error:", err);
       next(err);
     }
   });
 
   app.post("/api/login", (req, res, next) => {
-    passport.authenticate("local", (err, user, info) => {
-      if (err) {
-        console.error('Authentication error:', err);
-        return next(err);
-      }
-      if (!user) {
-        console.log('Authentication failed:', info?.message);
-        return res.status(401).json({ message: info?.message || "Authentication failed" });
-      }
-      req.logIn(user, (err) => {
+    passport.authenticate(
+      "local",
+      (err: any, user: Express.User | false, info: { message: string }) => {
         if (err) {
-          console.error('Login error:', err);
+          console.error("Authentication error:", err);
           return next(err);
         }
-        res.json(user);
-      });
-    })(req, res, next);
+        if (!user) {
+          console.log("Authentication failed:", info?.message);
+          return res
+            .status(401)
+            .json({ message: info?.message || "Authentication failed" });
+        }
+        req.logIn(user, (err) => {
+          if (err) {
+            console.error("Login error:", err);
+            return next(err);
+          }
+          res.json(user);
+        });
+      }
+    )(req, res, next);
   });
 
   app.post("/api/logout", (req, res, next) => {
     req.logout((err) => {
       if (err) {
-        console.error('Logout error:', err);
+        console.error("Logout error:", err);
         return next(err);
       }
       res.sendStatus(200);
@@ -183,7 +219,7 @@ export function setupAuth(app: Express) {
 
   app.get("/api/user", (req, res) => {
     if (!req.isAuthenticated()) {
-      console.log('Unauthorized access attempt to /api/user');
+      console.log("Unauthorized access attempt to /api/user");
       return res.sendStatus(401);
     }
     res.json(req.user);

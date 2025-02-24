@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { setupAuth } from "./auth";
+import { setupAuth, hasModuleAccess, hasRole } from "./auth";
+import { storage } from "./storage"
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Set up authentication routes
@@ -13,7 +14,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const org = await storage.getOrganization(req.user.organizationId);
+    const org = await storage.getOrganization(req.user.organizationId.toString());
+    if (!org) {
+      return res.status(404).json({ message: "Organization not found" });
+    }
     res.json({
       modules: org.activeModules,
       role: req.user.role,

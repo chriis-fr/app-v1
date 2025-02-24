@@ -1,86 +1,91 @@
-import { pgTable, text, serial, integer, boolean, jsonb, timestamp } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // Available modules enum
 export const availableModules = [
-  'finance',
-  'procurement',
-  'manufacturing',
-  'inventory',
-  'order_management',
-  'warehouse',
-  'supply_chain',
-  'crm',
-  'project_service',
-  'workforce',
-  'hr',
-  'ecommerce',
-  'marketing'
+  "finance",
+  "procurement",
+  "manufacturing",
+  "inventory",
+  "order_management",
+  "warehouse",
+  "supply_chain",
+  "crm",
+  "project_service",
+  "workforce",
+  "hr",
+  "ecommerce",
+  "marketing",
+  // "dashboard"
 ] as const;
 
 // Organization types
-export const organizationTypes = ['business', 'ngo'] as const;
+export const organizationTypes = ["business", "ngo"] as const;
 
 // User roles with different access levels
 export const userRoles = [
-  'owner',           // Full access to everything
-  'admin',           // Full access to assigned modules
-  'manager',         // Department-level access
-  'employee'         // Limited module-specific access
+  "owner", // Full access to everything
+  "admin", // Full access to assigned modules
+  "manager", // Department-level access
+  "employee", // Limited module-specific access
 ] as const;
 
 // Department types matching available modules
 export const departments = [
-  'executive',       // For owners and top admins
-  'finance',
-  'procurement',
-  'manufacturing',
-  'inventory',
-  'sales',          // For order management
-  'warehouse',
-  'supply_chain',
-  'crm',
-  'project_management',
-  'hr',
-  'marketing'
+  "executive", // For owners and top admins
+  "finance",
+  "procurement",
+  "manufacturing",
+  "inventory",
+  "sales", // For order management
+  "warehouse",
+  "supply_chain",
+  "crm",
+  "project_management",
+  "hr",
+  "marketing",
 ] as const;
 
-export const users = pgTable("users", {
-  id: serial("id").primaryKey(),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
-  role: text("role").notNull().default('employee'),
-  department: text("department").notNull(),
-  firstName: text("firstName").notNull(),
-  lastName: text("lastName").notNull(),
-  email: text("email").notNull(),
-  phoneNumber: text("phoneNumber"),
-  organizationId: integer("organizationId").notNull(),
-  isOwner: boolean("isOwner").default(false),
-  createdAt: timestamp("createdAt").defaultNow(),
-  updatedAt: timestamp("updatedAt").defaultNow(),
+// Define a schema for a User document for MongoDB.
+// Note: 'id' is now a string (MongoDB ObjectId as a hex string).
+export const userSchema = z.object({
+  id: z.string(),
+  username: z.string().min(3),
+  password: z.string().min(8),
+  role: z.enum(userRoles),
+  department: z.enum(departments),
+  firstName: z.string(),
+  lastName: z.string(),
+  email: z.string().email(),
+  // Allow phoneNumber to be a string or null.
+  phoneNumber: z.string().nullable().optional(),
+  // organizationId is stored as a string (or ObjectId) in MongoDB.
+  organizationId: z.string(),
+  isOwner: z.boolean(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
 });
 
-export const organizations = pgTable("organizations", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull(),
-  type: text("type").notNull(), // 'business' or 'ngo'
-  industry: text("industry").notNull(),
-  size: text("size"), // small, medium, large
-  walletAddress: text("walletAddress").unique(),
-  activeModules: jsonb("activeModules").$type<string[]>().default(['dashboard']),
-  maxModules: integer("maxModules").default(2), // Limit of modules they can use
-  address: text("address"),
-  country: text("country"),
-  taxId: text("taxId"),
-  website: text("website"),
-  createdAt: timestamp("createdAt").defaultNow(),
-  updatedAt: timestamp("updatedAt").defaultNow(),
+// Define a schema for an Organization document.
+export const organizationSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: z.enum(organizationTypes),
+  industry: z.string(),
+  size: z.string().optional(),
+  walletAddress: z.string().optional(),
+  activeModules: z.array(z.enum(availableModules)),
+  maxModules: z.number(),
+  address: z.string().optional(),
+  country: z.string().optional(),
+  taxId: z.string().optional(),
+  website: z.string().optional(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
 });
 
-// Registration schema for organization + first admin user
-export const registerOrganizationSchema = createInsertSchema(organizations)
+// Registration schema for an organization along with the first admin user.
+// This schema combines a subset of the organization fields with additional user details.
+export const registerOrganizationSchema = organizationSchema
   .pick({
     name: true,
     type: true,
@@ -90,35 +95,29 @@ export const registerOrganizationSchema = createInsertSchema(organizations)
     website: true,
   })
   .extend({
-    // Organization type validation
-    type: z.enum(organizationTypes),
-
-    // Owner/Admin user details
+    // Organization type validation is already enforced above.
+    // Owner/Admin user details:
     username: z.string().min(3),
     password: z.string().min(8),
     firstName: z.string(),
     lastName: z.string(),
     email: z.string().email(),
     phoneNumber: z.string(),
-
     // Module selection (limit to 2 initially)
-    selectedModules: z.array(z.enum(availableModules))
+    selectedModules: z
+      .array(z.enum(availableModules))
       .min(1)
       .max(2)
-      .default(['dashboard']),
+      .default([]),
   });
 
-// User creation schema
-export const insertUserSchema = createInsertSchema(users)
-  .extend({
-    role: z.enum(userRoles),
-    department: z.enum(departments),
-  });
+// User creation schema, based on the userSchema.
+export const insertUserSchema = userSchema;
 
-// Types for TypeScript
+// Types for TypeScript using the Zod schemas.
 export type InsertUser = z.infer<typeof insertUserSchema>;
-export type User = typeof users.$inferSelect;
-export type Organization = typeof organizations.$inferSelect;
+export type User = z.infer<typeof userSchema>;
+export type Organization = z.infer<typeof organizationSchema>;
 export type RegisterOrganization = z.infer<typeof registerOrganizationSchema>;
 export type AvailableModule = typeof availableModules[number];
 export type UserRole = typeof userRoles[number];

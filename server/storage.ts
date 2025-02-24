@@ -1,16 +1,52 @@
-import { users, type User, type InsertUser } from "@shared/schema";
-import { db } from "./db";
-import { eq } from "drizzle-orm";
-import session from "express-session";
-import connectPg from "connect-pg-simple";
-import { pool } from "./db";
+import dotenv from "dotenv"
+import { User, Organization } from './mongodb/models';
+import session from 'express-session';
+import MongoStore from 'connect-mongo';
+import { Document, Types } from 'mongoose';
+import { userRoles, departments } from '@shared/schema';
 
-const PostgresSessionStore = connectPg(session);
+dotenv.config()
+
+const mongoUri = process.env.MONGODB_URI
+
+export interface IUserDocument extends Document {
+  id?: number;
+  username: string;
+  password: string;
+  role: typeof userRoles[number];
+  department: typeof departments[number];
+  firstName: string;
+  lastName: string;
+  email: string;
+  phoneNumber?: string | null;
+  // Allow organizationId to be either a string or a Mongoose ObjectId
+  organizationId: string | Types.ObjectId;
+  isOwner: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface IOrganizationDocument extends Document {
+  name: string;
+  type: string;
+  industry: string;
+  size?: string;
+  walletAddress?: string;
+  activeModules: string[];
+  maxModules: number;
+  address?: string;
+  country?: string;
+  taxId?: string;
+  website?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 export interface IStorage {
-  getUser(id: number): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  getUser(id: string): Promise<IUserDocument | null>;
+  getUserByUsername(username: string): Promise<IUserDocument | null>;
+  createUser(user: any): Promise<IUserDocument>;
+  getOrganization(id: string): Promise<IOrganizationDocument | null>;
   sessionStore: session.Store;
 }
 
@@ -18,28 +54,31 @@ export class DatabaseStorage implements IStorage {
   sessionStore: session.Store;
 
   constructor() {
-    this.sessionStore = new PostgresSessionStore({
-      pool,
-      createTableIfMissing: true,
+    if (!mongoUri) {
+      throw new Error("MONGODB_URI must be set");
+    }
+    
+    this.sessionStore = MongoStore.create({
+      mongoUrl: mongoUri,
+      collectionName: 'sessions'
     });
   }
 
-  async getUser(id: number): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user;
+  async getUser(id: string): Promise<IUserDocument | null> {
+    return await User.findById(id);
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
-    return user;
+  async getUserByUsername(username: string): Promise<IUserDocument | null> {
+    return await User.findOne({ username });
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db
-      .insert(users)
-      .values(insertUser)
-      .returning();
-    return user;
+  async createUser(userData: any): Promise<IUserDocument> {
+    const user = new User(userData);
+    return await user.save();
+  }
+
+  async getOrganization(id: string): Promise<IOrganizationDocument | null> {
+    return await Organization.findById(id);
   }
 }
 
