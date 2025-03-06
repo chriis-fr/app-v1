@@ -2,6 +2,8 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { connectDB } from "./db";
+import dotenv from "dotenv"
+dotenv.config()
 
 const app = express();
 app.use(express.json());
@@ -58,7 +60,7 @@ app.use((req, res, next) => {
     }
 
     // ALWAYS serve the app on port 5000
-    const port = 5000;
+    const port = process.env.PORT || 5000;
     const maxRetries = 3;
     let currentTry = 0;
 
