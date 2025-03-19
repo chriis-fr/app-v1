@@ -15,6 +15,7 @@ export const availableModules = [
   "hr",
   "ecommerce",
   "marketing",
+  "pos",
   // "dashboard"
 ] as const;
 
@@ -43,6 +44,7 @@ export const departments = [
   "project_management",
   "hr",
   "marketing",
+  "pos",
 ] as const;
 
 // Define a schema for a User document for MongoDB.
@@ -84,7 +86,6 @@ export const organizationSchema = z.object({
 });
 
 // Registration schema for an organization along with the first admin user.
-// This schema combines a subset of the organization fields with additional user details.
 export const registerOrganizationSchema = organizationSchema
   .pick({
     name: true,
@@ -95,15 +96,12 @@ export const registerOrganizationSchema = organizationSchema
     website: true,
   })
   .extend({
-    // Organization type validation is already enforced above.
-    // Owner/Admin user details:
     username: z.string().min(3),
     password: z.string().min(8),
     firstName: z.string(),
     lastName: z.string(),
     email: z.string().email(),
     phoneNumber: z.string(),
-    // Module selection (limit to 2 initially)
     selectedModules: z
       .array(z.enum(availableModules))
       .min(1)
@@ -112,13 +110,23 @@ export const registerOrganizationSchema = organizationSchema
   });
 
 // User creation schema, based on the userSchema.
-export const insertUserSchema = userSchema;
+export const insertUserSchema = userSchema.extend({
+  organizationId: z.string().optional(),
+  department: z.enum(departments).optional(),
+});
 
 // Types for TypeScript using the Zod schemas.
 export type InsertUser = z.infer<typeof insertUserSchema>;
-export type User = z.infer<typeof userSchema>;
+export type User = z.infer<typeof userSchema> & {
+  permissions: { module: string; actions: string[] }[];
+};
 export type Organization = z.infer<typeof organizationSchema>;
 export type RegisterOrganization = z.infer<typeof registerOrganizationSchema>;
 export type AvailableModule = typeof availableModules[number];
 export type UserRole = typeof userRoles[number];
 export type Department = typeof departments[number];
+
+export interface LoginData {
+  username: string;
+  password: string;
+}

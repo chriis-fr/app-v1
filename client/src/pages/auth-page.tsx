@@ -13,6 +13,32 @@ import { insertUserSchema, registerOrganizationSchema, availableModules, organiz
 import { ShieldCheck, Building2, Users, Box } from 'lucide-react';
 import type { RegisterOrganization } from '@shared/schema';
 
+interface LoginData {
+  username: string;
+  password: string;
+}
+
+// export interface RegisterOrganizationData {
+//   id?: string;
+//   username: string;
+//   password: string;
+//   firstName: string;
+//   lastName: string;
+//   email: string;
+//   phoneNumber: string;
+//   type: 'business' | 'ngo';       // belongs to the organization
+//   name: string;                   // organization name
+//   industry: string;               // organization field
+//   selectedModules: string[];      // chosen modules
+//   address?: string;
+//   country?: string;
+//   website?: string;
+//   role: "owner" | "admin" | "manager" | "employee";
+//   isOwner: boolean;
+//   createdAt: Date;
+//   updatedAt: Date;
+// }
+
 export default function AuthPage() {
   const { user, loginMutation, registerMutation } = useAuth();
   const [, setLocation] = useLocation();
@@ -23,15 +49,16 @@ export default function AuthPage() {
     return null;
   }
 
-  const loginForm = useForm({
+  const loginForm = useForm<LoginData>({
     resolver: zodResolver(insertUserSchema.pick({ username: true, password: true })),
   });
 
   const registerForm = useForm<RegisterOrganization>({
     resolver: zodResolver(registerOrganizationSchema),
     defaultValues: {
-      selectedModules: ['dashboard'],
+      selectedModules: [],
       type: 'business',
+      // ...
     }
   });
 

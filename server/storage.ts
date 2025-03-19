@@ -4,6 +4,7 @@ import session from 'express-session';
 import MongoStore from 'connect-mongo';
 import { Document, Types } from 'mongoose';
 import { userRoles, departments } from '@shared/schema';
+import mongoose from 'mongoose';
 
 dotenv.config()
 
@@ -24,6 +25,10 @@ export interface IUserDocument extends Document {
   isOwner: boolean;
   createdAt: Date;
   updatedAt: Date;
+  permissions?: {
+    module: string;
+    actions: string[];
+  }[];
 }
 
 export interface IOrganizationDocument extends Document {
@@ -48,6 +53,7 @@ export interface IStorage {
   createUser(user: any): Promise<IUserDocument>;
   getOrganization(id: string): Promise<IOrganizationDocument | null>;
   sessionStore: session.Store;
+  createOrganization(orgData: any): Promise<IOrganizationDocument>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -79,6 +85,18 @@ export class DatabaseStorage implements IStorage {
 
   async getOrganization(id: string): Promise<IOrganizationDocument | null> {
     return await Organization.findById(id);
+  }
+
+  async createOrganization(orgData: any): Promise<IOrganizationDocument> {
+    try {
+      const Organization = mongoose.model('Organization');
+      const newOrg = new Organization(orgData);
+      const savedOrg = await newOrg.save();
+      return savedOrg;
+    } catch (error) {
+      console.error("Error creating organization:", error);
+      throw error;
+    }
   }
 }
 
