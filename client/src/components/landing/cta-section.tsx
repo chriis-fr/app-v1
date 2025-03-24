@@ -50,7 +50,7 @@ export function CTASection() {
               </p>
 
               <div className="flex flex-col sm:flex-row justify-center gap-4">
-                <Link href="/auth">
+                <Link href="https://forms.gle/ABRUTcqUXt93vvAF8">
                   <a className="inline-flex items-center px-8 py-3 rounded-lg bg-white text-blue-600 font-medium hover:bg-blue-50 transition-colors">
                     Get Started Free
                     <ArrowRight className="ml-2 h-5 w-5" />

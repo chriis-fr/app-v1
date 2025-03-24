@@ -55,7 +55,7 @@ export function MainHero() {
           </p>
 
           <div className="flex flex-col sm:flex-row justify-center gap-4 mb-12">
-            <Link href="/auth">
+            <Link href="https://forms.gle/ABRUTcqUXt93vvAF8">
               <a className="inline-flex items-center px-6 py-3 rounded-lg bg-blue-500 text-white font-medium hover:bg-blue-600 transition-colors">
                 Get Started Free
                 <ArrowRight className="ml-2 h-5 w-5" />
