@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { Organization as SchemaOrganization } from '@/shared/schema';
 
 // Define types for our organization and user data
 type User = {
@@ -9,13 +10,7 @@ type User = {
   avatarUrl?: string;
 };
 
-type Organization = {
-  id: string;
-  name: string;
-  plan: string;
-  logo?: string;
-  createdAt: string;
-};
+type Organization = SchemaOrganization;
 
 interface OrganizationContextType {
   organization: Organization | null;

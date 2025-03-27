@@ -41,7 +41,7 @@ export default function Header() {
           <HelpCircle className="h-5 w-5 text-gray-600" />
         </button>
         <button 
-          onClick={() => setLocation('/settings')}
+          onClick={() => setLocation('/organization-settings')}
           className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
         >
           <Settings className="h-5 w-5 text-gray-600" />

@@ -80,7 +80,9 @@ export const organizationSchema = z.object({
   address: z.string().optional(),
   country: z.string().optional(),
   taxId: z.string().optional(),
-  website: z.string().optional(),
+  website: z.string().url().optional(),
+  email: z.string().email().optional(),
+  phone: z.string().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
 });
