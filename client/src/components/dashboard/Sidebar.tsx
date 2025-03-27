@@ -17,7 +17,7 @@ const menuItems = [
 
 export function Sidebar() {
   const [location, setLocation] = useLocation();
-  const { logoutMutation } = useAuth();
+  const { logout } = useAuth();
 
   return (
     <div className="w-64 min-h-screen bg-sidebar border-r border-sidebar-border">
@@ -54,7 +54,7 @@ export function Sidebar() {
         <Button
           variant="ghost"
           className="w-full justify-start text-destructive"
-          onClick={() => logoutMutation.mutate()}
+          onClick={logout}
         >
           <LogOut className="mr-2 h-4 w-4" />
           Logout

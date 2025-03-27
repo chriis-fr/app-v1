@@ -1,12 +1,135 @@
-import type { Express } from "express";
+import express, { Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth, hasModuleAccess, hasRole } from "./auth";
 import { storage } from "./storage"
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+import { User } from "@shared/schema";
 
-export async function registerRoutes(app: Express): Promise<Server> {
+// Configure multer for file uploads
+const upload = multer({
+  dest: 'uploads/',
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
+  fileFilter: (_req: Request, file: any, cb: multer.FileFilterCallback) => {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only JPEG, PNG and GIF are allowed.'));
+    }
+  },
+});
+
+interface AuthenticatedRequest extends Request {
+  isAuthenticated(): this is AuthenticatedRequest;
+  user: User;
+}
+
+export async function registerRoutes(app: express.Express): Promise<Server> {
   // Set up authentication routes
   setupAuth(app);
 
+  // User profile routes
+  app.put('/api/user/profile', async (req: Request, res: Response) => {
+    if (!(req as AuthenticatedRequest).isAuthenticated()) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    try {
+      const { firstName, lastName, email, phoneNumber } = req.body;
+      const user = await storage.getUser((req as AuthenticatedRequest).user.id);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Update user fields
+      user.firstName = firstName;
+      user.lastName = lastName;
+      user.email = email;
+      user.phoneNumber = phoneNumber;
+      user.updatedAt = new Date();
+
+      const updatedUser = await user.save();
+      res.json(updatedUser);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+
+  // Profile photo upload
+  app.post('/api/user/photo', upload.single('photo'), async (req: Request, res: Response) => {
+    if (!(req as AuthenticatedRequest).isAuthenticated()) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const file = (req as any).file;
+    if (!file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+
+    try {
+      const user = await storage.getUser((req as AuthenticatedRequest).user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Delete old photo if exists
+      if (user.avatarUrl) {
+        const oldPhotoPath = path.join('uploads', path.basename(user.avatarUrl));
+        if (fs.existsSync(oldPhotoPath)) {
+          fs.unlinkSync(oldPhotoPath);
+        }
+      }
+
+      // Save new photo URL
+      user.avatarUrl = `/uploads/${file.filename}`;
+      user.updatedAt = new Date();
+      await user.save();
+
+      res.json({ url: user.avatarUrl });
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      res.status(500).json({ message: "Failed to upload photo" });
+    }
+  });
+
+  // Profile photo deletion
+  app.delete('/api/user/photo', async (req: Request, res: Response) => {
+    if (!(req as AuthenticatedRequest).isAuthenticated()) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    try {
+      const user = await storage.getUser((req as AuthenticatedRequest).user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      if (user.avatarUrl) {
+        const photoPath = path.join('uploads', path.basename(user.avatarUrl));
+        if (fs.existsSync(photoPath)) {
+          fs.unlinkSync(photoPath);
+        }
+      }
+
+      user.avatarUrl = null;
+      user.updatedAt = new Date();
+      await user.save();
+
+      res.json({ message: "Photo deleted successfully" });
+    } catch (error) {
+      console.error('Error deleting photo:', error);
+      res.status(500).json({ message: "Failed to delete photo" });
+    }
+  });
+
+  // Serve uploaded files
+  app.use('/uploads', express.static('uploads'));
 
   // Module access check endpoint
   app.get('/api/modules/access', async (req, res) => {
@@ -24,7 +147,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       maxModules: org.maxModules
     });
   });
-
 
   // Dormant API endpoints for future implementation
   const httpServer = createServer(app);

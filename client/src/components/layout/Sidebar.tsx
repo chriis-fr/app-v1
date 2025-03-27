@@ -45,8 +45,8 @@ export default function Sidebar() {
     <div className="w-64 bg-white h-screen fixed left-20 border-r overflow-y-auto">
       <div className="flex items-center gap-2 px-5 py-3 border-b">
         <div>
-          <div className="text-lg text-gray-500">Chains ERP</div>
-          <div className="font-semibold">{user?.organization?.name || 'Enterprise Suite'}</div>
+          <div className="text-xl text-gray-500">Chains ERP&trade;</div>
+          <div className="font-semibold">{user?.organization?.name.toUpperCase() || 'Enterprise Suite'}</div>
         </div>
       </div>
 

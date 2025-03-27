@@ -9,6 +9,7 @@ import AuthPage from "@/pages/auth-page";
 import Dashboard from "@/pages/dashboard";
 import LandingPage from "@/pages/landing-page";
 import Book from "@/pages/book";
+import SettingsPage from "@/pages/settings-page";
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
             <Route path="/" component={LandingPage} />
             <Route path="/auth" component={AuthPage} />
             <ProtectedRoute path="/dashboard" component={Dashboard} />
+            <ProtectedRoute path="/settings" component={SettingsPage} />
             <Route path="/book" component={Book} />
             <Route component={NotFound} />
           </Switch>

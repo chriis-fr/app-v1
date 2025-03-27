@@ -1,5 +1,6 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { useMutation, UseMutationResult } from '@tanstack/react-query';
+import { User as SchemaUser } from '@shared/schema';
 
 // Define types
 interface Organization {
@@ -8,13 +9,9 @@ interface Organization {
   plan?: string;
 }
 
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  avatarUrl?: string;
+export interface User extends SchemaUser {
   organization?: Organization;
+  avatarUrl?: string | null;
 }
 
 interface LoginData {
@@ -46,6 +43,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   loginMutation: UseMutationResult<void, Error, LoginData>;
   registerMutation: UseMutationResult<void, Error, RegisterData>;
+  setUser: React.Dispatch<React.SetStateAction<User | null>>;
 }
 
 // Create context
@@ -57,6 +55,7 @@ const AuthContext = createContext<AuthContextType>({
   logout: async () => {},
   loginMutation: {} as UseMutationResult<void, Error, LoginData>,
   registerMutation: {} as UseMutationResult<void, Error, RegisterData>,
+  setUser: () => {},
 });
 
 // Provider component
@@ -67,28 +66,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginMutation = useMutation<void, Error, LoginData>({
     mutationFn: async (data) => {
-      // In a real app, you would make an API call here
-      const mockUser: User = {
-        id: 'user123',
-        name: 'John Doe',
-        email: data.username,
-        role: 'Organization Admin',
-        organization: {
-          id: 'org456',
-          name: 'TechCorp Solutions',
-          plan: 'Enterprise'
-        }
-      };
-      
-      localStorage.setItem('erp_user_session', JSON.stringify(mockUser));
-      setUser(mockUser);
+      const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Login failed');
+      }
+
+      const { user: userData } = await response.json();
+      setUser(userData);
+      setError(null);
     },
   });
 
   const registerMutation = useMutation<void, Error, RegisterData>({
     mutationFn: async (data) => {
-      // Implement registration logic here
-      console.log('Registering:', data);
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Registration failed');
+      }
+
+      const userData = await response.json();
+      setUser(userData);
     },
   });
 
@@ -96,19 +109,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Check if user session exists
     const checkSession = async () => {
       try {
-        // This would typically be a fetch to your backend to check session
-        // For now, let's check localStorage for demo purposes
-        const sessionData = localStorage.getItem('erp_user_session');
-        
-        if (sessionData) {
-          const userData = JSON.parse(sessionData);
+        const response = await fetch('/api/auth/me');
+        if (response.ok) {
+          const userData = await response.json();
           setUser(userData);
         }
-        
-        setIsLoading(false);
-      } catch (err) {
-        console.error('Session check failed', err);
-        setError('Failed to authenticate');
+      } catch (error) {
+        console.error('Session check failed:', error);
+      } finally {
         setIsLoading(false);
       }
     };
@@ -117,68 +125,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
-    setIsLoading(true);
     try {
-      // In a real app, you would make an API call here
-      // Example: const response = await fetch('/api/auth/login', {...})
-      
-      // For demo purposes, let's simulate a successful login with mock data
-      const mockUser: User = {
-        id: 'user123',
-        name: 'John Doe',
-        email: email,
-        role: 'Organization Admin',
-        organization: {
-          id: 'org456',
-          name: 'TechCorp Solutions',
-          plan: 'Enterprise'
-        }
-      };
-      
-      // Save to localStorage for demo
-      localStorage.setItem('erp_user_session', JSON.stringify(mockUser));
-      
-      setUser(mockUser);
-      setError(null);
-    } catch (err) {
-      console.error('Login failed', err);
-      setError('Invalid credentials');
-    } finally {
-      setIsLoading(false);
+      await loginMutation.mutateAsync({ username: email, password });
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Login failed');
+      throw error;
     }
   };
 
   const logout = async () => {
-    setIsLoading(true);
     try {
-      // In a real app: await fetch('/api/auth/logout', {...})
-      localStorage.removeItem('erp_user_session');
+      await fetch('/api/auth/logout', { method: 'POST' });
       setUser(null);
-    } catch (err) {
-      console.error('Logout failed', err);
-    } finally {
-      setIsLoading(false);
+    } catch (error) {
+      console.error('Logout failed:', error);
+      throw error;
     }
   };
 
-  const value: AuthContextType = {
-    user,
-    isLoading,
-    error,
-    login,
-    logout,
-    loginMutation,
-    registerMutation
-  };
-
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isLoading,
+        error,
+        login,
+        logout,
+        loginMutation,
+        registerMutation,
+        setUser,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 }
 
-// Hook for using the auth context
 export function useAuth() {
-  return useContext(AuthContext);
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 } 

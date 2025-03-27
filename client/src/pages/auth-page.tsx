@@ -84,7 +84,13 @@ export default function AuthPage() {
               </TabsList>
 
               <TabsContent value="login">
-                <form onSubmit={loginForm.handleSubmit((data) => loginMutation.mutate(data))} className="space-y-4">
+                <form onSubmit={loginForm.handleSubmit((data) => {
+                  loginMutation.mutate(data, {
+                    onSuccess: () => {
+                      setLocation('/dashboard');
+                    }
+                  });
+                })} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="login-username">Username</Label>
                     <Input id="login-username" {...loginForm.register('username')} />
@@ -93,6 +99,11 @@ export default function AuthPage() {
                     <Label htmlFor="login-password">Password</Label>
                     <Input id="login-password" type="password" {...loginForm.register('password')} />
                   </div>
+                  {loginMutation.error && (
+                    <div className="text-sm text-red-500">
+                      {loginMutation.error.message}
+                    </div>
+                  )}
                   <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
                     {loginMutation.isPending ? 'Logging in...' : 'Login'}
                   </Button>

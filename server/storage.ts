@@ -29,6 +29,7 @@ export interface IUserDocument extends Document {
     module: string;
     actions: string[];
   }[];
+  avatarUrl?: string | null;
 }
 
 export interface IOrganizationDocument extends Document {
