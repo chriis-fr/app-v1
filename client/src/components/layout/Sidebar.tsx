@@ -43,16 +43,16 @@ export default function Sidebar() {
 
   return (
     <div className="w-64 bg-white h-screen fixed left-20 border-r overflow-y-auto">
-      <div className="flex items-center gap-2 p-5 border-b">
+      <div className="flex items-center gap-2 px-5 py-3 border-b">
         <div>
-          <div className="text-sm text-gray-500">ChainERP</div>
+          <div className="text-lg text-gray-500">Chains ERP</div>
           <div className="font-semibold">{user?.organization?.name || 'Enterprise Suite'}</div>
         </div>
       </div>
 
       <div className="p-5 space-y-6">
         <div>
-          <div className="text-xs text-gray-400 mb-3">MAIN MODULES</div>
+          <div className="text-xs text-gray-400 mb-3">YOUR MODULES</div>
           {navigation.main.map((item) => (
             <div
               key={item.name}

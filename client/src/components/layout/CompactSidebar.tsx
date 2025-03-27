@@ -11,6 +11,7 @@ import {
   Receipt
 } from 'lucide-react';
 import { clsx } from 'clsx';
+import { chainslogo, chainsnobg } from '@/assets';
 
 // Map to your existing modules from module-showcase.tsx
 const navigation = [
@@ -30,7 +31,7 @@ export default function CompactSidebar() {
   return (
     <div className="w-20 bg-[#282881] h-screen fixed left-0 text-white flex flex-col items-center">
       <div className="p-4 border-b border-white/10 w-full flex justify-center">
-        <LayoutGrid className="h-8 w-8" />
+        <img src={chainslogo} alt="logo" className="w-11 h-11 rounded-full" />
       </div>
 
       <div className="py-6 space-y-2 overflow-y-auto flex-1">
