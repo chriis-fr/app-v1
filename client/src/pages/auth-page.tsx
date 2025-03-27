@@ -58,7 +58,6 @@ export default function AuthPage() {
     defaultValues: {
       selectedModules: [],
       type: 'business',
-      // ...
     }
   });
 
