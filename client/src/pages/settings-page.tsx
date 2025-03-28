@@ -9,6 +9,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { userSchema } from '@shared/schema';
 import { Camera, Upload, X } from 'lucide-react';
 import { useState } from 'react';
+import { BackButton } from '@/components/ui/back-button';
 import type { User } from '@/hooks/use-auth';
 
 interface ProfileFormData {
@@ -120,14 +121,18 @@ export default function SettingsPage() {
   const initials = `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
 
   return (
-    <div className="container mx-auto py-8">
+    <div className="container mx-auto py-8 px-4 sm:px-6 lg:px-8">
+      <div className="mb-6">
+        <BackButton />
+      </div>
+      
       <Card>
         <CardHeader>
           <CardTitle>Profile Settings</CardTitle>
           <CardDescription>Manage your profile information and photo</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="flex items-center gap-6">
+          <div className="flex flex-col sm:flex-row items-center gap-6">
             <div className="relative">
               <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
                 {profilePhoto ? (
@@ -167,14 +172,14 @@ export default function SettingsPage() {
                 </Button>
               )}
             </div>
-            <div>
+            <div className="text-center sm:text-left">
               <h3 className="text-lg font-semibold">{user.firstName} {user.lastName}</h3>
               <p className="text-muted-foreground">{user.email}</p>
             </div>
           </div>
 
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="firstName">First Name</Label>
                 <Input id="firstName" {...form.register('firstName')} />

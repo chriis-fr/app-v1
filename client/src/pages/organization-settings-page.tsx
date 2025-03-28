@@ -9,6 +9,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { organizationSettingsSchema, OrganizationSettings } from '../../../shared/schema';
 import { Camera, Upload, X } from 'lucide-react';
 import { useState } from 'react';
+import { BackButton } from '@/components/ui/back-button';
 
 interface OrganizationFormData {
   name: string;
@@ -199,14 +200,18 @@ export default function OrganizationSettingsPage() {
   }
 
   return (
-    <div className="container mx-auto py-8 space-y-8">
+    <div className="container mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-8">
+      <div className="mb-6">
+        <BackButton />
+      </div>
+
       <Card>
         <CardHeader>
           <CardTitle>Organization Information</CardTitle>
           <CardDescription>Update your organization's basic information</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="flex items-center gap-6">
+          <div className="flex flex-col sm:flex-row items-center gap-6">
             <div className="relative">
               <div className="w-24 h-24 rounded-lg bg-primary/10 flex items-center justify-center overflow-hidden">
                 {organizationLogo ? (
@@ -246,14 +251,14 @@ export default function OrganizationSettingsPage() {
                 </Button>
               )}
             </div>
-            <div>
+            <div className="text-center sm:text-left">
               <h3 className="text-lg font-semibold">{user.organization?.name}</h3>
               <p className="text-muted-foreground">{user.organization?.industry}</p>
             </div>
           </div>
 
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Organization Name</Label>
                 <Input id="name" {...form.register('name')} />
@@ -264,7 +269,7 @@ export default function OrganizationSettingsPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="industry">Industry</Label>
                 <Input id="industry" {...form.register('industry')} />
@@ -280,7 +285,7 @@ export default function OrganizationSettingsPage() {
               <Input id="address" {...form.register('address')} />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="country">Country</Label>
                 <Input id="country" {...form.register('country')} />
@@ -312,7 +317,7 @@ export default function OrganizationSettingsPage() {
           <form onSubmit={settingsForm.handleSubmit(onSettingsSubmit)} className="space-y-6">
             <div className="space-y-4">
               <h3 className="text-lg font-medium">Theme</h3>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="primaryColor">Primary Color</Label>
                   <Input id="primaryColor" type="color" {...settingsForm.register('theme.primaryColor')} />
