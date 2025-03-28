@@ -3,6 +3,7 @@ import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import CompactSidebar from '@/components/layout/CompactSidebar';
+import ViewSwitcher, { ViewType } from '@/components/view-switcher';
 import { 
   ShoppingBag, 
   Users, 
@@ -40,6 +41,7 @@ import {
 } from 'lucide-react';
 import POSInfoPage from './modules/pos-info';
 import HRInfoPage from './modules/hr-info';
+import { useState } from 'react';
 
 // Dummy data for analytics
 const analyticsData = {
@@ -139,6 +141,7 @@ const moduleInfoPages: Record<string, React.ComponentType> = {
 export default function ModuleInfoPage() {
   const { user } = useAuth();
   const [location, setLocation] = useLocation();
+  const [currentView, setCurrentView] = useState<ViewType>('admin');
   
   // Extract module ID from URL - fix the extraction logic
   const pathParts = location.split('/');
@@ -166,7 +169,32 @@ export default function ModuleInfoPage() {
     <div className="flex min-h-screen">
       <CompactSidebar />
       <div className="flex-1 ml-20">
-        <ModuleInfoComponent />
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-6">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setLocation('/dashboard')}
+                className="hover:bg-gray-100"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <div>
+                <h1 className="text-2xl font-semibold text-gray-900">
+                  {moduleId.charAt(0).toUpperCase() + moduleId.slice(1)} Module
+                </h1>
+                <p className="text-sm text-gray-500">Module Information and Analytics</p>
+              </div>
+            </div>
+            <ViewSwitcher
+              moduleId={moduleId}
+              currentView={currentView}
+              onViewChange={setCurrentView}
+            />
+          </div>
+          <ModuleInfoComponent />
+        </div>
       </div>
     </div>
   );

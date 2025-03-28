@@ -13,6 +13,7 @@ import OrganizationSettingsPage from '@/pages/organization-settings-page';
 import Book from '@/pages/book';
 import ModulesPage from '@/pages/modules-page';
 import ModuleInfoPage from '@/pages/module-info-page';
+import POSPage from '@/pages/app/pos';
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
             <ProtectedRoute path="/organization-settings" component={OrganizationSettingsPage} />
             <Route path="/book" component={Book} />
             <ProtectedRoute path="/dashboard/modules" component={ModulesPage} />
+            <ProtectedRoute path="/pos" component={POSPage} />
             <ProtectedRoute path="/dashboard/pos/info" component={ModuleInfoPage} />
             <ProtectedRoute path="/dashboard/hr/info" component={ModuleInfoPage} />
             <ProtectedRoute path="/dashboard/inventory/info" component={ModuleInfoPage} />

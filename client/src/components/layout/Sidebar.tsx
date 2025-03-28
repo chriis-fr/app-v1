@@ -134,7 +134,7 @@ export default function Sidebar() {
               variant="ghost"
               size="sm"
               className="w-full mt-2 text-xs text-gray-500 hover:text-gray-700"
-              onClick={() => setLocation('/modules')}
+              onClick={() => setLocation('/dashboard/modules')}
             >
               <Plus className="h-4 w-4 mr-2" />
               Add More Modules
