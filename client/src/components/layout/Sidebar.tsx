@@ -242,9 +242,9 @@ export default function Sidebar() {
           </div>
           <div
             className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
-            onClick={() => setLocation('/modules')}
+            onClick={() => setLocation('/dashboard/modules')}
           >
-            <Settings className="h-5 w-5 text-gray-400" />
+            <LayoutGrid className="h-5 w-5 text-gray-400" />
             <span className="text-sm text-gray-600">Modules</span>
           </div>
           <div
