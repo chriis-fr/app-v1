@@ -1,148 +1,100 @@
-import { Card } from '@/components/ui/card';
-import { ShoppingBag, TrendingUp, DollarSign, Users, CreditCard } from 'lucide-react';
+import { useState } from 'react';
+import { ShoppingBag, DollarSign, Users, CreditCard, TrendingUp } from 'lucide-react';
 import BaseModuleInfo from './base-module-info';
+import AnalyticsDashboard, { TimeRange } from '@/components/analytics/analytics-dashboard';
 
-// Dummy data specific to POS
+// Dummy data for POS metrics
 const posData = {
-  dailySales: [
-    { date: '2024-03-01', amount: 12500 },
-    { date: '2024-03-02', amount: 14200 },
-    { date: '2024-03-03', amount: 13800 },
-    { date: '2024-03-04', amount: 15600 },
-    { date: '2024-03-05', amount: 16800 },
-    { date: '2024-03-06', amount: 14500 },
-    { date: '2024-03-07', amount: 17200 }
+  dailyStats: [
+    { date: '2024-03-01', value: 12500 },
+    { date: '2024-03-02', value: 14200 },
+    { date: '2024-03-03', value: 13800 },
+    { date: '2024-03-04', value: 15600 },
+    { date: '2024-03-05', value: 16800 },
+    { date: '2024-03-06', value: 14500 },
+    { date: '2024-03-07', value: 17200 }
   ],
-  topProducts: [
-    { name: 'Product A', sales: 245, revenue: 12250 },
-    { name: 'Product B', sales: 189, revenue: 9450 },
-    { name: 'Product C', sales: 156, revenue: 7800 },
-    { name: 'Product D', sales: 134, revenue: 6700 },
-    { name: 'Product E', sales: 98, revenue: 4900 }
+  topItems: [
+    { name: 'Product A', value: 245 },
+    { name: 'Product B', value: 189 },
+    { name: 'Product C', value: 156 },
+    { name: 'Product D', value: 134 },
+    { name: 'Product E', value: 98 }
   ],
-  paymentMethods: [
-    { method: 'Credit Card', percentage: 45 },
-    { method: 'Cash', percentage: 25 },
-    { method: 'Mobile Payment', percentage: 20 },
-    { method: 'Bank Transfer', percentage: 10 }
+  distributionData: [
+    { name: 'Credit Card', value: 45 },
+    { name: 'Cash', value: 25 },
+    { name: 'Mobile Payment', value: 20 },
+    { name: 'Bank Transfer', value: 10 }
   ],
-  customerMetrics: {
-    totalCustomers: 1250,
-    newCustomers: 45,
-    returningCustomers: 380,
-    averageOrderValue: 125.50
-  }
+  metrics: [
+    { name: 'Total Sales', value: '$125,000', change: '+12.5%', trend: 'up' as const },
+    { name: 'Average Order', value: '$125.50', change: '+5.2%', trend: 'up' as const },
+    { name: 'New Customers', value: '45', change: '+8.3%', trend: 'up' as const },
+    { name: 'Return Rate', value: '2.8%', change: '-0.5%', trend: 'down' as const }
+  ]
 };
 
 export default function POSInfoPage() {
+  const [timeRange, setTimeRange] = useState<TimeRange>('week');
+
   const handleExportData = () => {
-    // Implement export functionality
     console.log('Exporting POS data...');
   };
 
   const handleGenerateReport = () => {
-    // Implement report generation
     console.log('Generating POS report...');
   };
 
   const handleViewRawData = () => {
-    // Implement raw data view
     console.log('Viewing raw POS data...');
+  };
+
+  const handleRefreshData = () => {
+    console.log('Refreshing POS data...');
   };
 
   return (
     <BaseModuleInfo
       moduleName="Point of Sale"
-      moduleDescription="Sales and transaction analytics"
-      moduleIcon={ShoppingBag}
+      description="Sales and transaction analytics"
+      icon="shopping-bag"
+      timeRange={timeRange}
+      onTimeRangeChange={setTimeRange}
       onExportData={handleExportData}
       onGenerateReport={handleGenerateReport}
       onViewRawData={handleViewRawData}
+      onRefreshData={handleRefreshData}
     >
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <Card className="p-6">
-          <div className="flex items-center gap-4">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <DollarSign className="h-6 w-6 text-green-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Total Sales Today</p>
-              <h3 className="text-2xl font-bold">$17,200</h3>
-            </div>
-          </div>
-        </Card>
-        <Card className="p-6">
-          <div className="flex items-center gap-4">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <Users className="h-6 w-6 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">New Customers</p>
-              <h3 className="text-2xl font-bold">45</h3>
-            </div>
-          </div>
-        </Card>
-        <Card className="p-6">
-          <div className="flex items-center gap-4">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <CreditCard className="h-6 w-6 text-purple-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Transactions</p>
-              <h3 className="text-2xl font-bold">156</h3>
-            </div>
-          </div>
-        </Card>
-        <Card className="p-6">
-          <div className="flex items-center gap-4">
-            <div className="p-2 bg-orange-100 rounded-lg">
-              <TrendingUp className="h-6 w-6 text-orange-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Growth</p>
-              <h3 className="text-2xl font-bold">+12.5%</h3>
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      {/* Sales Chart */}
-      <Card className="p-6 mb-8">
-        <h2 className="text-lg font-semibold mb-4">Sales Trend</h2>
-        <div className="h-64 bg-gray-50 rounded-lg flex items-center justify-center">
-          <span className="text-gray-500">Sales chart visualization would go here</span>
-        </div>
-      </Card>
-
-      {/* Top Products */}
-      <Card className="p-6">
-        <h2 className="text-lg font-semibold mb-4">Top Performing Products</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b">
-                <th className="text-left py-3 px-4">Product</th>
-                <th className="text-left py-3 px-4">Sales</th>
-                <th className="text-left py-3 px-4">Revenue</th>
-                <th className="text-left py-3 px-4">Trend</th>
-              </tr>
-            </thead>
-            <tbody>
-              {posData.topProducts.map((product) => (
-                <tr key={product.name} className="border-b">
-                  <td className="py-3 px-4">{product.name}</td>
-                  <td className="py-3 px-4">{product.sales}</td>
-                  <td className="py-3 px-4">${product.revenue}</td>
-                  <td className="py-3 px-4">
-                    <TrendingUp className="h-4 w-4 text-green-600" />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+      <AnalyticsDashboard
+        moduleId="pos"
+        moduleName="Point of Sale"
+        timeRange={timeRange}
+        onTimeRangeChange={setTimeRange}
+        onExportData={handleExportData}
+        onRefresh={handleRefreshData}
+        metrics={posData.metrics}
+        dailyStats={posData.dailyStats}
+        topItems={posData.topItems}
+        distributionData={posData.distributionData}
+        insights={[
+          {
+            title: 'Sales Growth',
+            description: 'Sales have increased by 12.5% compared to last week, driven by strong performance in electronics category',
+            type: 'success'
+          },
+          {
+            title: 'Customer Acquisition',
+            description: 'New customer acquisition rate is up by 8.3%, with mobile payment adoption increasing',
+            type: 'success'
+          },
+          {
+            title: 'Inventory Alert',
+            description: 'Product A is running low on stock. Consider restocking soon to maintain sales momentum',
+            type: 'warning'
+          }
+        ]}
+      />
     </BaseModuleInfo>
   );
 } 

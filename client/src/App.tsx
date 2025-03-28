@@ -27,7 +27,27 @@ function App() {
             <ProtectedRoute path="/organization-settings" component={OrganizationSettingsPage} />
             <Route path="/book" component={Book} />
             <ProtectedRoute path="/dashboard/modules" component={ModulesPage} />
-            <ProtectedRoute path="/dashboard/:module/info" component={ModuleInfoPage} />
+            <ProtectedRoute path="/dashboard/pos/info" component={ModuleInfoPage} />
+            <ProtectedRoute path="/dashboard/hr/info" component={ModuleInfoPage} />
+            <ProtectedRoute path="/dashboard/inventory/info" component={ModuleInfoPage} />
+            <ProtectedRoute path="/dashboard/finance/info" component={ModuleInfoPage} />
+            <ProtectedRoute path="/dashboard/blockchain/info" component={ModuleInfoPage} />
+            <ProtectedRoute path="/dashboard/accounting/info" component={ModuleInfoPage} />
+            <ProtectedRoute path="/dashboard/manufacturing/info" component={ModuleInfoPage} />
+            <ProtectedRoute path="/dashboard/warehouse/info" component={ModuleInfoPage} />
+            <ProtectedRoute path="/dashboard/procurement/info" component={ModuleInfoPage} />
+            <ProtectedRoute path="/dashboard/logistics/info" component={ModuleInfoPage} />
+            <ProtectedRoute path="/dashboard/crm/info" component={ModuleInfoPage} />
+            <ProtectedRoute path="/dashboard/projects/info" component={ModuleInfoPage} />
+            <ProtectedRoute path="/dashboard/tasks/info" component={ModuleInfoPage} />
+            <ProtectedRoute path="/dashboard/calendar/info" component={ModuleInfoPage} />
+            <ProtectedRoute path="/dashboard/reports/info" component={ModuleInfoPage} />
+            <ProtectedRoute path="/dashboard/analytics/info" component={ModuleInfoPage} />
+            <ProtectedRoute path="/dashboard/audit/info" component={ModuleInfoPage} />
+            <ProtectedRoute path="/dashboard/compliance/info" component={ModuleInfoPage} />
+            <ProtectedRoute path="/dashboard/real-estate/info" component={ModuleInfoPage} />
+            <ProtectedRoute path="/dashboard/security/info" component={ModuleInfoPage} />
+            <ProtectedRoute path="/dashboard/workflow/info" component={ModuleInfoPage} />
             <Route component={NotFound} />
           </Switch>
           <Toaster />

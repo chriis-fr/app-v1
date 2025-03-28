@@ -45,37 +45,37 @@ export default function Sidebar() {
   const allModules = {
     main: [
       { id: 'dashboard', name: 'Dashboard', icon: LayoutGrid, route: '/dashboard' },
-      { id: 'pos', name: 'Point of Sale', icon: ShoppingBag, route: '/pos' },
-      { id: 'hr', name: 'HR Management', icon: Users, route: '/hr' },
-      { id: 'inventory', name: 'Inventory', icon: Package, route: '/inventory' }
+      { id: 'pos', name: 'Point of Sale', icon: ShoppingBag, route: '/dashboard/pos/info' },
+      { id: 'hr', name: 'HR Management', icon: Users, route: '/dashboard/hr/info' },
+      { id: 'inventory', name: 'Inventory', icon: Package, route: '/dashboard/inventory/info' }
     ],
     finance: [
-      { id: 'finance', name: 'Finance', icon: DollarSign, route: '/finance' },
-      { id: 'blockchain', name: 'Blockchain', icon: Wallet, route: '/blockchain' },
-      { id: 'accounting', name: 'Accounting', icon: Receipt, route: '/accounting' }
+      { id: 'finance', name: 'Finance', icon: DollarSign, route: '/dashboard/finance/info' },
+      { id: 'blockchain', name: 'Blockchain', icon: Wallet, route: '/dashboard/blockchain/info' },
+      { id: 'accounting', name: 'Accounting', icon: Receipt, route: '/dashboard/accounting/info' }
     ],
     operations: [
-      { id: 'manufacturing', name: 'Manufacturing', icon: Factory, route: '/manufacturing' },
-      { id: 'warehouse', name: 'Warehouse', icon: Package, route: '/warehouse' },
-      { id: 'procurement', name: 'Procurement', icon: ShoppingCart, route: '/procurement' },
-      { id: 'logistics', name: 'Logistics', icon: Truck, route: '/logistics' }
+      { id: 'manufacturing', name: 'Manufacturing', icon: Factory, route: '/dashboard/manufacturing/info' },
+      { id: 'warehouse', name: 'Warehouse', icon: Package, route: '/dashboard/warehouse/info' },
+      { id: 'procurement', name: 'Procurement', icon: ShoppingCart, route: '/dashboard/procurement/info' },
+      { id: 'logistics', name: 'Logistics', icon: Truck, route: '/dashboard/logistics/info' }
     ],
     business: [
-      { id: 'crm', name: 'CRM', icon: Users2, route: '/crm' },
-      { id: 'projects', name: 'Projects', icon: Briefcase, route: '/projects' },
-      { id: 'tasks', name: 'Tasks', icon: ClipboardList, route: '/tasks' },
-      { id: 'calendar', name: 'Calendar', icon: Calendar, route: '/calendar' }
+      { id: 'crm', name: 'CRM', icon: Users2, route: '/dashboard/crm/info' },
+      { id: 'projects', name: 'Projects', icon: Briefcase, route: '/dashboard/projects/info' },
+      { id: 'tasks', name: 'Tasks', icon: ClipboardList, route: '/dashboard/tasks/info' },
+      { id: 'calendar', name: 'Calendar', icon: Calendar, route: '/dashboard/calendar/info' }
     ],
     reporting: [
-      { id: 'reports', name: 'Reports', icon: FileBarChart, route: '/reports' },
-      { id: 'analytics', name: 'Analytics', icon: PieChart, route: '/analytics' },
-      { id: 'audit', name: 'Audit', icon: FileCheck, route: '/audit' },
-      { id: 'compliance', name: 'Compliance', icon: FileWarning, route: '/compliance' }
+      { id: 'reports', name: 'Reports', icon: FileBarChart, route: '/dashboard/reports/info' },
+      { id: 'analytics', name: 'Analytics', icon: PieChart, route: '/dashboard/analytics/info' },
+      { id: 'audit', name: 'Audit', icon: FileCheck, route: '/dashboard/audit/info' },
+      { id: 'compliance', name: 'Compliance', icon: FileWarning, route: '/dashboard/compliance/info' }
     ],
     other: [
-      { id: 'real-estate', name: 'Real Estate', icon: Building2, route: '/real-estate' },
-      { id: 'security', name: 'Security', icon: Shield, route: '/security' },
-      { id: 'workflow', name: 'Workflow', icon: Workflow, route: '/workflow' }
+      { id: 'real-estate', name: 'Real Estate', icon: Building2, route: '/dashboard/real-estate/info' },
+      { id: 'security', name: 'Security', icon: Shield, route: '/dashboard/security/info' },
+      { id: 'workflow', name: 'Workflow', icon: Workflow, route: '/dashboard/workflow/info' }
     ]
   };
 

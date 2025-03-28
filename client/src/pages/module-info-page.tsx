@@ -39,6 +39,7 @@ import {
   FileJson
 } from 'lucide-react';
 import POSInfoPage from './modules/pos-info';
+import HRInfoPage from './modules/hr-info';
 
 // Dummy data for analytics
 const analyticsData = {
@@ -129,8 +130,8 @@ const analyticsData = {
 // Map of module IDs to their info page components
 const moduleInfoPages: Record<string, React.ComponentType> = {
   pos: POSInfoPage,
+  hr: HRInfoPage,
   // Add other module info pages here as they are created
-  // hr: HRInfoPage,
   // inventory: InventoryInfoPage,
   // etc.
 };
@@ -139,8 +140,9 @@ export default function ModuleInfoPage() {
   const { user } = useAuth();
   const [location, setLocation] = useLocation();
   
-  // Extract module ID from URL
-  const moduleId = location.split('/').pop()?.replace('/info', '');
+  // Extract module ID from URL - fix the extraction logic
+  const pathParts = location.split('/');
+  const moduleId = pathParts[pathParts.length - 2]; // Get the second-to-last part of the URL
   
   // Get the specific module info page component
   const ModuleInfoComponent = moduleInfoPages[moduleId as keyof typeof moduleInfoPages];
@@ -160,5 +162,12 @@ export default function ModuleInfoPage() {
     );
   }
 
-  return <ModuleInfoComponent />;
+  return (
+    <div className="flex min-h-screen">
+      <CompactSidebar />
+      <div className="flex-1 ml-20">
+        <ModuleInfoComponent />
+      </div>
+    </div>
+  );
 } 

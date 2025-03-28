@@ -1,79 +1,134 @@
-import { useAuth } from '@/hooks/use-auth';
-import { useLocation } from 'wouter';
+import { ReactNode } from 'react';
+import { TimeRange } from '@/components/analytics/analytics-dashboard';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import CompactSidebar from '@/components/layout/CompactSidebar';
-import { ArrowLeft, Download, FileSpreadsheet, FileJson, FileText, Table2 } from 'lucide-react';
+import { ArrowLeft, Download, FileText, Database, RefreshCw } from 'lucide-react';
+import { useLocation } from 'wouter';
 
 interface BaseModuleInfoProps {
   moduleName: string;
-  moduleDescription: string;
-  moduleIcon: React.ComponentType<{ className?: string }>;
-  children: React.ReactNode;
-  onExportData?: () => void;
-  onGenerateReport?: () => void;
-  onViewRawData?: () => void;
+  description: string;
+  icon: string;
+  timeRange: TimeRange;
+  onTimeRangeChange: (range: TimeRange) => void;
+  onExportData: () => void;
+  onGenerateReport: () => void;
+  onViewRawData: () => void;
+  onRefreshData: () => void;
+  children: ReactNode;
 }
 
 export default function BaseModuleInfo({
   moduleName,
-  moduleDescription,
-  moduleIcon: ModuleIcon,
-  children,
+  description,
+  icon,
+  timeRange,
+  onTimeRangeChange,
   onExportData,
   onGenerateReport,
-  onViewRawData
+  onViewRawData,
+  onRefreshData,
+  children
 }: BaseModuleInfoProps) {
-  const { user } = useAuth();
   const [, setLocation] = useLocation();
 
   return (
-    <div className="flex min-h-screen">
-      <CompactSidebar />
-      <div className="flex-1 p-8 ml-20">
-        <div className="flex items-center gap-4 mb-8">
-          <Button
-            variant="ghost"
-            onClick={() => setLocation('/dashboard/modules')}
-            className="flex items-center gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Modules
-          </Button>
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <ModuleIcon className="h-6 w-6 text-blue-600" />
-            </div>
+    <div className="min-h-screen bg-gray-50">
+      <div className="ml-20">
+        <div className="p-6">
+          <div className="flex items-center gap-4 mb-6">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setLocation('/dashboard')}
+              className="hover:bg-gray-100"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
             <div>
-              <h1 className="text-2xl font-bold mb-2">{moduleName}</h1>
-              <p className="text-gray-600">{moduleDescription}</p>
+              <h1 className="text-2xl font-semibold text-gray-900">{moduleName}</h1>
+              <p className="text-sm text-gray-500">{description}</p>
             </div>
           </div>
-        </div>
 
-        {/* Module-specific content */}
-        {children}
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-2">
+              <Button
+                variant={timeRange === 'day' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => onTimeRangeChange('day')}
+              >
+                Day
+              </Button>
+              <Button
+                variant={timeRange === 'week' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => onTimeRangeChange('week')}
+              >
+                Week
+              </Button>
+              <Button
+                variant={timeRange === 'month' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => onTimeRangeChange('month')}
+              >
+                Month
+              </Button>
+              <Button
+                variant={timeRange === 'quarter' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => onTimeRangeChange('quarter')}
+              >
+                Quarter
+              </Button>
+              <Button
+                variant={timeRange === 'year' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => onTimeRangeChange('year')}
+              >
+                Year
+              </Button>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onExportData}
+                className="flex items-center gap-2"
+              >
+                <Download className="h-4 w-4" />
+                Export
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onGenerateReport}
+                className="flex items-center gap-2"
+              >
+                <FileText className="h-4 w-4" />
+                Report
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onViewRawData}
+                className="flex items-center gap-2"
+              >
+                <Database className="h-4 w-4" />
+                Raw Data
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onRefreshData}
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Refresh
+              </Button>
+            </div>
+          </div>
 
-        {/* Common actions */}
-        <div className="fixed bottom-6 right-6 flex gap-2">
-          {onExportData && (
-            <Button variant="outline" onClick={onExportData}>
-              <Download className="h-4 w-4 mr-2" />
-              Export Data
-            </Button>
-          )}
-          {onGenerateReport && (
-            <Button variant="outline" onClick={onGenerateReport}>
-              <FileText className="h-4 w-4 mr-2" />
-              Generate Report
-            </Button>
-          )}
-          {onViewRawData && (
-            <Button variant="outline" onClick={onViewRawData}>
-              <Table2 className="h-4 w-4 mr-2" />
-              View Raw Data
-            </Button>
-          )}
+          {children}
         </div>
       </div>
     </div>
