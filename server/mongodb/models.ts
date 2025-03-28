@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { availableModules, organizationTypes, userRoles, departments } from '@shared/schema';
+import { availableModules, organizationTypes, userRoles, departments, OrganizationSettings, Role } from '@shared/schema';
 
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
@@ -28,6 +28,8 @@ const organizationSchema = new mongoose.Schema({
   country: String,
   taxId: String,
   website: String,
+  settings: { type: Object, default: {} },
+  roles: [{ type: Object, default: [] }],
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });

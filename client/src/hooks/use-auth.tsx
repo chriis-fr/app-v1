@@ -1,18 +1,20 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { useMutation, UseMutationResult } from '@tanstack/react-query';
-import { User as SchemaUser } from '@shared/schema';
+import { User as SchemaUser, OrganizationSettings, Role } from '@shared/schema';
 
 // Define types
 interface Organization {
   id: string;
   name: string;
-  plan?: string;
+  plan: string;
+  settings: OrganizationSettings;
+  roles: Role[];
 }
 
-export interface User extends SchemaUser {
+export type User = SchemaUser & {
   organization?: Organization;
   avatarUrl?: string | null;
-}
+};
 
 interface LoginData {
   username: string;

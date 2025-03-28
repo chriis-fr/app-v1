@@ -5,7 +5,16 @@ import { storage } from "./storage"
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
-import { User } from "@shared/schema";
+import { User, Organization, OrganizationSettings, Role } from "@shared/schema";
+import { v4 as uuidv4 } from 'uuid';
+import { User as UserModel, Organization as OrganizationModel } from './mongodb/models';
+
+// Add type declarations for organization document
+interface IOrganizationDocument {
+  settings: OrganizationSettings;
+  roles: Role[];
+  save(): Promise<IOrganizationDocument>;
+}
 
 // Configure multer for file uploads
 const upload = multer({
@@ -172,6 +181,99 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
   // Blockchain endpoints
   app.get('/api/blockchain/transactions', (_req, res) => res.sendStatus(501));
   app.post('/api/blockchain/transactions', (_req, res) => res.sendStatus(501));
+
+  // Organization Settings Routes
+  app.get('/api/organization/settings', hasModuleAccess('organization'), async (req, res) => {
+    try {
+      const organization = await OrganizationModel.findById(req.user?.organizationId) as unknown as IOrganizationDocument;
+      if (!organization) {
+        return res.status(404).json({ error: 'Organization not found' });
+      }
+      res.json(organization.settings || {});
+    } catch (error) {
+      console.error('Error fetching organization settings:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  app.patch('/api/organization/settings', hasModuleAccess('organization'), async (req, res) => {
+    try {
+      const organization = await OrganizationModel.findById(req.user?.organizationId) as unknown as IOrganizationDocument;
+      if (!organization) {
+        return res.status(404).json({ error: 'Organization not found' });
+      }
+      const settings = req.body as OrganizationSettings;
+      organization.settings = settings;
+      await organization.save();
+      res.json(organization.settings);
+    } catch (error) {
+      console.error('Error updating organization settings:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // Organization Roles Routes
+  app.get('/api/organization/roles', hasModuleAccess('organization'), async (req, res) => {
+    try {
+      const organization = await OrganizationModel.findById(req.user?.organizationId) as unknown as IOrganizationDocument;
+      if (!organization) {
+        return res.status(404).json({ error: 'Organization not found' });
+      }
+      res.json(organization.roles || []);
+    } catch (error) {
+      console.error('Error fetching organization roles:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  app.post('/api/organization/roles', hasModuleAccess('organization'), async (req, res) => {
+    try {
+      const organization = await OrganizationModel.findById(req.user?.organizationId) as unknown as IOrganizationDocument;
+      if (!organization) {
+        return res.status(404).json({ error: 'Organization not found' });
+      }
+      const role = req.body as Omit<Role, 'id'>;
+      const newRole: Role = {
+        ...role,
+        id: uuidv4(),
+        isSystem: false
+      };
+      organization.roles = organization.roles || [];
+      organization.roles.push(newRole);
+      await organization.save();
+      res.status(201).json(newRole);
+    } catch (error) {
+      console.error('Error creating organization role:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  app.patch('/api/organization/roles/:roleId', hasModuleAccess('organization'), async (req, res) => {
+    try {
+      const organization = await OrganizationModel.findById(req.user?.organizationId) as unknown as IOrganizationDocument;
+      if (!organization) {
+        return res.status(404).json({ error: 'Organization not found' });
+      }
+      const roleId = req.params.roleId;
+      const roleIndex = organization.roles.findIndex((r: Role) => r.id === roleId);
+      if (roleIndex === -1) {
+        return res.status(404).json({ error: 'Role not found' });
+      }
+      if (organization.roles[roleIndex].isSystem) {
+        return res.status(403).json({ error: 'Cannot modify system roles' });
+      }
+      const updatedRole = req.body as Omit<Role, 'id' | 'isSystem'>;
+      organization.roles[roleIndex] = {
+        ...organization.roles[roleIndex],
+        ...updatedRole
+      };
+      await organization.save();
+      res.json(organization.roles[roleIndex]);
+    } catch (error) {
+      console.error('Error updating organization role:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
 
   return httpServer;
 }

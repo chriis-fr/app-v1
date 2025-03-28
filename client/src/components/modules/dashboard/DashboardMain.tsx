@@ -19,7 +19,7 @@ export default function DashboardMain() {
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-2xl font-semibold mb-1">
-            {isLoading ? 'Loading...' : `Welcome back, ${user?.username || 'User'}`}
+            {isLoading ? 'Loading...' : `Welcome back, ${user?.name || 'User'}`}
           </h1>
           <p className="text-gray-500">
             {user?.organization?.name ? 

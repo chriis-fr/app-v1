@@ -1,4 +1,4 @@
-import { Search, Bell, Settings, User, HelpCircle } from 'lucide-react';
+import { Search, Bell, Settings, User, HelpCircle, Building2 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { Skeleton } from '@/components/ui/skeleton';
 import { chainslogo } from '@/assets';
@@ -12,6 +12,9 @@ export default function Header() {
   const getUserInitials = (firstName: string, lastName: string) => {
     return `${firstName[0]}${lastName[0]}`.toUpperCase();
   };
+
+  // Check if user is admin
+  const isAdmin = user?.role === 'admin' || user?.role === 'owner';
 
   return (
     <div className="h-16 bg-white border-b flex items-center justify-between px-6 fixed top-0 left-[336px] right-0 z-10">
@@ -40,8 +43,17 @@ export default function Header() {
         <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
           <HelpCircle className="h-5 w-5 text-gray-600" />
         </button>
+        {isAdmin && (
+          <button 
+            onClick={() => setLocation('/organization-settings')}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            title="Organization Settings"
+          >
+            <Building2 className="h-5 w-5 text-gray-600" />
+          </button>
+        )}
         <button 
-          onClick={() => setLocation('/organization-settings')}
+          onClick={() => setLocation('/settings')}
           className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
         >
           <Settings className="h-5 w-5 text-gray-600" />

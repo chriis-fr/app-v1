@@ -1,346 +1,379 @@
 import { useAuth } from '@/hooks/use-auth';
 import { useLocation } from 'wouter';
-import { 
-  Building2, 
-  Users, 
-  Settings, 
-  Shield, 
-  Database, 
-  CreditCard, 
-  Bell, 
-  Globe, 
-  FileText,
-  Lock
-} from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { organizationSettingsSchema, OrganizationSettings } from '../../../shared/schema';
+import { Camera, Upload, X } from 'lucide-react';
 import { useState } from 'react';
-import { useOrganization } from '@/contexts/OrganizationContext';
 
-interface Permission {
-  id: string;
+interface OrganizationFormData {
   name: string;
-  description: string;
-  enabled: boolean;
-}
-
-interface Role {
-  id: string;
-  name: string;
-  permissions: string[];
+  type: string;
+  industry: string;
+  size?: string;
+  address?: string;
+  country?: string;
+  taxId?: string;
+  website?: string;
 }
 
 export default function OrganizationSettingsPage() {
-  const { user } = useAuth();
-  const { organization } = useOrganization();
+  const { user, setUser } = useAuth();
   const [, setLocation] = useLocation();
-  const [activeTab, setActiveTab] = useState('general');
+  const [organizationLogo, setOrganizationLogo] = useState<string | null>(user?.organization?.settings?.branding?.logo || null);
+  const [isUploading, setIsUploading] = useState(false);
 
-  const tabs = [
-    { id: 'general', name: 'General', icon: Building2 },
-    { id: 'users', name: 'Users & Roles', icon: Users },
-    { id: 'permissions', name: 'Permissions', icon: Shield },
-    { id: 'integrations', name: 'Integrations', icon: Database },
-    { id: 'billing', name: 'Billing', icon: CreditCard },
-    { id: 'notifications', name: 'Notifications', icon: Bell },
-    { id: 'regional', name: 'Regional', icon: Globe },
-    { id: 'documents', name: 'Documents', icon: FileText },
-    { id: 'security', name: 'Security', icon: Lock }
-  ];
+  const form = useForm<OrganizationFormData>({
+    defaultValues: {
+      name: user?.organization?.name || '',
+      type: user?.organization?.type || '',
+      industry: user?.organization?.industry || '',
+      size: user?.organization?.size || '',
+      address: user?.organization?.address || '',
+      country: user?.organization?.country || '',
+      taxId: user?.organization?.taxId || '',
+      website: user?.organization?.website || '',
+    },
+  });
 
-  const permissions: Permission[] = [
-    { id: 'manage_users', name: 'Manage Users', description: 'Add, edit, and remove users', enabled: true },
-    { id: 'manage_roles', name: 'Manage Roles', description: 'Create and modify user roles', enabled: true },
-    { id: 'view_reports', name: 'View Reports', description: 'Access to view reports and analytics', enabled: true },
-    { id: 'manage_inventory', name: 'Manage Inventory', description: 'Add, edit, and remove inventory items', enabled: false },
-    { id: 'manage_sales', name: 'Manage Sales', description: 'Process sales and manage orders', enabled: true },
-    { id: 'manage_purchases', name: 'Manage Purchases', description: 'Process purchases and manage suppliers', enabled: false },
-    { id: 'manage_finance', name: 'Manage Finance', description: 'Access to financial data and transactions', enabled: true },
-    { id: 'manage_hr', name: 'Manage HR', description: 'Access to employee data and HR functions', enabled: false }
-  ];
+  const settingsForm = useForm<OrganizationSettings>({
+    resolver: zodResolver(organizationSettingsSchema),
+    defaultValues: {
+      theme: {
+        primaryColor: user?.organization?.settings?.theme?.primaryColor || '#282881',
+        secondaryColor: user?.organization?.settings?.theme?.secondaryColor || '#ffffff',
+        darkMode: user?.organization?.settings?.theme?.darkMode || false,
+      },
+      branding: {
+        logo: user?.organization?.settings?.branding?.logo || null,
+        favicon: user?.organization?.settings?.branding?.favicon || null,
+        companyName: user?.organization?.settings?.branding?.companyName || user?.organization?.name || '',
+        tagline: user?.organization?.settings?.branding?.tagline || '',
+        website: user?.organization?.settings?.branding?.website || user?.organization?.website || '',
+        email: user?.organization?.settings?.branding?.email || '',
+        phone: user?.organization?.settings?.branding?.phone || '',
+        address: user?.organization?.settings?.branding?.address || user?.organization?.address || '',
+      },
+      modules: {
+        enabled: user?.organization?.settings?.modules?.enabled || [],
+        defaultModule: user?.organization?.settings?.modules?.defaultModule || '',
+      },
+      notifications: {
+        email: user?.organization?.settings?.notifications?.email ?? true,
+        push: user?.organization?.settings?.notifications?.push ?? true,
+        sms: user?.organization?.settings?.notifications?.sms ?? false,
+      },
+      security: {
+        twoFactorAuth: user?.organization?.settings?.security?.twoFactorAuth ?? false,
+        sessionTimeout: user?.organization?.settings?.security?.sessionTimeout || 30,
+        passwordPolicy: {
+          minLength: user?.organization?.settings?.security?.passwordPolicy?.minLength || 8,
+          requireSpecialChars: user?.organization?.settings?.security?.passwordPolicy?.requireSpecialChars ?? true,
+          requireNumbers: user?.organization?.settings?.security?.passwordPolicy?.requireNumbers ?? true,
+        },
+      },
+      integrations: {
+        paymentGateways: user?.organization?.settings?.integrations?.paymentGateways || [],
+        emailService: user?.organization?.settings?.integrations?.emailService || '',
+        smsService: user?.organization?.settings?.integrations?.smsService || '',
+      },
+      backup: {
+        frequency: user?.organization?.settings?.backup?.frequency || 'daily',
+        retention: user?.organization?.settings?.backup?.retention || 30,
+        autoBackup: user?.organization?.settings?.backup?.autoBackup ?? true,
+      },
+    },
+  });
 
-  const roles: Role[] = [
-    { id: 'admin', name: 'Administrator', permissions: ['manage_users', 'manage_roles', 'view_reports', 'manage_inventory', 'manage_sales', 'manage_purchases', 'manage_finance', 'manage_hr'] },
-    { id: 'manager', name: 'Manager', permissions: ['view_reports', 'manage_inventory', 'manage_sales', 'manage_purchases'] },
-    { id: 'employee', name: 'Employee', permissions: ['view_reports', 'manage_sales'] }
-  ];
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  if (!organization) {
-    return <div>No organization found</div>;
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('logo', file);
+
+      const response = await fetch('/api/organization/logo', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to upload logo');
+      }
+
+      const { url } = await response.json();
+      setOrganizationLogo(url);
+      settingsForm.setValue('branding.logo', url);
+    } catch (error) {
+      console.error('Error uploading logo:', error);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleLogoDelete = async () => {
+    try {
+      const response = await fetch('/api/organization/logo', {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete logo');
+      }
+
+      setOrganizationLogo(null);
+      settingsForm.setValue('branding.logo', null);
+    } catch (error) {
+      console.error('Error deleting logo:', error);
+    }
+  };
+
+  const onSubmit = async (data: OrganizationFormData) => {
+    try {
+      const response = await fetch('/api/organization', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update organization');
+      }
+
+      const updatedOrganization = await response.json();
+      setUser(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          organization: updatedOrganization
+        };
+      });
+    } catch (error) {
+      console.error('Error updating organization:', error);
+    }
+  };
+
+  const onSettingsSubmit = async (data: OrganizationSettings) => {
+    try {
+      const response = await fetch('/api/organization/settings', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ settings: data }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update organization settings');
+      }
+
+      const updatedOrganization = await response.json();
+      setUser(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          organization: updatedOrganization
+        };
+      });
+    } catch (error) {
+      console.error('Error updating organization settings:', error);
+    }
+  };
+
+  if (!user) {
+    setLocation('/auth');
+    return <div>Redirecting...</div>;
+  }
+
+  if (user.role !== 'admin' && user.role !== 'owner') {
+    setLocation('/dashboard');
+    return <div>Access denied. Redirecting...</div>;
   }
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-semibold">Organization Settings</h1>
-          <p className="text-gray-500">Manage your organization's settings and preferences</p>
-        </div>
-        <button
-          onClick={() => setLocation('/dashboard')}
-          className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900"
-        >
-          Back to Dashboard
-        </button>
-      </div>
-
-      <div className="flex gap-6">
-        {/* Sidebar Navigation */}
-        <div className="w-64 space-y-1">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-colors ${
-                  activeTab === tab.id
-                    ? 'bg-primary/10 text-primary font-medium'
-                    : 'text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                <Icon className="h-5 w-5" />
-                {tab.name}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Main Content */}
-        <div className="flex-1 bg-white rounded-lg border p-6">
-          {activeTab === 'general' && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-lg font-medium mb-4">Organization Information</h2>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Organization Name
-                    </label>
-                    <input
-                      type="text"
-                      defaultValue={organization.name}
-                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Industry
-                    </label>
-                    <input
-                      type="text"
-                      defaultValue={organization.industry}
-                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Organization Type
-                    </label>
-                    <select
-                      defaultValue={organization.type}
-                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                    >
-                      <option value="business">Business</option>
-                      <option value="ngo">NGO</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Organization Size
-                    </label>
-                    <select 
-                      defaultValue={organization.size || ''}
-                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                    >
-                      <option value="">Select size</option>
-                      <option value="1-10">1-10 employees</option>
-                      <option value="11-50">11-50 employees</option>
-                      <option value="51-200">51-200 employees</option>
-                      <option value="201-500">201-500 employees</option>
-                      <option value="501-1000">501-1000 employees</option>
-                      <option value="1000+">1000+ employees</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Created At
-                    </label>
-                    <input
-                      type="text"
-                      defaultValue={new Date(organization.createdAt).toLocaleDateString()}
-                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                      disabled
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Updated At
-                    </label>
-                    <input
-                      type="text"
-                      defaultValue={new Date(organization.updatedAt).toLocaleDateString()}
-                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                      disabled
-                    />
-                  </div>
-                </div>
+    <div className="container mx-auto py-8 space-y-8">
+      <Card>
+        <CardHeader>
+          <CardTitle>Organization Information</CardTitle>
+          <CardDescription>Update your organization's basic information</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex items-center gap-6">
+            <div className="relative">
+              <div className="w-24 h-24 rounded-lg bg-primary/10 flex items-center justify-center overflow-hidden">
+                {organizationLogo ? (
+                  <img
+                    src={organizationLogo}
+                    alt="Organization Logo"
+                    className="w-full h-full object-contain"
+                  />
+                ) : (
+                  <span className="text-2xl font-semibold text-primary">
+                    {user.organization?.name?.[0]?.toUpperCase()}
+                  </span>
+                )}
               </div>
-
-              <div>
-                <h2 className="text-lg font-medium mb-4">Contact Information</h2>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Email
-                    </label>
-                    <input
-                      type="email"
-                      defaultValue={organization.email || ''}
-                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                    />
+              <div className="absolute bottom-0 right-0">
+                <label className="cursor-pointer">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleLogoUpload}
+                    disabled={isUploading}
+                  />
+                  <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white hover:bg-primary/90">
+                    <Camera className="w-4 h-4" />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Phone
-                    </label>
-                    <input
-                      type="tel"
-                      defaultValue={organization.phone || ''}
-                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Website
-                    </label>
-                    <input
-                      type="url"
-                      defaultValue={organization.website || ''}
-                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Tax ID
-                    </label>
-                    <input
-                      type="text"
-                      defaultValue={organization.taxId || ''}
-                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Address
-                    </label>
-                    <textarea
-                      defaultValue={organization.address || ''}
-                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                      rows={3}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Country
-                    </label>
-                    <input
-                      type="text"
-                      defaultValue={organization.country || ''}
-                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                    />
-                  </div>
-                </div>
+                </label>
               </div>
+              {organizationLogo && (
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  className="absolute top-0 right-0 w-8 h-8 rounded-full"
+                  onClick={handleLogoDelete}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold">{user.organization?.name}</h3>
+              <p className="text-muted-foreground">{user.organization?.industry}</p>
+            </div>
+          </div>
 
-              <div>
-                <h2 className="text-lg font-medium mb-4">Modules</h2>
-                <div className="grid grid-cols-3 gap-4">
-                  {organization.activeModules.map((module: string) => (
-                    <div key={module} className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={true}
-                        className="rounded border-gray-300 text-primary focus:ring-primary"
-                      />
-                      <span className="text-sm capitalize">{module.replace('_', ' ')}</span>
-                    </div>
-                  ))}
-                </div>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Organization Name</Label>
+                <Input id="name" {...form.register('name')} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="type">Type</Label>
+                <Input id="type" {...form.register('type')} />
               </div>
             </div>
-          )}
 
-          {activeTab === 'permissions' && (
-            <div className="space-y-6">
-              <h2 className="text-lg font-medium mb-4">Role Permissions</h2>
-              <div className="space-y-4">
-                {roles.map((role) => (
-                  <div key={role.id} className="border rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-medium">{role.name}</h3>
-                      <button className="text-sm text-primary hover:text-primary/80">
-                        Edit
-                      </button>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      {permissions.map((permission) => (
-                        <div key={permission.id} className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={role.permissions.includes(permission.id)}
-                            className="rounded border-gray-300 text-primary focus:ring-primary"
-                          />
-                          <div>
-                            <div className="text-sm font-medium">{permission.name}</div>
-                            <div className="text-xs text-gray-500">{permission.description}</div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="industry">Industry</Label>
+                <Input id="industry" {...form.register('industry')} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="size">Size</Label>
+                <Input id="size" {...form.register('size')} />
               </div>
             </div>
-          )}
 
-          {activeTab === 'integrations' && (
-            <div className="space-y-6">
-              <h2 className="text-lg font-medium mb-4">System Integrations</h2>
+            <div className="space-y-2">
+              <Label htmlFor="address">Address</Label>
+              <Input id="address" {...form.register('address')} />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="country">Country</Label>
+                <Input id="country" {...form.register('country')} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="taxId">Tax ID</Label>
+                <Input id="taxId" {...form.register('taxId')} />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="website">Website</Label>
+              <Input id="website" {...form.register('website')} />
+            </div>
+
+            <Button type="submit" className="w-full">
+              Save Organization Info
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Organization Settings</CardTitle>
+          <CardDescription>Configure your organization's settings and preferences</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={settingsForm.handleSubmit(onSettingsSubmit)} className="space-y-6">
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">Theme</h3>
               <div className="grid grid-cols-2 gap-4">
-                <div className="border rounded-lg p-4">
-                  <h3 className="font-medium mb-2">Payment Gateway</h3>
-                  <p className="text-sm text-gray-500 mb-4">Connect your payment processing system</p>
-                  <button className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90">
-                    Configure
-                  </button>
+                <div className="space-y-2">
+                  <Label htmlFor="primaryColor">Primary Color</Label>
+                  <Input id="primaryColor" type="color" {...settingsForm.register('theme.primaryColor')} />
                 </div>
-                <div className="border rounded-lg p-4">
-                  <h3 className="font-medium mb-2">Accounting Software</h3>
-                  <p className="text-sm text-gray-500 mb-4">Sync with your accounting system</p>
-                  <button className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90">
-                    Configure
-                  </button>
-                </div>
-                <div className="border rounded-lg p-4">
-                  <h3 className="font-medium mb-2">Inventory System</h3>
-                  <p className="text-sm text-gray-500 mb-4">Connect your inventory management system</p>
-                  <button className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90">
-                    Configure
-                  </button>
-                </div>
-                <div className="border rounded-lg p-4">
-                  <h3 className="font-medium mb-2">CRM System</h3>
-                  <p className="text-sm text-gray-500 mb-4">Connect your customer relationship management system</p>
-                  <button className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90">
-                    Configure
-                  </button>
+                <div className="space-y-2">
+                  <Label htmlFor="secondaryColor">Secondary Color</Label>
+                  <Input id="secondaryColor" type="color" {...settingsForm.register('theme.secondaryColor')} />
                 </div>
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="darkMode">Dark Mode</Label>
+                <Input id="darkMode" type="checkbox" {...settingsForm.register('theme.darkMode')} />
+              </div>
             </div>
-          )}
 
-          {/* Add other tab contents here */}
-        </div>
-      </div>
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">Branding</h3>
+              <div className="space-y-2">
+                <Label htmlFor="companyName">Company Name</Label>
+                <Input id="companyName" {...settingsForm.register('branding.companyName')} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="tagline">Tagline</Label>
+                <Input id="tagline" {...settingsForm.register('branding.tagline')} />
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">Security</h3>
+              <div className="space-y-2">
+                <Label htmlFor="twoFactorAuth">Two-Factor Authentication</Label>
+                <Input id="twoFactorAuth" type="checkbox" {...settingsForm.register('security.twoFactorAuth')} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="sessionTimeout">Session Timeout (minutes)</Label>
+                <Input id="sessionTimeout" type="number" {...settingsForm.register('security.sessionTimeout')} />
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">Notifications</h3>
+              <div className="space-y-2">
+                <Label htmlFor="emailNotifications">Email Notifications</Label>
+                <Input id="emailNotifications" type="checkbox" {...settingsForm.register('notifications.email')} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="pushNotifications">Push Notifications</Label>
+                <Input id="pushNotifications" type="checkbox" {...settingsForm.register('notifications.push')} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="smsNotifications">SMS Notifications</Label>
+                <Input id="smsNotifications" type="checkbox" {...settingsForm.register('notifications.sms')} />
+              </div>
+            </div>
+
+            <Button type="submit" className="w-full">
+              Save Settings
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 } 

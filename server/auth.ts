@@ -60,8 +60,8 @@ function normalizeUser(user: IUserDocument): SelectUser {
     isOwner: user.isOwner ?? false,
     // createdAt and updatedAt should be non-null Dates;
     // if null, you can choose a default (e.g., current date)
-    createdAt: user.createdAt ?? new Date(),
-    updatedAt: user.updatedAt ?? new Date(),
+    createdAt: user.createdAt ? new Date(user.createdAt).toISOString() : new Date().toISOString(),
+    updatedAt: user.updatedAt ? new Date(user.updatedAt).toISOString() : new Date().toISOString(),
     permissions: user.permissions ?? [],
   };
 }
@@ -259,11 +259,13 @@ export function setupAuth(app: express.Express) {
 
     try {
       const user = await storage.getUser(req.user.id);
+      console.log("User:", user);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
 
       const organization = await storage.getOrganization(user.organizationId.toString());
+      console.log("Organization:", organization);
       if (!organization) {
         return res.status(404).json({ message: "Organization not found" });
       }
