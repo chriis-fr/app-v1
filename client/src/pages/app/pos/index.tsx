@@ -3,6 +3,7 @@ import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import CompactSidebar from '@/components/layout/CompactSidebar';
+import { useAuth } from '@/hooks/use-auth';
 import { 
   ShoppingBag, 
   Search, 
@@ -22,6 +23,7 @@ interface CartItem {
 }
 
 export default function POSPage() {
+  const { user } = useAuth();
   const [, setLocation] = useLocation();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -72,16 +74,19 @@ export default function POSPage() {
 
   const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
+  // Check if user is admin
+  const isAdmin = user?.role === 'admin' || user?.role === 'owner';
+
   return (
     <div className="flex min-h-screen">
-      <CompactSidebar />
-      <div className="flex-1 ml-20">
+      {isAdmin && <CompactSidebar />}
+      <div className={`flex-1 ${isAdmin ? 'ml-20' : ''}`}>
         <div className="p-6">
           <div className="flex items-center gap-4 mb-6">
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setLocation('/dashboard')}
+              onClick={() => setLocation(isAdmin ? '/dashboard' : '/pos')}
               className="hover:bg-gray-100"
             >
               <ArrowLeft className="h-5 w-5" />
