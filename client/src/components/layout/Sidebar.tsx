@@ -228,7 +228,7 @@ export default function Sidebar() {
         <div className="space-y-1">
           <div
             className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
-            onClick={() => setLocation('/settings')}
+            onClick={() => setLocation('/organization-settings')}
           >
             <Settings className="h-5 w-5 text-gray-400" />
             <span className="text-sm text-gray-600">Settings</span>

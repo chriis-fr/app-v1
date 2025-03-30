@@ -179,7 +179,7 @@ export default function CompactSidebar() {
         <div className="space-y-2">
           <div
             className="w-12 h-12 flex items-center justify-center rounded-lg mx-auto hover:bg-white/5 transition-colors cursor-pointer"
-            onClick={() => setLocation('/settings')}
+            onClick={() => setLocation('/organization-settings')}
           >
             <Settings className="h-5 w-5" />
           </div>

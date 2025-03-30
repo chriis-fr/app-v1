@@ -10,6 +10,7 @@ import { organizationSettingsSchema, OrganizationSettings } from '../../../share
 import { Camera, Upload, X } from 'lucide-react';
 import { useState } from 'react';
 import { BackButton } from '@/components/ui/back-button';
+import CompactSidebar from '@/components/layout/CompactSidebar';
 
 interface OrganizationFormData {
   name: string;
@@ -200,185 +201,190 @@ export default function OrganizationSettingsPage() {
   }
 
   return (
-    <div className="container mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-8">
-      <div className="mb-6">
-        <BackButton />
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Organization Information</CardTitle>
-          <CardDescription>Update your organization's basic information</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="flex flex-col sm:flex-row items-center gap-6">
-            <div className="relative">
-              <div className="w-24 h-24 rounded-lg bg-primary/10 flex items-center justify-center overflow-hidden">
-                {organizationLogo ? (
-                  <img
-                    src={organizationLogo}
-                    alt="Organization Logo"
-                    className="w-full h-full object-contain"
-                  />
-                ) : (
-                  <span className="text-2xl font-semibold text-primary">
-                    {user.organization?.name?.[0]?.toUpperCase()}
-                  </span>
-                )}
-              </div>
-              <div className="absolute bottom-0 right-0">
-                <label className="cursor-pointer">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleLogoUpload}
-                    disabled={isUploading}
-                  />
-                  <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white hover:bg-primary/90">
-                    <Camera className="w-4 h-4" />
-                  </div>
-                </label>
-              </div>
-              {organizationLogo && (
-                <Button
-                  variant="destructive"
-                  size="icon"
-                  className="absolute top-0 right-0 w-8 h-8 rounded-full"
-                  onClick={handleLogoDelete}
-                >
-                  <X className="w-4 h-4" />
-                </Button>
-              )}
-            </div>
-            <div className="text-center sm:text-left">
-              <h3 className="text-lg font-semibold">{user.organization?.name}</h3>
-              <p className="text-muted-foreground">{user.organization?.industry}</p>
-            </div>
+    <div className="flex min-h-screen">
+      <CompactSidebar />
+      <div className="flex-1 ml-20">
+        <div className="container mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-8">
+          <div className="mb-6">
+            <BackButton />
           </div>
 
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Organization Name</Label>
-                <Input id="name" {...form.register('name')} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="type">Type</Label>
-                <Input id="type" {...form.register('type')} />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="industry">Industry</Label>
-                <Input id="industry" {...form.register('industry')} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="size">Size</Label>
-                <Input id="size" {...form.register('size')} />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="address">Address</Label>
-              <Input id="address" {...form.register('address')} />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="country">Country</Label>
-                <Input id="country" {...form.register('country')} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="taxId">Tax ID</Label>
-                <Input id="taxId" {...form.register('taxId')} />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="website">Website</Label>
-              <Input id="website" {...form.register('website')} />
-            </div>
-
-            <Button type="submit" className="w-full">
-              Save Organization Info
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Organization Settings</CardTitle>
-          <CardDescription>Configure your organization's settings and preferences</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={settingsForm.handleSubmit(onSettingsSubmit)} className="space-y-6">
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Theme</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="primaryColor">Primary Color</Label>
-                  <Input id="primaryColor" type="color" {...settingsForm.register('theme.primaryColor')} />
+          <Card>
+            <CardHeader>
+              <CardTitle>Organization Information</CardTitle>
+              <CardDescription>Update your organization's basic information</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex flex-col sm:flex-row items-center gap-6">
+                <div className="relative">
+                  <div className="w-24 h-24 rounded-lg bg-primary/10 flex items-center justify-center overflow-hidden">
+                    {organizationLogo ? (
+                      <img
+                        src={organizationLogo}
+                        alt="Organization Logo"
+                        className="w-full h-full object-contain"
+                      />
+                    ) : (
+                      <span className="text-2xl font-semibold text-primary">
+                        {user.organization?.name?.[0]?.toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                  <div className="absolute bottom-0 right-0">
+                    <label className="cursor-pointer">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleLogoUpload}
+                        disabled={isUploading}
+                      />
+                      <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white hover:bg-primary/90">
+                        <Camera className="w-4 h-4" />
+                      </div>
+                    </label>
+                  </div>
+                  {organizationLogo && (
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-0 right-0 w-8 h-8 rounded-full"
+                      onClick={handleLogoDelete}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  )}
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="secondaryColor">Secondary Color</Label>
-                  <Input id="secondaryColor" type="color" {...settingsForm.register('theme.secondaryColor')} />
+                <div className="text-center sm:text-left">
+                  <h3 className="text-lg font-semibold">{user.organization?.name}</h3>
+                  <p className="text-muted-foreground">{user.organization?.industry}</p>
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="darkMode">Dark Mode</Label>
-                <Input id="darkMode" type="checkbox" {...settingsForm.register('theme.darkMode')} />
-              </div>
-            </div>
 
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Branding</h3>
-              <div className="space-y-2">
-                <Label htmlFor="companyName">Company Name</Label>
-                <Input id="companyName" {...settingsForm.register('branding.companyName')} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="tagline">Tagline</Label>
-                <Input id="tagline" {...settingsForm.register('branding.tagline')} />
-              </div>
-            </div>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Organization Name</Label>
+                    <Input id="name" {...form.register('name')} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="type">Type</Label>
+                    <Input id="type" {...form.register('type')} />
+                  </div>
+                </div>
 
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Security</h3>
-              <div className="space-y-2">
-                <Label htmlFor="twoFactorAuth">Two-Factor Authentication</Label>
-                <Input id="twoFactorAuth" type="checkbox" {...settingsForm.register('security.twoFactorAuth')} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="sessionTimeout">Session Timeout (minutes)</Label>
-                <Input id="sessionTimeout" type="number" {...settingsForm.register('security.sessionTimeout')} />
-              </div>
-            </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="industry">Industry</Label>
+                    <Input id="industry" {...form.register('industry')} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="size">Size</Label>
+                    <Input id="size" {...form.register('size')} />
+                  </div>
+                </div>
 
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Notifications</h3>
-              <div className="space-y-2">
-                <Label htmlFor="emailNotifications">Email Notifications</Label>
-                <Input id="emailNotifications" type="checkbox" {...settingsForm.register('notifications.email')} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="pushNotifications">Push Notifications</Label>
-                <Input id="pushNotifications" type="checkbox" {...settingsForm.register('notifications.push')} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="smsNotifications">SMS Notifications</Label>
-                <Input id="smsNotifications" type="checkbox" {...settingsForm.register('notifications.sms')} />
-              </div>
-            </div>
+                <div className="space-y-2">
+                  <Label htmlFor="address">Address</Label>
+                  <Input id="address" {...form.register('address')} />
+                </div>
 
-            <Button type="submit" className="w-full">
-              Save Settings
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="country">Country</Label>
+                    <Input id="country" {...form.register('country')} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="taxId">Tax ID</Label>
+                    <Input id="taxId" {...form.register('taxId')} />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="website">Website</Label>
+                  <Input id="website" {...form.register('website')} />
+                </div>
+
+                <Button type="submit" className="w-full">
+                  Save Organization Info
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Organization Settings</CardTitle>
+              <CardDescription>Configure your organization's settings and preferences</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={settingsForm.handleSubmit(onSettingsSubmit)} className="space-y-6">
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Theme</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="primaryColor">Primary Color</Label>
+                      <Input id="primaryColor" type="color" {...settingsForm.register('theme.primaryColor')} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="secondaryColor">Secondary Color</Label>
+                      <Input id="secondaryColor" type="color" {...settingsForm.register('theme.secondaryColor')} />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="darkMode">Dark Mode</Label>
+                    <Input id="darkMode" type="checkbox" {...settingsForm.register('theme.darkMode')} />
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Branding</h3>
+                  <div className="space-y-2">
+                    <Label htmlFor="companyName">Company Name</Label>
+                    <Input id="companyName" {...settingsForm.register('branding.companyName')} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="tagline">Tagline</Label>
+                    <Input id="tagline" {...settingsForm.register('branding.tagline')} />
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Security</h3>
+                  <div className="space-y-2">
+                    <Label htmlFor="twoFactorAuth">Two-Factor Authentication</Label>
+                    <Input id="twoFactorAuth" type="checkbox" {...settingsForm.register('security.twoFactorAuth')} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="sessionTimeout">Session Timeout (minutes)</Label>
+                    <Input id="sessionTimeout" type="number" {...settingsForm.register('security.sessionTimeout')} />
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Notifications</h3>
+                  <div className="space-y-2">
+                    <Label htmlFor="emailNotifications">Email Notifications</Label>
+                    <Input id="emailNotifications" type="checkbox" {...settingsForm.register('notifications.email')} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="pushNotifications">Push Notifications</Label>
+                    <Input id="pushNotifications" type="checkbox" {...settingsForm.register('notifications.push')} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="smsNotifications">SMS Notifications</Label>
+                    <Input id="smsNotifications" type="checkbox" {...settingsForm.register('notifications.sms')} />
+                  </div>
+                </div>
+
+                <Button type="submit" className="w-full">
+                  Save Settings
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 } 

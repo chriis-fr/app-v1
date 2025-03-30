@@ -56,6 +56,17 @@ export const departments = [
 ] as const;
 
 // ---------------------------------
+// Business Partner Types
+// ---------------------------------
+export const partnerTypes = [
+  "vendor",
+  "client",
+  "supplier",
+  "distributor",
+  "contractor"
+] as const;
+
+// ---------------------------------
 // Zod Schemas
 // ---------------------------------
 
@@ -72,6 +83,35 @@ export const userSchema = z.object({
   phoneNumber: z.string().nullable().optional(),
   organizationId: z.string(),
   isOwner: z.boolean(),
+  position: z.string().optional(),
+  status: z.enum(["active", "inactive"]).default("active"),
+  lastLogin: z.date().optional(),
+  wallet: z.object({
+    balance: z.number(),
+    currency: z.string(),
+    bankAccounts: z.array(z.object({
+      id: z.string(),
+      bankName: z.string(),
+      accountNumber: z.string(),
+      accountType: z.string(),
+      isDefault: z.boolean()
+    }))
+  }).optional(),
+  legalDetails: z.object({
+    taxId: z.string(),
+    businessType: z.string(),
+    registrationNumber: z.string(),
+    incorporationDate: z.string()
+  }).optional(),
+  address: z.object({
+    street: z.string(),
+    city: z.string(),
+    state: z.string(),
+    country: z.string(),
+    postalCode: z.string(),
+    isBillingAddress: z.boolean(),
+    isShippingAddress: z.boolean()
+  }).optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
 });
@@ -90,6 +130,46 @@ export const organizationSchema = z.object({
   country: z.string().optional(),
   taxId: z.string().optional(),
   website: z.string().optional(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+// Define a schema for a Business Partner document
+export const businessPartnerSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  email: z.string().email(),
+  phone: z.string(),
+  website: z.string(),
+  type: z.enum(partnerTypes),
+  status: z.enum(["active", "inactive"]).default("active"),
+  organizationId: z.string(),
+  wallet: z.object({
+    balance: z.number(),
+    currency: z.string(),
+    bankAccounts: z.array(z.object({
+      id: z.string(),
+      bankName: z.string(),
+      accountNumber: z.string(),
+      accountType: z.string(),
+      isDefault: z.boolean()
+    }))
+  }).optional(),
+  legalDetails: z.object({
+    taxId: z.string(),
+    businessType: z.string(),
+    registrationNumber: z.string(),
+    incorporationDate: z.string()
+  }).optional(),
+  address: z.object({
+    street: z.string(),
+    city: z.string(),
+    state: z.string(),
+    country: z.string(),
+    postalCode: z.string(),
+    isBillingAddress: z.boolean(),
+    isShippingAddress: z.boolean()
+  }).optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
 });
@@ -234,6 +314,15 @@ export type User = Omit<z.infer<typeof userSchema>, "role" | "createdAt" | "upda
 
   // We also keep the "permissions" field we had before
   permissions: { module: string; actions: string[] }[];
+};
+
+// ---------------------------------
+// Merged "Business Partner" Type
+// ---------------------------------
+export type BusinessPartner = Omit<z.infer<typeof businessPartnerSchema>, "createdAt" | "updatedAt"> & {
+  createdAt: string;
+  updatedAt: string;
+  organization?: Organization;
 };
 
 // ---------------------------------
