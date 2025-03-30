@@ -14,6 +14,12 @@ import Book from '@/pages/book';
 import ModulesPage from '@/pages/modules-page';
 import ModuleInfoPage from '@/pages/module-info-page';
 import POSPage from '@/pages/app/pos';
+import UsersPage from '@/pages/users';
+import UserEditPage from '@/pages/users/[id]';
+import NewUserPage from '@/pages/users/new';
+import BusinessPartnersPage from '@/pages/business-partners';
+import BusinessPartnerEditPage from '@/pages/business-partners/[id]';
+import NewBusinessPartnerPage from '@/pages/business-partners/new';
 
 function App() {
   return (
@@ -29,6 +35,18 @@ function App() {
             <Route path="/book" component={Book} />
             <ProtectedRoute path="/dashboard/modules" component={ModulesPage} />
             <ProtectedRoute path="/pos" component={POSPage} />
+            
+            {/* User Management Routes */}
+            <ProtectedRoute path="/users" component={UsersPage} />
+            <ProtectedRoute path="/users/new" component={NewUserPage} />
+            <ProtectedRoute path="/users/:id" component={UserEditPage} />
+            
+            {/* Business Partner Routes */}
+            <ProtectedRoute path="/business-partners" component={BusinessPartnersPage} />
+            <ProtectedRoute path="/business-partners/new" component={NewBusinessPartnerPage} />
+            <ProtectedRoute path="/business-partners/:id" component={BusinessPartnerEditPage} />
+            
+            {/* Module Info Routes */}
             <ProtectedRoute path="/dashboard/pos/info" component={ModuleInfoPage} />
             <ProtectedRoute path="/dashboard/hr/info" component={ModuleInfoPage} />
             <ProtectedRoute path="/dashboard/inventory/info" component={ModuleInfoPage} />

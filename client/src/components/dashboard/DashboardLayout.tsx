@@ -18,7 +18,7 @@ export function DashboardLayout({ children }: React.PropsWithChildren) {
   }, [user, isLoading, setLocation]);
   
   if (isLoading) {
-    return <div className="flex h-screen w-full items-center justify-center">Loadingi...</div>;
+    return <div className="flex h-screen w-full items-center justify-center">Loading...</div>;
   }
   
   if (!user) {
