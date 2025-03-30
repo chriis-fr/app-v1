@@ -129,7 +129,7 @@ export default function Sidebar() {
               <span className="text-sm text-gray-600">{item.name}</span>
             </div>
           ))}
-          {hasInactiveModules && (
+          {/* {hasInactiveModules && (
             <Button
               variant="ghost"
               size="sm"
@@ -139,7 +139,7 @@ export default function Sidebar() {
               <Plus className="h-4 w-4 mr-2" />
               Add More Modules
             </Button>
-          )}
+          )} */}
         </div>
 
         {activeFinanceModules.length > 0 && (
