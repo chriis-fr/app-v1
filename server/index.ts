@@ -67,8 +67,8 @@ app.use((req, res, next) => {
     const startServer = () => {
       server.listen({
         port,
-        host: "0.0.0.0",
-        reusePort: true,
+        // host: "0.0.0.0",
+        // reusePort: true,
       }, () => {
         log(`Server started successfully on port ${port}`);
       }).on('error', (error: any) => {

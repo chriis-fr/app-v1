@@ -4,7 +4,7 @@ import { z } from "zod";
 // Available modules enum
 // ---------------------------------
 export const availableModules = [
-  "finance",
+  "finance",  // This will be the default module
   "procurement",
   "manufacturing",
   "inventory",
@@ -25,6 +25,7 @@ export const availableModules = [
 // Organization types
 // ---------------------------------
 export const organizationTypes = ["business", "ngo"] as const;
+export type OrganizationType = typeof organizationTypes[number];
 
 // ---------------------------------
 // User roles with different access levels
@@ -67,6 +68,15 @@ export const partnerTypes = [
 ] as const;
 
 // ---------------------------------
+// Accounting specific types
+// ---------------------------------
+export const accountingTypes = {
+  fiscalPeriods: ['monthly', 'quarterly', 'annually'] as const,
+  currencies: ['USD', 'EUR', 'GBP', 'KES'] as const,
+  taxTypes: ['VAT', 'GST', 'Sales Tax', 'Income Tax'] as const
+} as const;
+
+// ---------------------------------
 // Zod Schemas
 // ---------------------------------
 
@@ -74,15 +84,15 @@ export const partnerTypes = [
 export const userSchema = z.object({
   id: z.string(),
   username: z.string().min(3),
-  password: z.string().min(8),
+  password: z.string().min(6),
   role: z.enum(userRoles),
   department: z.enum(departments),
-  firstName: z.string(),
-  lastName: z.string(),
+  firstName: z.string().min(2),
+  lastName: z.string().min(2),
   email: z.string().email(),
-  phoneNumber: z.string().nullable().optional(),
+  phoneNumber: z.string().min(10),
   organizationId: z.string(),
-  isOwner: z.boolean(),
+  isOwner: z.boolean().default(false),
   position: z.string().optional(),
   status: z.enum(["active", "inactive"]).default("active"),
   lastLogin: z.date().optional(),
@@ -112,26 +122,33 @@ export const userSchema = z.object({
     isBillingAddress: z.boolean(),
     isShippingAddress: z.boolean()
   }).optional(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  createdAt: z.date().default(() => new Date()),
+  updatedAt: z.date().default(() => new Date())
 });
 
 // Define a schema for an Organization document.
 export const organizationSchema = z.object({
   id: z.string(),
-  name: z.string(),
+  name: z.string().min(2),
   type: z.enum(organizationTypes),
-  industry: z.string(),
+  industry: z.string().min(2),
   size: z.string().optional(),
   walletAddress: z.string().optional(),
-  activeModules: z.array(z.enum(availableModules)),
-  maxModules: z.number(),
+  activeModules: z.array(z.enum(availableModules)).default(["finance"]), // Make finance default
+  maxModules: z.number().default(3),
   address: z.string().optional(),
   country: z.string().optional(),
   taxId: z.string().optional(),
-  website: z.string().optional(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  website: z.string().url().optional(),
+  accountingSettings: z.object({
+    fiscalYearStart: z.string(),
+    fiscalPeriod: z.enum(accountingTypes.fiscalPeriods),
+    defaultCurrency: z.enum(accountingTypes.currencies),
+    taxTypes: z.array(z.enum(accountingTypes.taxTypes)),
+    chartOfAccounts: z.array(z.string()).default([])
+  }).optional(),
+  createdAt: z.date().default(() => new Date()),
+  updatedAt: z.date().default(() => new Date())
 });
 
 // Define a schema for a Business Partner document
@@ -175,28 +192,28 @@ export const businessPartnerSchema = z.object({
 });
 
 // Registration schema for an organization + the first admin user
-export const registerOrganizationSchema = organizationSchema
-  .pick({
-    name: true,
-    type: true,
-    industry: true,
-    address: true,
-    country: true,
-    website: true,
-  })
-  .extend({
-    username: z.string().min(3),
-    password: z.string().min(8),
-    firstName: z.string(),
-    lastName: z.string(),
-    email: z.string().email(),
-    phoneNumber: z.string(),
-    selectedModules: z
-      .array(z.enum(availableModules))
-      .min(1)
-      .max(2)
-      .default([]),
-  });
+export const registerOrganizationSchema = z.object({
+  username: z.string().min(3),
+  password: z.string().min(6),
+  firstName: z.string().min(2),
+  lastName: z.string().min(2),
+  email: z.string().email(),
+  phoneNumber: z.string().min(10),
+  type: z.enum(organizationTypes),
+  name: z.string().min(2),
+  industry: z.string().min(2),
+  selectedModules: z.array(z.enum(availableModules)).max(2),
+  country: z.string().optional(),
+  address: z.string().optional(),
+  website: z.string().url().optional(),
+  accountingSettings: z.object({
+    fiscalYearStart: z.string(),
+    fiscalPeriod: z.enum(accountingTypes.fiscalPeriods),
+    defaultCurrency: z.enum(accountingTypes.currencies),
+    taxTypes: z.array(z.enum(accountingTypes.taxTypes)),
+    chartOfAccounts: z.array(z.string()).default([])
+  }).optional()
+});
 
 // User creation schema, based on the userSchema
 export const insertUserSchema = userSchema.extend({
