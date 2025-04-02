@@ -35,6 +35,6 @@ export function usePermissions() {
   return {
     canAccessModule,
     isAdmin: !!user && roleHierarchy[user.role as keyof typeof roleHierarchy] >= 3,
-    isOwner: !!user && user.role === 'Owner'
+    isOwner: !!user && user.role === 'owner'
   };
 } 

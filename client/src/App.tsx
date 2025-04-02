@@ -14,6 +14,13 @@ import Book from '@/pages/book';
 import ModulesPage from '@/pages/modules-page';
 import ModuleInfoPage from '@/pages/module-info-page';
 import POSPage from '@/pages/app/pos';
+import POSDashboard from '@/pages/app/pos/dashboard';
+import POSCustomers from '@/pages/app/pos/customers';
+import POSUsers from '@/pages/app/pos/users';
+import POSProducts from '@/pages/app/pos/products';
+import POSReports from '@/pages/app/pos/reports';
+import POSOrders from '@/pages/app/pos/orders';
+import POSSettings from '@/pages/app/pos/settings';
 import UsersPage from '@/pages/users';
 import UserEditPage from '@/pages/users/[id]';
 import NewUserPage from '@/pages/users/new';
@@ -34,7 +41,16 @@ function App() {
             <ProtectedRoute path="/organization-settings" component={OrganizationSettingsPage} />
             <Route path="/book" component={Book} />
             <ProtectedRoute path="/dashboard/modules" component={ModulesPage} />
+            
+            {/* POS Routes */}
             <ProtectedRoute path="/pos" component={POSPage} />
+            <ProtectedRoute path="/pos/dashboard" component={POSDashboard} />
+            <ProtectedRoute path="/pos/customers" component={POSCustomers} />
+            <ProtectedRoute path="/pos/users" component={POSUsers} />
+            <ProtectedRoute path="/pos/products" component={POSProducts} />
+            <ProtectedRoute path="/pos/reports" component={POSReports} />
+            <ProtectedRoute path="/pos/orders" component={POSOrders} />
+            <ProtectedRoute path="/pos/settings" component={POSSettings} />
             
             {/* User Management Routes */}
             <ProtectedRoute path="/users" component={UsersPage} />

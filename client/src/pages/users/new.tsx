@@ -4,8 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/components/ui/use-toast';
 import ModuleLayout from '@/components/layout/ModuleLayout';
+import { Checkbox } from '@/components/ui/checkbox';
+import { useAuth } from '@/hooks/use-auth';
+import { userRoles, departments, availableModules } from '@shared/schema';
 import { 
   Search,
   Plus,
@@ -33,380 +37,266 @@ import {
   CheckCircle,
   Clock,
   AlertCircle,
-  Info
+  Info,
+  Loader2
 } from 'lucide-react';
 
-interface NewUser {
-  name: string;
+interface FormData {
+  username: string;
+  firstName: string;
+  lastName: string;
   email: string;
-  role: string;
-  department: string;
+  password: string;
+  role: typeof userRoles[number];
+  department: typeof departments[number];
   position: string;
   status: 'active' | 'inactive';
-  wallet?: {
-    balance: number;
-    currency: string;
-    bankAccounts: Array<{
-      id: string;
-      bankName: string;
-      accountNumber: string;
-      accountType: string;
-      isDefault: boolean;
-    }>;
-  };
-  legalDetails?: {
-    taxId: string;
-    businessRegistration: string;
-    incorporationDate: string;
-    businessType: string;
-    registrationNumber: string;
-  };
-  address?: {
-    street: string;
-    city: string;
-    state: string;
-    country: string;
-    postalCode: string;
-    isBillingAddress: boolean;
-    isShippingAddress: boolean;
-  };
+  moduleAccess: string[];
 }
-
-const departments = [
-  'Engineering',
-  'Sales',
-  'Marketing',
-  'Finance',
-  'HR',
-  'Operations'
-];
-
-const roles = [
-  'Administrator',
-  'Manager',
-  'Developer',
-  'Designer',
-  'Sales Representative',
-  'HR Specialist'
-];
 
 export default function NewUserPage() {
   const [, setLocation] = useLocation();
-  const [formData, setFormData] = useState<NewUser>({
-    name: '',
+  const { toast } = useToast();
+  const { user: currentUser } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
+  const [formData, setFormData] = useState<FormData>({
+    username: '',
+    firstName: '',
+    lastName: '',
     email: '',
-    role: 'Developer',
+    password: '',
+    role: 'employee',
     department: 'Engineering',
     position: '',
-    status: 'active'
+    status: 'active',
+    moduleAccess: []
   });
 
-  const handleChange = (field: string, value: any) => {
+  // Only owner and admin can access this page
+  if (!currentUser || (currentUser.role !== 'owner' && currentUser.role !== 'admin')) {
+    setLocation('/dashboard');
+    return null;
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      const response = await fetch('/api/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...formData,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create user');
+      }
+
+      toast({
+        title: 'Success',
+        description: 'User created successfully',
+      });
+
+      setLocation('/users');
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to create user',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleModuleToggle = (module: typeof availableModules[number]) => {
     setFormData(prev => ({
       ...prev,
-      [field]: value
+      moduleAccess: prev.moduleAccess.includes(module)
+        ? prev.moduleAccess.filter(m => m !== module)
+        : [...prev.moduleAccess, module]
     }));
   };
 
-  const handleSave = () => {
-    // TODO: Implement save functionality
-    console.log('Saving new user:', formData);
-  };
-
   return (
-    <ModuleLayout
-      title="New User"
-      description="Create a new user"
-    >
-      <div className="space-y-6">
-        {/* Basic Information */}
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => handleChange('name', e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => handleChange('email', e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="role">Role</Label>
-              <Select
-                value={formData.role}
-                onValueChange={(value) => handleChange('role', value)}
-              >
-                {roles.map(role => (
-                  <option key={role} value={role}>{role}</option>
-                ))}
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="department">Department</Label>
-              <Select
-                value={formData.department}
-                onValueChange={(value) => handleChange('department', value)}
-              >
-                {departments.map(dept => (
-                  <option key={dept} value={dept}>{dept}</option>
-                ))}
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="position">Position</Label>
-              <Input
-                id="position"
-                value={formData.position}
-                onChange={(e) => handleChange('position', e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="status">Status</Label>
-              <Select
-                value={formData.status}
-                onValueChange={(value) => handleChange('status', value)}
-              >
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </Select>
-            </div>
-          </div>
-        </Card>
-
-        {/* Wallet Information */}
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Wallet Information</h3>
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="walletBalance">Initial Balance</Label>
-                <Input
-                  id="walletBalance"
-                  type="number"
-                  value={formData.wallet?.balance || 0}
-                  onChange={(e) => handleChange('wallet', {
-                    ...formData.wallet,
-                    balance: parseFloat(e.target.value)
-                  })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="walletCurrency">Currency</Label>
-                <Input
-                  id="walletCurrency"
-                  value={formData.wallet?.currency || 'USD'}
-                  onChange={(e) => handleChange('wallet', {
-                    ...formData.wallet,
-                    currency: e.target.value
-                  })}
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Bank Accounts</Label>
-              {formData.wallet?.bankAccounts.map((account, index) => (
-                <div key={account.id} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <ModuleLayout>
+      <div className="container mx-auto py-6">
+        <h1 className="text-2xl font-bold mb-6">Create New User</h1>
+        
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <Card>
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="username">Username</Label>
                   <Input
-                    placeholder="Bank Name"
-                    value={account.bankName}
-                    onChange={(e) => {
-                      const newAccounts = [...(formData.wallet?.bankAccounts || [])];
-                      newAccounts[index] = { ...account, bankName: e.target.value };
-                      handleChange('wallet', { ...formData.wallet, bankAccounts: newAccounts });
-                    }}
-                  />
-                  <Input
-                    placeholder="Account Number"
-                    value={account.accountNumber}
-                    onChange={(e) => {
-                      const newAccounts = [...(formData.wallet?.bankAccounts || [])];
-                      newAccounts[index] = { ...account, accountNumber: e.target.value };
-                      handleChange('wallet', { ...formData.wallet, bankAccounts: newAccounts });
-                    }}
+                    id="username"
+                    value={formData.username}
+                    onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))}
+                    required
                   />
                 </div>
-              ))}
-              <Button
-                variant="outline"
-                onClick={() => {
-                  const newAccount = {
-                    id: Date.now().toString(),
-                    bankName: '',
-                    accountNumber: '',
-                    accountType: 'Checking',
-                    isDefault: false
-                  };
-                  handleChange('wallet', {
-                    ...formData.wallet,
-                    bankAccounts: [...(formData.wallet?.bankAccounts || []), newAccount]
-                  });
-                }}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Bank Account
-              </Button>
-            </div>
-          </div>
-        </Card>
 
-        {/* Legal Details */}
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Legal Details</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="taxId">Tax ID</Label>
-              <Input
-                id="taxId"
-                value={formData.legalDetails?.taxId || ''}
-                onChange={(e) => handleChange('legalDetails', {
-                  ...formData.legalDetails,
-                  taxId: e.target.value
-                })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="businessType">Business Type</Label>
-              <Input
-                id="businessType"
-                value={formData.legalDetails?.businessType || ''}
-                onChange={(e) => handleChange('legalDetails', {
-                  ...formData.legalDetails,
-                  businessType: e.target.value
-                })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="registrationNumber">Registration Number</Label>
-              <Input
-                id="registrationNumber"
-                value={formData.legalDetails?.registrationNumber || ''}
-                onChange={(e) => handleChange('legalDetails', {
-                  ...formData.legalDetails,
-                  registrationNumber: e.target.value
-                })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="incorporationDate">Incorporation Date</Label>
-              <Input
-                id="incorporationDate"
-                type="date"
-                value={formData.legalDetails?.incorporationDate || ''}
-                onChange={(e) => handleChange('legalDetails', {
-                  ...formData.legalDetails,
-                  incorporationDate: e.target.value
-                })}
-              />
-            </div>
-          </div>
-        </Card>
+                <div className="space-y-2">
+                  <Label htmlFor="firstName">First Name</Label>
+                  <Input
+                    id="firstName"
+                    value={formData.firstName}
+                    onChange={(e) => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
+                    required
+                  />
+                </div>
 
-        {/* Address Information */}
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Address Information</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="street">Street Address</Label>
-              <Input
-                id="street"
-                value={formData.address?.street || ''}
-                onChange={(e) => handleChange('address', {
-                  ...formData.address,
-                  street: e.target.value
-                })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="city">City</Label>
-              <Input
-                id="city"
-                value={formData.address?.city || ''}
-                onChange={(e) => handleChange('address', {
-                  ...formData.address,
-                  city: e.target.value
-                })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="state">State</Label>
-              <Input
-                id="state"
-                value={formData.address?.state || ''}
-                onChange={(e) => handleChange('address', {
-                  ...formData.address,
-                  state: e.target.value
-                })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="country">Country</Label>
-              <Input
-                id="country"
-                value={formData.address?.country || ''}
-                onChange={(e) => handleChange('address', {
-                  ...formData.address,
-                  country: e.target.value
-                })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="postalCode">Postal Code</Label>
-              <Input
-                id="postalCode"
-                value={formData.address?.postalCode || ''}
-                onChange={(e) => handleChange('address', {
-                  ...formData.address,
-                  postalCode: e.target.value
-                })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Address Type</Label>
-              <div className="flex gap-4">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.address?.isBillingAddress || false}
-                    onChange={(e) => handleChange('address', {
-                      ...formData.address,
-                      isBillingAddress: e.target.checked
-                    })}
+                <div className="space-y-2">
+                  <Label htmlFor="lastName">Last Name</Label>
+                  <Input
+                    id="lastName"
+                    value={formData.lastName}
+                    onChange={(e) => setFormData(prev => ({ ...prev, lastName: e.target.value }))}
+                    required
                   />
-                  Billing Address
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.address?.isShippingAddress || false}
-                    onChange={(e) => handleChange('address', {
-                      ...formData.address,
-                      isShippingAddress: e.target.checked
-                    })}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                    required
                   />
-                  Shipping Address
-                </label>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="role">Role</Label>
+                  <Select
+                    value={formData.role}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, role: value as typeof userRoles[number] }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {userRoles.map((role) => (
+                        <SelectItem key={role} value={role}>
+                          {role.charAt(0).toUpperCase() + role.slice(1)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="department">Department</Label>
+                  <Select
+                    value={formData.department}
+                    onValueChange={(value: typeof departments[number]) => 
+                      setFormData({ ...formData, department: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select department" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {departments.map((dept) => (
+                        <SelectItem key={dept} value={dept}>
+                          {dept}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="position">Position</Label>
+                  <Input
+                    id="position"
+                    value={formData.position}
+                    onChange={(e) => setFormData(prev => ({ ...prev, position: e.target.value }))}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="status">Status</Label>
+                  <Select
+                    value={formData.status}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, status: value as 'active' | 'inactive' }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
-          </div>
-        </Card>
+          </Card>
 
-        {/* Action Buttons */}
-        <div className="flex justify-end gap-4">
-          <Button onClick={handleSave}>
-            <CheckCircle className="h-4 w-4 mr-2" />
-            Create User
-          </Button>
-        </div>
+          {/* Module Permissions */}
+          <Card>
+            <div className="p-6">
+              <h2 className="text-lg font-semibold mb-4">Module Permissions</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {availableModules.map((module) => (
+                  <div key={module} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={module}
+                      checked={formData.moduleAccess.includes(module)}
+                      onCheckedChange={() => handleModuleToggle(module)}
+                      disabled={currentUser.role !== 'owner' && module === 'finance'}
+                    />
+                    <Label htmlFor={module}>
+                      {module.split('_').map(word => 
+                        word.charAt(0).toUpperCase() + word.slice(1)
+                      ).join(' ')}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Card>
+
+          <div className="flex justify-end space-x-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setLocation('/users')}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                'Create User'
+              )}
+            </Button>
+          </div>
+        </form>
       </div>
     </ModuleLayout>
   );

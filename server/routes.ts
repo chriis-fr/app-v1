@@ -8,6 +8,7 @@ import fs from 'fs';
 import { User, Organization, OrganizationSettings, Role } from "@shared/schema";
 import { v4 as uuidv4 } from 'uuid';
 import { User as UserModel, Organization as OrganizationModel } from './mongodb/models';
+import usersRouter from './src/routes/users';
 
 // Add type declarations for organization document
 interface IOrganizationDocument {
@@ -40,6 +41,9 @@ interface AuthenticatedRequest extends Request {
 export async function registerRoutes(app: express.Express): Promise<Server> {
   // Set up authentication routes
   setupAuth(app);
+
+  // Mount users routes
+  app.use('/api/users', usersRouter);
 
   // User profile routes
   app.put('/api/user/profile', async (req: Request, res: Response) => {

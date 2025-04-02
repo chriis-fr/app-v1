@@ -2,64 +2,76 @@
 
 import { motion } from 'framer-motion'
 import { 
-  ShoppingBag, 
+  ShoppingCart, 
   Users, 
   Package, 
   DollarSign,
   Building2,
   Wallet,
-  BarChart,
-  Shield
+  BarChart2,
+  Shield,
+  FileText,
+  Settings,
+  Briefcase,
+  Calendar
 } from 'lucide-react'
 
 const modules = [
   {
     title: 'Point of Sale',
-    description: 'Modern POS with crypto payment support',
-    icon: ShoppingBag,
-    color: 'bg-blue-500'
+    description: 'Streamline your retail operations with our comprehensive POS system',
+    icon: ShoppingCart,
+    color: 'bg-blue-500',
+    features: ['Real-time inventory', 'Multiple payment methods', 'Customer management', 'Receipt generation']
   },
   {
     title: 'HR Management',
-    description: 'Smart payroll with crypto options',
+    description: 'Efficient workforce management with smart payroll and attendance tracking',
     icon: Users,
-    color: 'bg-green-500'
+    color: 'bg-green-500',
+    features: ['Employee records', 'Attendance tracking', 'Payroll integration', 'Performance reviews']
   },
   {
     title: 'Inventory',
-    description: 'Real-time tracking with blockchain',
+    description: 'Advanced inventory control with real-time tracking and management',
     icon: Package,
-    color: 'bg-purple-500'
+    color: 'bg-purple-500',
+    features: ['Stock tracking', 'Warehouse management', 'Reorder alerts', 'Barcode scanning']
   },
   {
-    title: 'Finance',
-    description: 'Hybrid payment processing',
+    title: 'Accounting',
+    description: 'Complete financial management for your business',
     icon: DollarSign,
-    color: 'bg-yellow-500'
+    color: 'bg-yellow-500',
+    features: ['General ledger', 'Accounts payable/receivable', 'Financial reporting', 'Tax compliance']
   },
   {
-    title: 'Real Estate',
-    description: 'Property management with NFTs',
+    title: 'Multi-tenant',
+    description: 'Support for multiple businesses and organizations',
     icon: Building2,
-    color: 'bg-pink-500'
+    color: 'bg-pink-500',
+    features: ['Data isolation', 'Role-based access', 'Custom branding', 'Independent settings']
   },
   {
-    title: 'Smart Wallet',
-    description: 'Integrated business wallets',
+    title: 'Blockchain',
+    description: 'Secure transactions with blockchain technology',
     icon: Wallet,
-    color: 'bg-indigo-500'
+    color: 'bg-indigo-500',
+    features: ['Smart contracts', 'Digital assets', 'Transaction tracking', 'Security protocols']
   },
   {
     title: 'Analytics',
-    description: 'AI-powered business insights',
-    icon: BarChart,
-    color: 'bg-red-500'
+    description: 'AI-powered business insights and reporting',
+    icon: BarChart2,
+    color: 'bg-red-500',
+    features: ['Real-time dashboards', 'Custom reports', 'Predictive analytics', 'Data visualization']
   },
   {
     title: 'Security',
-    description: 'Blockchain-backed data integrity',
+    description: 'Enterprise-grade security and compliance',
     icon: Shield,
-    color: 'bg-teal-500'
+    color: 'bg-teal-500',
+    features: ['Role-based access', 'Audit trails', 'Data encryption', 'Compliance management']
   }
 ]
 
@@ -69,7 +81,7 @@ export function ModuleShowcase() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <h2 className="text-3xl font-bold text-gray-900 mb-4">
-            Modular Architecture for Every Need
+            Powerful Modules for Every Need
           </h2>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
             Choose the modules that fit your business and scale as you grow
@@ -98,6 +110,14 @@ export function ModuleShowcase() {
                   </p>
                 </div>
               </div>
+              <ul className="mt-4 space-y-2">
+                {module.features.map((feature, i) => (
+                  <li key={i} className="flex items-center text-sm text-gray-600">
+                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-2" />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
             </motion.div>
           ))}
         </div>

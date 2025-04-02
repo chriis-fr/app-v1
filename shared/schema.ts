@@ -31,29 +31,27 @@ export type OrganizationType = typeof organizationTypes[number];
 // User roles with different access levels
 // ---------------------------------
 export const userRoles = [
-  "owner",   // Full access to everything
-  "admin",   // Full access to assigned modules
-  "manager", // Department-level access
-  "employee" // Limited module-specific access
+  'owner',
+  'admin',
+  'manager',
+  'employee',
+  'contractor'
 ] as const;
 
 // ---------------------------------
 // Department types
 // ---------------------------------
 export const departments = [
-  "executive", // For owners and top admins
-  "finance",
-  "procurement",
-  "manufacturing",
-  "inventory",
-  "sales", // For order management
-  "warehouse",
-  "supply_chain",
-  "crm",
-  "project_management",
-  "hr",
-  "marketing",
-  "pos",
+  'Engineering',
+  'Sales',
+  'Marketing',
+  'Finance',
+  'HR',
+  'Operations',
+  'IT',
+  'Customer Support',
+  'Product',
+  'Design'
 ] as const;
 
 // ---------------------------------
@@ -421,3 +419,66 @@ export const organizationSettingsSchema = z.object({
     autoBackup: z.boolean().default(true),
   }),
 });
+
+export const modules = [
+  {
+    id: 'inventory',
+    name: 'Inventory Management',
+    description: 'Track and manage inventory levels, stock movements, and warehouse operations'
+  },
+  {
+    id: 'procurement',
+    name: 'Procurement',
+    description: 'Manage purchase orders, supplier relationships, and procurement processes'
+  },
+  {
+    id: 'sales',
+    name: 'Sales Management',
+    description: 'Handle sales orders, customer management, and sales analytics'
+  },
+  {
+    id: 'manufacturing',
+    name: 'Manufacturing',
+    description: 'Production planning, work orders, and manufacturing operations'
+  },
+  {
+    id: 'finance',
+    name: 'Finance',
+    description: 'Financial management, accounting, and financial reporting'
+  },
+  {
+    id: 'crm',
+    name: 'Customer Relationship Management',
+    description: 'Customer data, interactions, and relationship management'
+  },
+  {
+    id: 'hr',
+    name: 'Human Resources',
+    description: 'Employee management, payroll, and HR processes'
+  },
+  {
+    id: 'supply_chain',
+    name: 'Supply Chain',
+    description: 'Supply chain planning, logistics, and distribution management'
+  },
+  {
+    id: 'quality',
+    name: 'Quality Management',
+    description: 'Quality control, inspections, and compliance management'
+  },
+  {
+    id: 'maintenance',
+    name: 'Maintenance Management',
+    description: 'Equipment maintenance, work orders, and asset management'
+  },
+  {
+    id: 'project',
+    name: 'Project Management',
+    description: 'Project planning, tracking, and resource management'
+  },
+  {
+    id: 'analytics',
+    name: 'Business Analytics',
+    description: 'Business intelligence, reporting, and data analytics'
+  }
+] as const;

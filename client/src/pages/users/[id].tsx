@@ -1,460 +1,642 @@
-import { useState } from 'react';
-import { useLocation } from 'wouter';
+import { useState, useEffect } from 'react';
+import { useLocation, useParams } from 'wouter';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/components/ui/use-toast';
 import ModuleLayout from '@/components/layout/ModuleLayout';
+import { useAuth } from '@/hooks/use-auth';
+import { userRoles, departments, modules } from '@shared/schema';
 import { 
-  Search,
-  Plus,
-  Edit,
-  Trash,
-  Building,
+  User,
   Mail,
   Phone,
-  Globe,
-  MapPin,
-  FileText,
-  Wallet,
-  CreditCard,
-  Shield,
-  User,
-  Users,
   Briefcase,
+  Building,
+  Shield,
+  Save,
+  ArrowLeft,
   Calendar,
-  FileCheck,
-  FileWarning,
-  Workflow,
-  Database,
-  Network,
-  Heart,
-  CheckCircle,
+  MapPin,
+  CreditCard,
+  FileText,
+  Globe,
   Clock,
-  AlertCircle,
-  Info
+  Users,
+  Key
 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface User {
   id: string;
-  name: string;
+  username: string;
+  firstName: string;
+  lastName: string;
   email: string;
+  phoneNumber?: string;
   role: string;
   department: string;
   position: string;
   status: 'active' | 'inactive';
   lastLogin?: string;
-  wallet?: {
-    balance: number;
-    currency: string;
-    bankAccounts: Array<{
-      id: string;
-      bankName: string;
-      accountNumber: string;
-      accountType: string;
-      isDefault: boolean;
-    }>;
+  createdAt: string;
+  // Additional fields
+  employeeId?: string;
+  hireDate?: string;
+  managerId?: string;
+  team?: string;
+  location?: {
+    office?: string;
+    floor?: string;
+    deskNumber?: string;
   };
-  legalDetails?: {
-    taxId: string;
-    businessRegistration: string;
-    incorporationDate: string;
-    businessType: string;
-    registrationNumber: string;
+  workSchedule?: {
+    startTime?: string;
+    endTime?: string;
+    timezone?: string;
   };
-  address?: {
-    street: string;
-    city: string;
-    state: string;
-    country: string;
-    postalCode: string;
-    isBillingAddress: boolean;
-    isShippingAddress: boolean;
+  emergencyContact?: {
+    name?: string;
+    relationship?: string;
+    phone?: string;
   };
+  skills?: string[];
+  certifications?: string[];
+  education?: {
+    degree?: string;
+    institution?: string;
+    graduationYear?: string;
+  }[];
+  performance?: {
+    lastReviewDate?: string;
+    nextReviewDate?: string;
+    rating?: number;
+  };
+  compensation?: {
+    baseSalary?: number;
+    bonus?: number;
+    stockOptions?: number;
+    currency?: string;
+  };
+  benefits?: {
+    healthInsurance?: boolean;
+    dentalInsurance?: boolean;
+    visionInsurance?: boolean;
+    retirementPlan?: boolean;
+    lifeInsurance?: boolean;
+  };
+  equipment?: {
+    laptop?: string;
+    monitor?: string;
+    phone?: string;
+    accessories?: string[];
+  };
+  accessLevels?: {
+    systems?: string[];
+    buildings?: string[];
+    rooms?: string[];
+  };
+  documents?: {
+    id?: string;
+    type?: string;
+    url?: string;
+    expiryDate?: string;
+  }[];
+  moduleAccess?: {
+    moduleName: string;
+  }[];
 }
 
-// Dummy data
-const dummyUser: User = {
-  id: '1',
-  name: 'John Doe',
-  email: 'john@example.com',
-  role: 'Administrator',
-  department: 'Engineering',
-  position: 'Senior Developer',
-  status: 'active',
-  lastLogin: '2024-03-28T10:30:00Z',
-  wallet: {
-    balance: 5000,
-    currency: 'USD',
-    bankAccounts: [
-      {
-        id: '1',
-        bankName: 'Chase Bank',
-        accountNumber: '****1234',
-        accountType: 'Checking',
-        isDefault: true
-      }
-    ]
-  },
-  legalDetails: {
-    taxId: '12-3456789',
-    businessRegistration: 'REG123456',
-    incorporationDate: '2023-01-01',
-    businessType: 'LLC',
-    registrationNumber: 'REG789012'
-  },
-  address: {
-    street: '123 Main St',
-    city: 'New York',
-    state: 'NY',
-    country: 'USA',
-    postalCode: '10001',
-    isBillingAddress: true,
-    isShippingAddress: true
-  }
-};
-
-const departments = [
-  'Engineering',
-  'Sales',
-  'Marketing',
-  'Finance',
-  'HR',
-  'Operations'
-];
-
-const roles = [
-  'Administrator',
-  'Manager',
-  'Developer',
-  'Designer',
-  'Sales Representative',
-  'HR Specialist'
-];
-
-export default function UserEditPage() {
+export default function EditUserPage() {
   const [, setLocation] = useLocation();
-  const [formData, setFormData] = useState<User>(dummyUser);
+  const { toast } = useToast();
+  const { user: currentUser } = useAuth();
+  const params = useParams();
+  const userId = params?.id;
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
 
-  const handleChange = (field: string, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+  useEffect(() => {
+    if (userId) {
+      fetchUser();
+    }
+  }, [userId]);
+
+  const fetchUser = async () => {
+    try {
+      const response = await fetch(`/api/users/${userId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch user');
+      }
+      const data = await response.json();
+      setUser(data);
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to fetch user data',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleSave = () => {
-    // TODO: Implement save functionality
-    console.log('Saving user:', formData);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+
+    setIsSaving(true);
+    try {
+      const response = await fetch(`/api/users/${userId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(user),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update user');
+      }
+
+      toast({
+        title: 'Success',
+        description: 'User updated successfully',
+      });
+
+      setLocation('/users');
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to update user',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleDelete = () => {
-    // TODO: Implement delete functionality
-    console.log('Deleting user:', formData.id);
-  };
+  // Only owner and admin can access this page
+  if (!currentUser || (currentUser.role !== 'owner' && currentUser.role !== 'admin')) {
+    setLocation('/dashboard');
+    return null;
+  }
+
+  if (isLoading) {
+    return (
+      <ModuleLayout>
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
+        </div>
+      </ModuleLayout>
+    );
+  }
+
+  if (!user) {
+    return (
+      <ModuleLayout>
+        <div className="flex justify-center items-center h-64">
+          <p className="text-gray-500">User not found</p>
+        </div>
+      </ModuleLayout>
+    );
+  }
 
   return (
-    <ModuleLayout
-      title="Edit User"
-      description="Update user information and permissions"
-    >
-      <div className="space-y-6">
-        {/* Basic Information */}
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => handleChange('name', e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => handleChange('email', e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="role">Role</Label>
-              <Select
-                value={formData.role}
-                onValueChange={(value) => handleChange('role', value)}
-              >
-                {roles.map(role => (
-                  <option key={role} value={role}>{role}</option>
-                ))}
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="department">Department</Label>
-              <Select
-                value={formData.department}
-                onValueChange={(value) => handleChange('department', value)}
-              >
-                {departments.map(dept => (
-                  <option key={dept} value={dept}>{dept}</option>
-                ))}
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="position">Position</Label>
-              <Input
-                id="position"
-                value={formData.position}
-                onChange={(e) => handleChange('position', e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="status">Status</Label>
-              <Select
-                value={formData.status}
-                onValueChange={(value) => handleChange('status', value)}
-              >
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </Select>
-            </div>
-          </div>
-        </Card>
+    <ModuleLayout>
+      <div className="container mx-auto py-6">
+        <div className="flex items-center space-x-4 mb-6">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setLocation('/users')}
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Users
+          </Button>
+          <h1 className="text-2xl font-bold">Edit User</h1>
+        </div>
 
-        {/* Wallet Information */}
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Wallet Information</h3>
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="walletBalance">Wallet Balance</Label>
-                <Input
-                  id="walletBalance"
-                  type="number"
-                  value={formData.wallet?.balance || 0}
-                  onChange={(e) => handleChange('wallet', {
-                    ...formData.wallet,
-                    balance: parseFloat(e.target.value)
-                  })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="walletCurrency">Currency</Label>
-                <Input
-                  id="walletCurrency"
-                  value={formData.wallet?.currency || 'USD'}
-                  onChange={(e) => handleChange('wallet', {
-                    ...formData.wallet,
-                    currency: e.target.value
-                  })}
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Bank Accounts</Label>
-              {formData.wallet?.bankAccounts.map((account, index) => (
-                <div key={account.id} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Basic Information */}
+          <Card>
+            <div className="p-6 space-y-4">
+              <h2 className="text-lg font-semibold flex items-center">
+                <User className="mr-2 h-5 w-5" />
+                Basic Information
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="username">Username</Label>
                   <Input
-                    placeholder="Bank Name"
-                    value={account.bankName}
-                    onChange={(e) => {
-                      const newAccounts = [...(formData.wallet?.bankAccounts || [])];
-                      newAccounts[index] = { ...account, bankName: e.target.value };
-                      handleChange('wallet', { ...formData.wallet, bankAccounts: newAccounts });
-                    }}
-                  />
-                  <Input
-                    placeholder="Account Number"
-                    value={account.accountNumber}
-                    onChange={(e) => {
-                      const newAccounts = [...(formData.wallet?.bankAccounts || [])];
-                      newAccounts[index] = { ...account, accountNumber: e.target.value };
-                      handleChange('wallet', { ...formData.wallet, bankAccounts: newAccounts });
-                    }}
+                    id="username"
+                    value={user.username}
+                    onChange={(e) => setUser({ ...user, username: e.target.value })}
+                    required
                   />
                 </div>
-              ))}
-              <Button
-                variant="outline"
-                onClick={() => {
-                  const newAccount = {
-                    id: Date.now().toString(),
-                    bankName: '',
-                    accountNumber: '',
-                    accountType: 'Checking',
-                    isDefault: false
-                  };
-                  handleChange('wallet', {
-                    ...formData.wallet,
-                    bankAccounts: [...(formData.wallet?.bankAccounts || []), newAccount]
-                  });
-                }}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Bank Account
-              </Button>
-            </div>
-          </div>
-        </Card>
 
-        {/* Legal Details */}
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Legal Details</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="taxId">Tax ID</Label>
-              <Input
-                id="taxId"
-                value={formData.legalDetails?.taxId || ''}
-                onChange={(e) => handleChange('legalDetails', {
-                  ...formData.legalDetails,
-                  taxId: e.target.value
-                })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="businessType">Business Type</Label>
-              <Input
-                id="businessType"
-                value={formData.legalDetails?.businessType || ''}
-                onChange={(e) => handleChange('legalDetails', {
-                  ...formData.legalDetails,
-                  businessType: e.target.value
-                })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="registrationNumber">Registration Number</Label>
-              <Input
-                id="registrationNumber"
-                value={formData.legalDetails?.registrationNumber || ''}
-                onChange={(e) => handleChange('legalDetails', {
-                  ...formData.legalDetails,
-                  registrationNumber: e.target.value
-                })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="incorporationDate">Incorporation Date</Label>
-              <Input
-                id="incorporationDate"
-                type="date"
-                value={formData.legalDetails?.incorporationDate || ''}
-                onChange={(e) => handleChange('legalDetails', {
-                  ...formData.legalDetails,
-                  incorporationDate: e.target.value
-                })}
-              />
-            </div>
-          </div>
-        </Card>
+                <div className="space-y-2">
+                  <Label htmlFor="employeeId">Employee ID</Label>
+                  <Input
+                    id="employeeId"
+                    value={user.employeeId || ''}
+                    onChange={(e) => setUser({ ...user, employeeId: e.target.value })}
+                  />
+                </div>
 
-        {/* Address Information */}
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Address Information</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="street">Street Address</Label>
-              <Input
-                id="street"
-                value={formData.address?.street || ''}
-                onChange={(e) => handleChange('address', {
-                  ...formData.address,
-                  street: e.target.value
-                })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="city">City</Label>
-              <Input
-                id="city"
-                value={formData.address?.city || ''}
-                onChange={(e) => handleChange('address', {
-                  ...formData.address,
-                  city: e.target.value
-                })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="state">State</Label>
-              <Input
-                id="state"
-                value={formData.address?.state || ''}
-                onChange={(e) => handleChange('address', {
-                  ...formData.address,
-                  state: e.target.value
-                })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="country">Country</Label>
-              <Input
-                id="country"
-                value={formData.address?.country || ''}
-                onChange={(e) => handleChange('address', {
-                  ...formData.address,
-                  country: e.target.value
-                })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="postalCode">Postal Code</Label>
-              <Input
-                id="postalCode"
-                value={formData.address?.postalCode || ''}
-                onChange={(e) => handleChange('address', {
-                  ...formData.address,
-                  postalCode: e.target.value
-                })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Address Type</Label>
-              <div className="flex gap-4">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.address?.isBillingAddress || false}
-                    onChange={(e) => handleChange('address', {
-                      ...formData.address,
-                      isBillingAddress: e.target.checked
-                    })}
+                <div className="space-y-2">
+                  <Label htmlFor="firstName">First Name</Label>
+                  <Input
+                    id="firstName"
+                    value={user.firstName}
+                    onChange={(e) => setUser({ ...user, firstName: e.target.value })}
+                    required
                   />
-                  Billing Address
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.address?.isShippingAddress || false}
-                    onChange={(e) => handleChange('address', {
-                      ...formData.address,
-                      isShippingAddress: e.target.checked
-                    })}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="lastName">Last Name</Label>
+                  <Input
+                    id="lastName"
+                    value={user.lastName}
+                    onChange={(e) => setUser({ ...user, lastName: e.target.value })}
+                    required
                   />
-                  Shipping Address
-                </label>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={user.email}
+                    onChange={(e) => setUser({ ...user, email: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="phoneNumber">Phone Number</Label>
+                  <Input
+                    id="phoneNumber"
+                    value={user.phoneNumber || ''}
+                    onChange={(e) => setUser({ ...user, phoneNumber: e.target.value })}
+                  />
+                </div>
               </div>
             </div>
-          </div>
-        </Card>
+          </Card>
 
-        {/* Action Buttons */}
-        <div className="flex justify-end gap-4">
-          <Button
-            variant="destructive"
-            onClick={handleDelete}
-          >
-            <Trash className="h-4 w-4 mr-2" />
-            Delete User
-          </Button>
-          <Button onClick={handleSave}>
-            <CheckCircle className="h-4 w-4 mr-2" />
-            Save Changes
-          </Button>
-        </div>
+          {/* Professional Information */}
+          <Card>
+            <div className="p-6 space-y-4">
+              <h2 className="text-lg font-semibold flex items-center">
+                <Briefcase className="mr-2 h-5 w-5" />
+                Professional Information
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="role">Role</Label>
+                  <Select
+                    value={user.role}
+                    onValueChange={(value) => setUser({ ...user, role: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {userRoles.map((role) => (
+                        <SelectItem key={role} value={role}>
+                          {role.charAt(0).toUpperCase() + role.slice(1)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="department">Department</Label>
+                  <Select
+                    value={user.department}
+                    onValueChange={(value) => setUser({ ...user, department: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select department" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {departments.map((dept) => (
+                        <SelectItem key={dept} value={dept}>
+                          {dept.charAt(0).toUpperCase() + dept.slice(1)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="position">Position</Label>
+                  <Input
+                    id="position"
+                    value={user.position}
+                    onChange={(e) => setUser({ ...user, position: e.target.value })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="team">Team</Label>
+                  <Input
+                    id="team"
+                    value={user.team || ''}
+                    onChange={(e) => setUser({ ...user, team: e.target.value })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="hireDate">Hire Date</Label>
+                  <Input
+                    id="hireDate"
+                    type="date"
+                    value={user.hireDate || ''}
+                    onChange={(e) => setUser({ ...user, hireDate: e.target.value })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="managerId">Manager ID</Label>
+                  <Input
+                    id="managerId"
+                    value={user.managerId || ''}
+                    onChange={(e) => setUser({ ...user, managerId: e.target.value })}
+                  />
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          {/* Location Information */}
+          <Card>
+            <div className="p-6 space-y-4">
+              <h2 className="text-lg font-semibold flex items-center">
+                <MapPin className="mr-2 h-5 w-5" />
+                Location Information
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="office">Office</Label>
+                  <Input
+                    id="office"
+                    value={user.location?.office || ''}
+                    onChange={(e) => setUser({ 
+                      ...user, 
+                      location: { ...user.location, office: e.target.value } 
+                    })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="floor">Floor</Label>
+                  <Input
+                    id="floor"
+                    value={user.location?.floor || ''}
+                    onChange={(e) => setUser({ 
+                      ...user, 
+                      location: { ...user.location, floor: e.target.value } 
+                    })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="deskNumber">Desk Number</Label>
+                  <Input
+                    id="deskNumber"
+                    value={user.location?.deskNumber || ''}
+                    onChange={(e) => setUser({ 
+                      ...user, 
+                      location: { ...user.location, deskNumber: e.target.value } 
+                    })}
+                  />
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          {/* Work Schedule */}
+          <Card>
+            <div className="p-6 space-y-4">
+              <h2 className="text-lg font-semibold flex items-center">
+                <Clock className="mr-2 h-5 w-5" />
+                Work Schedule
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="startTime">Start Time</Label>
+                  <Input
+                    id="startTime"
+                    type="time"
+                    value={user.workSchedule?.startTime || ''}
+                    onChange={(e) => setUser({ 
+                      ...user, 
+                      workSchedule: { ...user.workSchedule, startTime: e.target.value } 
+                    })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="endTime">End Time</Label>
+                  <Input
+                    id="endTime"
+                    type="time"
+                    value={user.workSchedule?.endTime || ''}
+                    onChange={(e) => setUser({ 
+                      ...user, 
+                      workSchedule: { ...user.workSchedule, endTime: e.target.value } 
+                    })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="timezone">Timezone</Label>
+                  <Input
+                    id="timezone"
+                    value={user.workSchedule?.timezone || ''}
+                    onChange={(e) => setUser({ 
+                      ...user, 
+                      workSchedule: { ...user.workSchedule, timezone: e.target.value } 
+                    })}
+                  />
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          {/* Emergency Contact */}
+          <Card>
+            <div className="p-6 space-y-4">
+              <h2 className="text-lg font-semibold flex items-center">
+                <Users className="mr-2 h-5 w-5" />
+                Emergency Contact
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="emergencyName">Contact Name</Label>
+                  <Input
+                    id="emergencyName"
+                    value={user.emergencyContact?.name || ''}
+                    onChange={(e) => setUser({ 
+                      ...user, 
+                      emergencyContact: { ...user.emergencyContact, name: e.target.value } 
+                    })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="emergencyRelationship">Relationship</Label>
+                  <Input
+                    id="emergencyRelationship"
+                    value={user.emergencyContact?.relationship || ''}
+                    onChange={(e) => setUser({ 
+                      ...user, 
+                      emergencyContact: { ...user.emergencyContact, relationship: e.target.value } 
+                    })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="emergencyPhone">Phone Number</Label>
+                  <Input
+                    id="emergencyPhone"
+                    value={user.emergencyContact?.phone || ''}
+                    onChange={(e) => setUser({ 
+                      ...user, 
+                      emergencyContact: { ...user.emergencyContact, phone: e.target.value } 
+                    })}
+                  />
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          {/* Access Levels */}
+          <Card>
+            <div className="p-6 space-y-4">
+              <h2 className="text-lg font-semibold flex items-center">
+                <Key className="mr-2 h-5 w-5" />
+                Access Levels
+              </h2>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Systems Access</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {user.accessLevels?.systems?.map((system, index) => (
+                      <div key={index} className="bg-gray-100 px-3 py-1 rounded-full text-sm">
+                        {system}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Building Access</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {user.accessLevels?.buildings?.map((building, index) => (
+                      <div key={index} className="bg-gray-100 px-3 py-1 rounded-full text-sm">
+                        {building}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Room Access</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {user.accessLevels?.rooms?.map((room, index) => (
+                      <div key={index} className="bg-gray-100 px-3 py-1 rounded-full text-sm">
+                        {room}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          {/* Module Access */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Key className="h-5 w-5" />
+                Module Access
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {modules.map((module) => (
+                  <div key={module.id} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={module.id}
+                      checked={user.moduleAccess?.some(ma => ma.moduleName === module.id)}
+                      onCheckedChange={(checked) => {
+                        const newModuleAccess = checked
+                          ? [...(user.moduleAccess || []), { moduleName: module.id }]
+                          : user.moduleAccess?.filter(ma => ma.moduleName !== module.id) || [];
+                        setUser({ ...user, moduleAccess: newModuleAccess });
+                      }}
+                    />
+                    <Label htmlFor={module.id} className="flex flex-col">
+                      <span>{module.name}</span>
+                      <span className="text-sm text-muted-foreground">{module.description}</span>
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Status */}
+          <Card>
+            <div className="p-6 space-y-4">
+              <h2 className="text-lg font-semibold flex items-center">
+                <Shield className="mr-2 h-5 w-5" />
+                Status
+              </h2>
+              <div className="space-y-2">
+                <Label htmlFor="status">Account Status</Label>
+                <Select
+                  value={user.status}
+                  onValueChange={(value) => setUser({ ...user, status: value as 'active' | 'inactive' })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </Card>
+
+          <div className="flex justify-end">
+            <Button type="submit" disabled={isSaving}>
+              {isSaving ? (
+                <>
+                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  Save Changes
+                </>
+              )}
+            </Button>
+          </div>
+        </form>
       </div>
     </ModuleLayout>
   );

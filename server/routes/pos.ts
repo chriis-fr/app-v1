@@ -1,9 +1,27 @@
 import { Router } from 'express';
 import { hasModuleAccess, hasRole } from '../auth';
-import { POS, Customer, Transaction } from '../mongodb/models';
+import { POS, Customer, Transaction, Product } from '../mongodb/pos-models';
 import { startSession } from 'mongoose';
 
 const router = Router();
+
+// Get all products
+router.get('/products',
+  hasModuleAccess('pos'),
+  async (req, res) => {
+    try {
+      if (!req.user?.organizationId) {
+        return res.status(401).json({ message: 'Unauthorized access' });
+      }
+      const products = await Product.find({
+        organizationId: req.user.organizationId,
+        status: 'available'
+      }).sort({ name: 1 });
+      res.json(products);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching products' });
+    }
+});
 
 // Get all POS orders
 router.get('/orders',
@@ -18,6 +36,7 @@ router.get('/orders',
       })
       .populate('customerId', 'name email')
       .populate('employeeId', 'firstName lastName')
+      .populate('items.productId')
       .sort({ createdAt: -1 });
       res.json(orders);
     } catch (error) {
@@ -37,30 +56,52 @@ router.post('/orders',
         return res.status(401).json({ message: 'Unauthorized access' });
       }
 
-      const { items, customerId, paymentMethod } = req.body;
+      const { items, customerId, paymentMethod, notes } = req.body;
 
-      // Calculate total amount
-      const totalAmount = items.reduce((sum: number, item: any) => 
+      // Calculate totals
+      const subtotal = items.reduce((sum: number, item: any) => 
         sum + (item.quantity * item.unitPrice), 0);
+      
+      const tax = items.reduce((sum: number, item: any) => 
+        sum + (item.quantity * item.unitPrice * item.taxRate), 0);
+      
+      const discount = items.reduce((sum: number, item: any) => 
+        sum + item.discount, 0);
+      
+      const total = subtotal + tax - discount;
 
       // Create POS order
       const order = new POS({
         orderId: `POS-${Date.now()}`,
         items,
-        totalAmount,
+        subtotal,
+        tax,
+        discount,
+        total,
         customerId,
         employeeId: req.user.id,
         paymentMethod,
+        notes,
         organizationId: req.user.organizationId,
-        status: 'pending'
+        status: 'pending',
+        paymentStatus: 'pending'
       });
 
       await order.save({ session });
 
+      // Update product stock levels
+      for (const item of items) {
+        await Product.findByIdAndUpdate(
+          item.productId,
+          { $inc: { stock_quantity: -item.quantity } },
+          { session }
+        );
+      }
+
       // Create transaction record
       const transaction = new Transaction({
         type: 'sale',
-        amount: totalAmount,
+        amount: total,
         description: `POS Order ${order.orderId}`,
         reference: order.orderId,
         organizationId: req.user.organizationId,
@@ -74,7 +115,7 @@ router.post('/orders',
         await Customer.findByIdAndUpdate(
           customerId,
           {
-            $inc: { totalPurchases: totalAmount },
+            $inc: { totalPurchases: total },
             lastPurchaseDate: new Date()
           },
           { session }
@@ -107,7 +148,7 @@ router.patch('/orders/:id/status',
         },
         {
           status: req.body.status,
-          updatedAt: new Date()
+          updated_at: new Date()
         },
         { new: true }
       );
@@ -121,27 +162,46 @@ router.patch('/orders/:id/status',
 });
 
 // Get POS transactions for a business
-router.get('/transactions', async (req, res) => {
-  const businessId = req.headers['x-business-id'];
-  
-  const transactions = await Transaction.find({ businessId })
-    .sort({ createdAt: -1 })
-    .limit(100);
-    
-  res.json(transactions);
+router.get('/transactions',
+  hasModuleAccess('pos'),
+  async (req, res) => {
+    try {
+      if (!req.user?.organizationId) {
+        return res.status(401).json({ message: 'Unauthorized access' });
+      }
+      
+      const transactions = await Transaction.find({ 
+        organizationId: req.user.organizationId 
+      })
+        .sort({ created_at: -1 })
+        .limit(100);
+        
+      res.json(transactions);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching transactions' });
+    }
 });
 
 // Create new POS transaction
-router.post('/transaction', async (req, res) => {
-  const businessId = req.headers['x-business-id'];
-  const transactionData = req.body;
-  
-  const transaction = await Transaction.create({
-    ...transactionData,
-    businessId
-  });
-  
-  res.json(transaction);
+router.post('/transaction',
+  hasModuleAccess('pos'),
+  async (req, res) => {
+    try {
+      if (!req.user?.organizationId) {
+        return res.status(401).json({ message: 'Unauthorized access' });
+      }
+      
+      const transactionData = {
+        ...req.body,
+        organizationId: req.user.organizationId
+      };
+      
+      const transaction = await Transaction.create(transactionData);
+      
+      res.json(transaction);
+    } catch (error) {
+      res.status(500).json({ message: 'Error creating transaction' });
+    }
 });
 
 export default router; 

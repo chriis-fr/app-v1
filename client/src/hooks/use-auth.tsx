@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
+import * as React from 'react';
 import { useMutation, UseMutationResult } from '@tanstack/react-query';
 import { User as SchemaUser, OrganizationSettings, Role } from '@shared/schema';
 
@@ -22,19 +22,10 @@ interface LoginData {
 }
 
 interface RegisterData {
-  name: string;
-  type: string;
-  industry: string;
-  address?: string;
-  country?: string;
-  website?: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phoneNumber: string;
   username: string;
   password: string;
-  selectedModules: string[];
+  email: string;
+  organizationName: string;
 }
 
 interface AuthContextType {
@@ -49,7 +40,7 @@ interface AuthContextType {
 }
 
 // Create context
-const AuthContext = createContext<AuthContextType>({
+const AuthContext = React.createContext<AuthContextType>({
   user: null,
   isLoading: true,
   error: null,
@@ -61,10 +52,10 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 // Provider component
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = React.useState<User | null>(null);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
 
   const loginMutation = useMutation<void, Error, LoginData>({
     mutationFn: async (data) => {
@@ -107,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
-  useEffect(() => {
+  React.useEffect(() => {
     // Check if user session exists
     const checkSession = async () => {
       try {
@@ -164,7 +155,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 }
 
 export function useAuth() {
-  const context = useContext(AuthContext);
+  const context = React.useContext(AuthContext);
   if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
