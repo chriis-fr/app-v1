@@ -6,7 +6,7 @@ const router = Router();
 
 // Get all transactions for an organization
 router.get('/transactions', 
-  hasModuleAccess('finance'),
+  hasModuleAccess('accounting'),
   hasRole(['admin', 'manager']),
   async (req, res) => {
     try {
@@ -24,7 +24,7 @@ router.get('/transactions',
 
 // Create new transaction
 router.post('/transactions',
-  hasModuleAccess('finance'),
+  hasModuleAccess('accounting'),
   hasRole(['admin', 'manager']),
   async (req, res) => {
     try {
@@ -44,7 +44,7 @@ router.post('/transactions',
 
 // Get all invoices for an organization
 router.get('/invoices',
-  hasModuleAccess('finance'),
+  hasModuleAccess('accounting'),
   hasRole(['admin', 'manager', 'employee']),
   async (req, res) => {
     try {
@@ -62,7 +62,7 @@ router.get('/invoices',
 
 // Create new invoice
 router.post('/invoices',
-  hasModuleAccess('finance'),
+  hasModuleAccess('accounting'),
   hasRole(['admin', 'manager']),
   async (req, res) => {
     try {

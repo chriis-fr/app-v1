@@ -39,11 +39,12 @@ const posSchema = new mongoose.Schema({
   customerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer' },
   employeeId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   paymentMethod: { type: String, required: true },
+  counterId: { type: String, default: 'default' },
   notes: { type: String },
   organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: true },
   status: { 
     type: String, 
-    enum: ['pending', 'completed', 'cancelled', 'refunded'],
+    enum: ['draft', 'pending', 'completed', 'cancelled', 'refunded'],
     default: 'pending'
   },
   paymentStatus: {
@@ -79,6 +80,26 @@ const transactionSchema = new mongoose.Schema({
   amount: { type: Number, required: true },
   description: { type: String, required: true },
   reference: { type: String },
+  paymentMethod: { 
+    type: String, 
+    enum: ['cash', 'card', 'mobile_money', 'bank_transfer', 'crypto', 'other'],
+    default: 'cash'
+  },
+  paymentDetails: {
+    // For card payments
+    cardType: { type: String },
+    lastFourDigits: { type: String },
+    authorizationCode: { type: String },
+    
+    // For mobile money
+    phoneNumber: { type: String },
+    transactionId: { type: String },
+    
+    // For crypto
+    walletAddress: { type: String },
+    txHash: { type: String },
+    blockchain: { type: String }
+  },
   organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: true },
   status: { 
     type: String, 

@@ -4,7 +4,7 @@ import { z } from "zod";
 // Available modules enum
 // ---------------------------------
 export const availableModules = [
-  "finance",  // This will be the default module
+  "accounting",  // This will be the default module
   "procurement",
   "manufacturing",
   "inventory",
@@ -18,7 +18,18 @@ export const availableModules = [
   "ecommerce",
   "marketing",
   "pos",
-  // "dashboard"
+  "quality",
+  "maintenance",
+  "project",
+  "analytics",
+  "global_finance",
+  "international_trade",
+  "customer_experience",
+  "vendor_management",
+  "ai_analytics",
+  "ecommerce_global",
+  "localization",
+  "digital_currency"
 ] as const;
 
 // ---------------------------------
@@ -132,7 +143,7 @@ export const organizationSchema = z.object({
   industry: z.string().min(2),
   size: z.string().optional(),
   walletAddress: z.string().optional(),
-  activeModules: z.array(z.enum(availableModules)).default(["finance"]), // Make finance default
+  activeModules: z.array(z.enum(availableModules)).default(["accounting"]), // Make finance default
   maxModules: z.number().default(3),
   address: z.string().optional(),
   country: z.string().optional(),
@@ -442,8 +453,8 @@ export const modules = [
     description: 'Production planning, work orders, and manufacturing operations'
   },
   {
-    id: 'finance',
-    name: 'Finance',
+    id: 'accounting',
+    name: 'Accounting',
     description: 'Financial management, accounting, and financial reporting'
   },
   {
@@ -480,5 +491,80 @@ export const modules = [
     id: 'analytics',
     name: 'Business Analytics',
     description: 'Business intelligence, reporting, and data analytics'
+  },
+  {
+    id: 'order_management',
+    name: 'Order Management',
+    description: 'Order processing, fulfillment, and tracking'
+  },
+  {
+    id: 'warehouse',
+    name: 'Warehouse Management',
+    description: 'Warehouse operations, layout, and inventory placement'
+  },
+  {
+    id: 'project_service',
+    name: 'Project Service',
+    description: 'Service project planning, execution, and delivery'
+  },
+  {
+    id: 'workforce',
+    name: 'Workforce Management',
+    description: 'Staff scheduling, time tracking, and capacity planning'
+  },
+  {
+    id: 'ecommerce',
+    name: 'E-Commerce',
+    description: 'Online store management, product listings, and order processing'
+  },
+  {
+    id: 'marketing',
+    name: 'Marketing',
+    description: 'Campaign management, lead generation, and marketing analytics'
+  },
+  {
+    id: 'pos',
+    name: 'Point of Sale',
+    description: 'Retail transactions, receipts, and in-store sales management'
+  },
+  {
+    id: 'global_finance',
+    name: 'Global Financial Management',
+    description: 'Multi-currency handling, international tax compliance, and regional financial regulations'
+  },
+  {
+    id: 'international_trade',
+    name: 'International Trade & Compliance',
+    description: 'Import/export regulations, tariffs, customs procedures, and trade compliance'
+  },
+  {
+    id: 'customer_experience',
+    name: 'Customer Experience Management',
+    description: 'Customer feedback, sentiment analysis, and service quality tracking across regions'
+  },
+  {
+    id: 'vendor_management',
+    name: 'Supply Chain & Vendor Management',
+    description: 'Global supplier networks, international logistics, and supply chain optimization'
+  },
+  {
+    id: 'ai_analytics',
+    name: 'AI and Analytics Integration',
+    description: 'Predictive insights, AI-driven decision making, and advanced data analytics'
+  },
+  {
+    id: 'ecommerce_global',
+    name: 'Global E-commerce Integration',
+    description: 'Integration with global marketplaces and localized payment gateways'
+  },
+  {
+    id: 'localization',
+    name: 'Localization & Multi-language Support',
+    description: 'Multiple languages, currencies, and region-specific compliance'
+  },
+  {
+    id: 'digital_currency',
+    name: 'Digital Currency and Blockchain',
+    description: 'Blockchain for secure transactions and digital currency payment options'
   }
 ] as const;

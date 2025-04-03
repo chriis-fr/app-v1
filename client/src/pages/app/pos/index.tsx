@@ -2,27 +2,63 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { api } from '@/lib/api';
 import POSLayout from '@/components/layouts/pos-layout';
-import { Product, Customer, Order, PaymentMethod, POSSettings } from '@/types/pos';
+import POSMain from '@/components/modules/pos/POSMain';
+import { Order, POSSettings } from '@/types/pos';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Calendar } from '@/components/ui/calendar';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
-import { Search, Plus, Printer, Download, Clock, Users, Package, DollarSign, Settings } from 'lucide-react';
+import { 
+  Search, 
+  Plus, 
+  Minus,
+  X,
+  ShoppingCart,
+  CreditCard,
+  Wallet,
+  DollarSign,
+  Receipt,
+  User,
+  Printer,
+  Trash2,
+  Percent,
+  ArrowRight,
+  Clock, 
+  Users, 
+  Package, 
+  Settings, 
+  Download,
+  AlignJustify,
+  AlertTriangle
+} from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { cn } from '@/lib/utils';
+import { usePermissions } from '@/hooks/use-permissions';
 
 // Default payment methods
-const DEFAULT_PAYMENT_METHODS: PaymentMethod[] = [
-  { id: 'cash', name: 'Cash', type: 'cash' },
-  { id: 'card', name: 'Card', type: 'card' },
-  { id: 'mobile', name: 'Mobile Money', type: 'mobile' },
-  { id: 'bank', name: 'Bank Transfer', type: 'bank_transfer' }
+interface AppPaymentMethod {
+  id: string;
+  name: string;
+  type: 'cash' | 'card' | 'mobile' | 'bank_transfer' | 'mobile_money' | 'crypto' | 'other';
+  icon: any;
+  enabled: boolean;
+}
+
+const DEFAULT_PAYMENT_METHODS: AppPaymentMethod[] = [
+  { id: 'cash', name: 'Cash', type: 'cash', icon: DollarSign, enabled: true },
+  { id: 'card', name: 'Card', type: 'card', icon: CreditCard, enabled: true },
+  { id: 'mobile', name: 'Mobile Money', type: 'mobile_money', icon: Wallet, enabled: true },
+  { id: 'bank', name: 'Bank Transfer', type: 'bank_transfer', icon: AlignJustify, enabled: true },
+  { id: 'crypto', name: 'Cryptocurrency', type: 'crypto', icon: Wallet, enabled: true }
 ];
 
 // Default POS settings
@@ -50,42 +86,94 @@ type ToastFunction = (params: {
   variant?: 'default' | 'destructive';
 }) => void;
 
+// Simplified Product type
+interface AppProduct {
+  _id: string;
+  name: string;
+  price: number;
+  sku: string;
+  barcode: string;
+  stock_quantity: number;
+  image_url?: string;
+  category_id?: string;
+  status: 'available' | 'unavailable';
+}
+
+// Cart Item type
+interface AppCartItem {
+  _id?: string;
+  productId: string;
+  quantity: number;
+  unitPrice: number;
+  taxRate: number;
+  discount: number;
+  total: number;
+  product?: AppProduct;
+}
+
+// Customer type
+interface AppCustomer {
+  _id: string;
+  name: string;
+  email: string;
+  phone: string;
+}
+
+// Sale Session type
+interface SaleSession {
+  _id: string;
+  orderId: string;
+  items: AppCartItem[];
+  subtotal: number;
+  tax: number;
+  discount: number;
+  total: number;
+  status: string;
+  paymentStatus: string;
+  customerId?: string;
+  employeeId: string;
+  counterId: string;
+}
+
+// Using string literal type instead of enum for better type checking
+type ViewMode = 'main' | 'cashier';
+
 export default function POSPage() {
   const { user } = useAuth();
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  
+  // Determine if user is a cashier based on role
+  const isCashier = user?.role === 'cashier';
+  const canAccessAdminFeatures = user?.role === 'admin' || user?.role === 'owner' || user?.role === 'manager';
   
   // State management
-  const [products, setProducts] = useState<Product[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [products, setProducts] = useState<AppProduct[]>([]);
+  const [customers, setCustomers] = useState<AppCustomer[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-  const [cart, setCart] = useState<{ product: Product; quantity: number }[]>([]);
-  const [paymentMethods] = useState<PaymentMethod[]>(DEFAULT_PAYMENT_METHODS);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod | null>(null);
-  const [amountTendered, setAmountTendered] = useState<number>(0);
-  const [change, setChange] = useState<number>(0);
-  const [isOffline, setIsOffline] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<string>('dashboard');
-  const [settings, setSettings] = useState<POSSettings>(DEFAULT_SETTINGS);
-  const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>({
-    from: subDays(new Date(), 7),
-    to: new Date()
-  });
-  const [salesData, setSalesData] = useState<any[]>([]);
-  const [lowStockProducts, setLowStockProducts] = useState<Product[]>([]);
-  const [employeeAttendance, setEmployeeAttendance] = useState<any[]>([]);
-
-  // Add missing state variables
-  const [barcodeInput, setBarcodeInput] = useState<string>('');
-  const [discount, setDiscount] = useState<number>(0);
-  const [discountType, setDiscountType] = useState<'percentage' | 'fixed'>('percentage');
-  const [employeeClockIn, setEmployeeClockIn] = useState<string | null>(null);
-
-  // Calculate cart total
-  const cartTotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-
+  const [selectedCustomer, setSelectedCustomer] = useState<AppCustomer | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [isOffline, setIsOffline] = useState(false);
+  const [currentSale, setCurrentSale] = useState<SaleSession | null>(null);
+  
+  // For cashiers, force cashier view. Admins/managers can toggle
+  const [viewMode, setViewMode] = useState<ViewMode>(isCashier ? 'cashier' : 'main');
+  
+  // Dialog states
+  const [isPaymentOpen, setIsPaymentOpen] = useState(false);
+  const [isDiscountOpen, setIsDiscountOpen] = useState(false);
+  const [isReceiptOpen, setIsReceiptOpen] = useState(false);
+  const [customerDialogOpen, setCustomerDialogOpen] = useState(false);
+  
+  useEffect(() => {
+    // When user role changes, update the view mode accordingly
+    if (isCashier && viewMode !== 'cashier') {
+      setViewMode('cashier');
+    }
+  }, [isCashier]);
+  
   useEffect(() => {
     // Check online status
     const handleOnlineStatus = () => {
@@ -112,25 +200,18 @@ export default function POSPage() {
     };
   }, []);
 
-  // Data fetching functions with error handling
+  // Data fetching functions
   const fetchProducts = async () => {
     try {
       const response = await api.get('/pos/products');
-      if (Array.isArray(response)) {
-        setProducts(response);
-      } else {
-        console.error('API response is not an array:', response);
-        toast({
-          title: 'Error',
-          description: 'Invalid products data received',
-          variant: 'destructive',
-        });
+      if (response.data) {
+        setProducts(response.data);
       }
     } catch (error) {
       console.error('Error fetching products:', error);
       toast({
         title: 'Error',
-        description: 'Failed to fetch products',
+        description: 'Failed to load products',
         variant: 'destructive',
       });
     }
@@ -138,22 +219,15 @@ export default function POSPage() {
 
   const fetchCustomers = async () => {
     try {
-      const response = await api.get('/pos/customers');
-      if (Array.isArray(response)) {
-        setCustomers(response);
-      } else {
-        console.error('API response is not an array:', response);
-        toast({
-          title: 'Error',
-          description: 'Invalid customers data received',
-          variant: 'destructive',
-        });
+      const response = await api.get('/customers');
+      if (response.data) {
+        setCustomers(response.data);
       }
     } catch (error) {
       console.error('Error fetching customers:', error);
       toast({
         title: 'Error',
-        description: 'Failed to fetch customers',
+        description: 'Failed to load customers',
         variant: 'destructive',
       });
     }
@@ -162,472 +236,486 @@ export default function POSPage() {
   const fetchOrders = async () => {
     try {
       const response = await api.get('/pos/orders');
-      if (Array.isArray(response)) {
-        setOrders(response);
-      } else {
-        console.error('API response is not an array:', response);
-        toast({
-          title: 'Error',
-          description: 'Invalid orders data received',
-          variant: 'destructive',
-        });
+      if (response.data) {
+        setOrders(response.data);
       }
     } catch (error) {
       console.error('Error fetching orders:', error);
       toast({
         title: 'Error',
-        description: 'Failed to fetch orders',
+        description: 'Failed to load orders',
         variant: 'destructive',
       });
     }
-  };
-
-  // Cart management functions
-  const handleAddToCart = (product: Product) => {
-    if (product.stock_quantity <= 0) {
-      toast({
-        title: 'Error',
-        description: 'Product is out of stock',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setCart((prev) => {
-      const existingItem = prev.find((item) => item.product.id === product.id);
-      if (existingItem) {
-        if (existingItem.quantity >= product.stock_quantity) {
-          toast({
-            title: 'Error',
-            description: 'Not enough stock available',
-            variant: 'destructive',
-          });
-          return prev;
-        }
-        return prev.map((item) =>
-          item.product.id === product.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        );
-      }
-      return [...prev, { product, quantity: 1 }];
-    });
-  };
-
-  const handleRemoveFromCart = (productId: string) => {
-    setCart((prev) => prev.filter((item) => item.product.id !== productId));
-  };
-
-  const handleUpdateQuantity = (productId: string, quantity: number) => {
-    if (quantity < 1) return;
-    
-    const product = products.find(p => p.id === productId);
-    if (product && quantity > product.stock_quantity) {
-      toast({
-        title: 'Error',
-        description: 'Not enough stock available',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setCart((prev) =>
-      prev.map((item) =>
-        item.product.id === productId ? { ...item, quantity } : item
-      )
-    );
-  };
-
-  // Payment handling
-  const handleAmountTenderedChange = (value: string) => {
-    const amount = parseFloat(value) || 0;
-    setAmountTendered(amount);
-    setChange(amount - cartTotal);
-  };
-
-  const handleBarcodeScan = (barcode: string) => {
-    const product = products.find(p => p.barcode === barcode);
-    if (product) {
-      handleAddToCart(product);
-    } else {
-      toast({
-        title: 'Error',
-        description: 'Product not found',
-        variant: 'destructive',
-      });
-    }
-    setBarcodeInput('');
-  };
-
-  const handleDiscountChange = (value: string) => {
-    const amount = parseFloat(value) || 0;
-    setDiscount(amount);
-  };
-
-  const calculateTax = () => {
-    const subtotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-    const taxRate = 0.1; // 10% tax rate - should come from settings
-    return subtotal * taxRate;
-  };
-
-  const calculateTotal = () => {
-    const subtotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-    const tax = calculateTax();
-    const discountAmount = discountType === 'percentage' 
-      ? (subtotal + tax) * (discount / 100)
-      : discount;
-    return (subtotal + tax - discountAmount);
-  };
-
-  const handleClockIn = () => {
-    const now = new Date().toISOString();
-    setEmployeeClockIn(now);
-    toast({
-      title: 'Success',
-      description: 'Clocked in successfully',
-    });
-  };
-
-  const handleClockOut = () => {
-    if (!employeeClockIn) return;
-    
-    const clockOut = new Date().toISOString();
-    const duration = new Date(clockOut).getTime() - new Date(employeeClockIn).getTime();
-    const hours = duration / (1000 * 60 * 60);
-    
-    toast({
-      title: 'Success',
-      description: `Clocked out. Worked ${hours.toFixed(2)} hours`,
-    });
-    setEmployeeClockIn(null);
   };
 
   const loadOfflineData = () => {
-    if (isOffline) {
-      const savedData = localStorage.getItem('pos_offline_data');
-      if (savedData) {
-        const { cart: savedCart, selectedCustomer: savedCustomer, orders: savedOrders } = JSON.parse(savedData);
-        setCart(savedCart);
-        setSelectedCustomer(savedCustomer);
-        setOrders(savedOrders);
+    // Load data from localStorage if in offline mode
+    const savedData = localStorage.getItem('pos_offline_data');
+    if (savedData) {
+      try {
+        const data = JSON.parse(savedData);
+        if (data.products) setProducts(data.products);
+        if (data.customers) setCustomers(data.customers);
+        if (data.currentSale) setCurrentSale(data.currentSale);
+      } catch (error) {
+        console.error('Error parsing offline data:', error);
       }
     }
   };
 
-  const saveOfflineData = () => {
-    if (isOffline) {
-      const offlineData = {
-        cart,
-        selectedCustomer,
-        orders,
-        timestamp: new Date().toISOString(),
-      };
-      localStorage.setItem('pos_offline_data', JSON.stringify(offlineData));
+  // Cart management
+  const handleAddProduct = (product: AppProduct) => {
+    if (!currentSale) {
+      startSaleMutation.mutate();
+      return;
+    }
+    
+    if (product.stock_quantity <= 0) {
+      toast({
+        title: 'Out of Stock',
+        description: 'This product is out of stock',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    addItemMutation.mutate({
+      productId: product._id,
+      quantity: 1
+    });
+  };
+
+  // Helper to toggle view mode safely
+  const toggleViewMode = () => {
+    if (viewMode === 'main') {
+      setViewMode('cashier');
+    } else {
+      setViewMode('main');
     }
   };
 
-  const handleCheckout = async () => {
-    if (!selectedCustomer) {
-      toast({
-        title: 'Error',
-        description: 'Please select a customer',
-        variant: 'destructive',
-      });
-      return;
+  const handleRemoveItem = (itemId: string) => {
+    if (currentSale) {
+      removeItemMutation.mutate(itemId);
     }
+  };
 
-    if (!selectedPaymentMethod) {
-      toast({
-        title: 'Error',
-        description: 'Please select a payment method',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (selectedPaymentMethod.type === 'cash' && amountTendered < cartTotal) {
-      toast({
-        title: 'Error',
-        description: 'Insufficient amount tendered',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    try {
-      const order = {
-        customerId: selectedCustomer.id,
-        items: cart.map((item) => ({
-          productId: item.product.id,
-          quantity: item.quantity,
-          price: item.product.price,
-        })),
-        subtotal: cartTotal,
-        tax: calculateTax(),
-        discount: discount,
-        discountType: discountType,
-        total: calculateTotal(),
-        paymentMethod: selectedPaymentMethod.type,
-        amountTendered: amountTendered,
-        change: change,
-        status: 'completed' as const,
-        paymentStatus: 'paid' as const,
-        employeeId: user?.id,
-        clockInTime: employeeClockIn,
-        clockOutTime: new Date().toISOString(),
-      };
-
-      await api.post('/pos/orders', order);
-      
-      // Print receipt
-      if (window.print) {
-        window.print();
+  const handleUpdateQuantityInCart = (productId: string, newQuantity: number) => {
+    if (newQuantity <= 0) {
+      // Find item and remove it
+      const item = currentSale?.items.find(i => i.productId === productId);
+      if (item && item._id) {
+        handleRemoveItem(item._id);
       }
+      return;
+    }
+    
+    // Otherwise add/update the item
+    if (currentSale) {
+      updateQuantityMutation.mutate({
+        productId,
+        quantity: newQuantity
+      });
+    }
+  };
+
+  const handleDiscount = () => {
+    setIsDiscountOpen(true);
+  };
+
+  const handlePayment = () => {
+    setIsPaymentOpen(true);
+  };
+
+  // Filter products based on search
+  const filteredProductsBasedOnQuery = products.filter(product => {
+    const matchesSearch = searchQuery 
+      ? product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        product.sku.toLowerCase().includes(searchQuery.toLowerCase())
+      : true;
       
-      // Reset state
-      setCart([]);
-      setSelectedCustomer(null);
-      setSelectedPaymentMethod(null);
-      setAmountTendered(0);
-      setChange(0);
-      setDiscount(0);
-      setEmployeeClockIn(null);
+    const matchesCategory = selectedCategory 
+      ? product.category_id === selectedCategory
+      : true;
       
-      fetchOrders();
-      fetchProducts();
+    return matchesSearch && matchesCategory;
+  });
+
+  // Calculate total items in cart
+  const calculateTotalItems = (): number => {
+    if (!currentSale || !currentSale.items) return 0;
+    return currentSale.items.reduce((sum, item) => sum + item.quantity, 0);
+  };
+
+  // Mutations
+  const startSaleMutation = useMutation({
+    mutationFn: async () => {
+      const response = await api.post('/pos/sale/start', {
+        counterId: 'default'
+      });
+      return response.data;
+    },
+    onSuccess: (data) => {
+      setCurrentSale({
+        _id: data.saleId,
+        orderId: data.orderId,
+        items: [],
+        subtotal: 0,
+        tax: 0,
+        discount: 0,
+        total: 0,
+        status: 'draft',
+        paymentStatus: 'pending',
+        employeeId: user?.id || '',
+        counterId: 'default'
+      });
       
       toast({
-        title: 'Success',
-        description: 'Order placed successfully',
+        title: 'New Sale Started',
+        description: 'Ready to add products',
       });
-    } catch (error) {
-      console.error('Error placing order:', error);
+    },
+    onError: (error) => {
+      console.error('Error starting sale:', error);
       toast({
         title: 'Error',
-        description: 'Failed to place order',
+        description: 'Could not start a new sale',
         variant: 'destructive',
       });
     }
-  };
+  });
 
-  // Filter products with null check
-  const filteredProducts = Array.isArray(products) 
-    ? products.filter((product) =>
-        product.name.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : [];
-
-  // Fetch sales data
-  const fetchSalesData = async () => {
-    try {
-      const response = await api.get(`/pos/sales/analytics?start_date=${format(dateRange.from, 'yyyy-MM-dd')}&end_date=${format(dateRange.to, 'yyyy-MM-dd')}`);
-      setSalesData(Array.isArray(response) ? response : []);
-    } catch (error) {
-      console.error('Error fetching sales data:', error);
-      setSalesData([]);
+  const addItemMutation = useMutation({
+    mutationFn: async (data: { productId: string, quantity: number }) => {
+      if (!currentSale) throw new Error('No active sale');
+      
+      const response = await api.post(`/pos/sale/${currentSale._id}/items`, data);
+      return response.data;
+    },
+    onSuccess: (updatedSale) => {
+      setCurrentSale(updatedSale);
+    },
+    onError: (error) => {
+      console.error('Error adding item:', error);
       toast({
         title: 'Error',
-        description: 'Failed to fetch sales data',
+        description: 'Could not add item to cart',
         variant: 'destructive',
       });
     }
-  };
+  });
 
-  // Fetch low stock products
-  const fetchLowStockProducts = async () => {
-    try {
-      const response = await api.get('/pos/products/low-stock');
-      setLowStockProducts(Array.isArray(response) ? response : []);
-    } catch (error) {
-      console.error('Error fetching low stock products:', error);
-      setLowStockProducts([]);
+  const removeItemMutation = useMutation({
+    mutationFn: async (itemId: string) => {
+      if (!currentSale) throw new Error('No active sale');
+      
+      const response = await api.delete(`/pos/sale/${currentSale._id}/items/${itemId}`);
+      return response.data;
+    },
+    onSuccess: (updatedSale) => {
+      setCurrentSale(updatedSale);
+    },
+    onError: (error) => {
+      console.error('Error removing item:', error);
       toast({
         title: 'Error',
-        description: 'Failed to fetch low stock products',
+        description: 'Could not remove item from cart',
         variant: 'destructive',
       });
     }
-  };
+  });
 
-  // Fetch employee attendance
-  const fetchEmployeeAttendance = async () => {
-    try {
-      const response = await api.get('/pos/employees/attendance');
-      setEmployeeAttendance(Array.isArray(response) ? response : []);
-    } catch (error) {
-      console.error('Error fetching employee attendance:', error);
-      setEmployeeAttendance([]);
+  const updateQuantityMutation = useMutation({
+    mutationFn: async (data: { productId: string, quantity: number }) => {
+      if (!currentSale) throw new Error('No active sale');
+      
+      // This is a simplified approach - might need to be adjusted based on API
+      const response = await api.post(`/pos/sale/${currentSale._id}/items`, data);
+      return response.data;
+    },
+    onSuccess: (updatedSale) => {
+      setCurrentSale(updatedSale);
+    },
+    onError: (error) => {
+      console.error('Error updating quantity:', error);
       toast({
         title: 'Error',
-        description: 'Failed to fetch employee attendance',
+        description: 'Could not update item quantity',
         variant: 'destructive',
       });
     }
-  };
-
-  useEffect(() => {
-    fetchSalesData();
-    fetchLowStockProducts();
-    fetchEmployeeAttendance();
-  }, [dateRange]);
+  });
 
   return (
     <POSLayout>
-      <div className="p-6">
-        {isOffline && (
-          <div className="mb-4 p-4 bg-yellow-100 text-yellow-800 rounded-md">
-            <p>Offline Mode: Some features may be limited</p>
-          </div>
-        )}
-        
-        {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <Card className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Today's Sales</p>
-                <h3 className="text-2xl font-bold">$12,345</h3>
-                <p className="text-sm text-green-500">+12% from yesterday</p>
-              </div>
-              <DollarSign className="h-8 w-8 text-gray-400" />
+      {/* @ts-ignore - String literal comparison */}
+      {viewMode === 'main' ? (
+        <POSMain />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-full">
+          {isCashier && (
+            <div className="bg-muted py-2 px-4 mb-4 text-sm col-span-3 rounded-md flex items-center">
+              <AlertTriangle className="h-4 w-4 mr-2 text-amber-500" />
+              <span>You are in cashier mode. Only transaction processing features are available.</span>
             </div>
-          </Card>
-          <Card className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Active Employees</p>
-                <h3 className="text-2xl font-bold">8</h3>
-                <p className="text-sm text-gray-500">2 on break</p>
-              </div>
-              <Users className="h-8 w-8 text-gray-400" />
-            </div>
-          </Card>
-          <Card className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Low Stock Items</p>
-                <h3 className="text-2xl font-bold">12</h3>
-                <p className="text-sm text-red-500">Need attention</p>
-              </div>
-              <Package className="h-8 w-8 text-gray-400" />
-            </div>
-          </Card>
-          <Card className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Pending Orders</p>
-                <h3 className="text-2xl font-bold">5</h3>
-                <p className="text-sm text-gray-500">2 ready for pickup</p>
-              </div>
-              <Clock className="h-8 w-8 text-gray-400" />
-            </div>
-          </Card>
-        </div>
-
-        {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Sales & Analytics */}
-          <div className="lg:col-span-2">
-            <Card className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-2xl font-semibold">Sales Analytics</h2>
-                <div className="flex items-center space-x-2">
-                  <Calendar
-                    mode="range"
-                    selected={dateRange}
-                    onSelect={(range: any) => setDateRange(range)}
+          )}
+          {/* Left Side - Product Catalog */}
+          <div className="md:col-span-2">
+            <div className="flex flex-col h-full">
+              {/* Search and Filters */}
+              <div className="flex items-center space-x-2 mb-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                  <Input
+                    type="text"
+                    placeholder="Search products..."
+                    className="pl-8"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
                   />
-                  <Button variant="outline" size="sm">
-                    <Download className="h-4 w-4 mr-2" />
-                    Export
+                </div>
+                <Select
+                  value={selectedCategory || "all"}
+                  onValueChange={(value) => setSelectedCategory(value === "all" ? null : value)}
+                >
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Categories" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {/* Placeholder for category items */}
+                    <SelectItem value="cat1">Category 1</SelectItem>
+                    <SelectItem value="cat2">Category 2</SelectItem>
+                  </SelectContent>
+                </Select>
+                
+                {/* Only show the view toggle for admin/managers */}
+                {canAccessAdminFeatures && (
+                  <Button 
+                    variant="outline"
+                    onClick={() => {
+                      toggleViewMode();
+                    }}
+                  >
+                    {/* @ts-ignore - String literal comparison */}
+                    {viewMode === 'main' ? 'Cashier View' : 'Dashboard View'}
+                  </Button>
+                )}
+              </div>
+
+              {/* Products Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4 overflow-y-auto flex-grow">
+                {filteredProductsBasedOnQuery.map((product) => (
+                  <Card
+                    key={product._id}
+                    className="cursor-pointer hover:shadow-md transition-all"
+                    onClick={() => handleAddProduct(product)}
+                  >
+                    <CardContent className="p-3 flex flex-col items-center text-center">
+                      <div className="w-full aspect-square bg-gray-100 rounded-md mb-2 flex items-center justify-center">
+                        {product.image_url ? (
+                          <img
+                            src={product.image_url}
+                            alt={product.name}
+                            className="h-full w-full object-cover rounded-md"
+                          />
+                        ) : (
+                          <ShoppingCart className="h-8 w-8 text-gray-400" />
+                        )}
+                      </div>
+                      <h3 className="font-medium text-sm truncate w-full">{product.name}</h3>
+                      <p className="text-sm text-green-600 font-semibold">${product.price.toFixed(2)}</p>
+                      <p className="text-xs text-gray-500">{product.stock_quantity} in stock</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Side - Cart */}
+          <div className="md:col-span-1">
+            <Card className="h-full flex flex-col">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg flex justify-between items-center">
+                  <span>Cart</span>
+                  <Badge variant="outline" className="ml-2">
+                    {calculateTotalItems()} {calculateTotalItems() === 1 ? 'item' : 'items'}
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              
+              <div className="flex-grow overflow-auto">
+                {currentSale && currentSale.items.length > 0 ? (
+                  <div className="space-y-2 p-2">
+                    {currentSale.items.map((item, index) => (
+                      <Card key={`${item.productId}-${index}`} className="p-2">
+                        <div className="flex justify-between">
+                          <div className="flex-grow">
+                            <div className="font-medium">{item.product?.name || 'Product'}</div>
+                            <div className="text-sm text-gray-500">
+                              ${item.unitPrice.toFixed(2)} x {item.quantity}
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-end justify-between">
+                            <div className="font-medium">
+                              ${(item.unitPrice * item.quantity).toFixed(2)}
+                            </div>
+                            <div className="flex items-center space-x-1 mt-1">
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-6 w-6"
+                                onClick={() => handleUpdateQuantityInCart(item.productId, item.quantity - 1)}
+                              >
+                                <Minus className="h-3 w-3" />
+                              </Button>
+                              <span>{item.quantity}</span>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-6 w-6"
+                                onClick={() => handleUpdateQuantityInCart(item.productId, item.quantity + 1)}
+                              >
+                                <Plus className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-6 w-6 text-red-500"
+                                onClick={() => handleRemoveItem(item._id as string)}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full text-gray-500 p-4">
+                    <ShoppingCart className="h-10 w-10 mb-2" />
+                    <p className="text-sm text-center">Your cart is empty. Add products to begin.</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="p-4 border-t">
+                <div className="space-y-1 mb-4">
+                  <div className="flex justify-between">
+                    <span>Subtotal</span>
+                    <span>${currentSale?.subtotal.toFixed(2) || '0.00'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Tax</span>
+                    <span>${currentSale?.tax.toFixed(2) || '0.00'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Discount</span>
+                    <span>${currentSale?.discount.toFixed(2) || '0.00'}</span>
+                  </div>
+                  <div className="flex justify-between text-lg font-bold pt-2 border-t">
+                    <span>Total</span>
+                    <span>${currentSale?.total.toFixed(2) || '0.00'}</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  <Button variant="outline" onClick={handleDiscount}>
+                    <Percent className="mr-2 h-4 w-4" />
+                    Discount
+                  </Button>
+                  <Button variant="outline" onClick={() => startSaleMutation.mutate()}>
+                    <X className="mr-2 h-4 w-4" />
+                    Cancel
                   </Button>
                 </div>
-              </div>
 
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={salesData || []}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="sales" fill="#8884d8" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-
-            {/* Low Stock Alerts */}
-            <Card className="p-6 mt-6">
-              <h2 className="text-2xl font-semibold mb-4">Low Stock Alerts</h2>
-              <div className="space-y-4">
-                {(lowStockProducts || []).map((product) => (
-                  <div key={product.id} className="flex items-center justify-between p-4 bg-red-50 rounded-lg">
-                    <div>
-                      <h3 className="font-semibold">{product.name}</h3>
-                      <p className="text-sm text-gray-500">Current Stock: {product.stock_quantity}</p>
-                    </div>
-                    <Button variant="outline" size="sm">
-                      Reorder
-                    </Button>
-                  </div>
-                ))}
-                {(!lowStockProducts || lowStockProducts.length === 0) && (
-                  <p className="text-gray-500 text-center">No low stock items</p>
-                )}
-              </div>
-            </Card>
-          </div>
-
-          {/* Right Column - Quick Actions & Employee Status */}
-          <div>
-            <Card className="p-6">
-              <h2 className="text-2xl font-semibold mb-4">Quick Actions</h2>
-              <div className="space-y-2">
-                <Button className="w-full" variant="outline">
-                  <Plus className="h-4 w-4 mr-2" />
-                  New Sale
+                <Button 
+                  className="w-full" 
+                  size="lg"
+                  disabled={!currentSale || currentSale.items.length === 0}
+                  onClick={handlePayment}
+                >
+                  <DollarSign className="mr-2 h-4 w-4" />
+                  Pay ${currentSale?.total.toFixed(2) || '0.00'}
                 </Button>
-                <Button className="w-full" variant="outline">
-                  <Package className="h-4 w-4 mr-2" />
-                  Inventory Check
-                </Button>
-                <Button className="w-full" variant="outline">
-                  <Printer className="h-4 w-4 mr-2" />
-                  Print Reports
-                </Button>
-                <Button className="w-full" variant="outline">
-                  <Settings className="h-4 w-4 mr-2" />
-                  Settings
-                </Button>
-              </div>
-            </Card>
-
-            {/* Employee Status */}
-            <Card className="p-6 mt-6">
-              <h2 className="text-2xl font-semibold mb-4">Employee Status</h2>
-              <div className="space-y-4">
-                {(employeeAttendance || []).map((employee) => (
-                  <div key={employee.id} className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold">{employee.name}</h3>
-                      <p className="text-sm text-gray-500">
-                        {employee.status === 'active' ? 'Clocked in' : 'On break'}
-                      </p>
-                    </div>
-                    <Badge variant={employee.status === 'active' ? 'default' : 'secondary'}>
-                      {employee.status}
-                    </Badge>
-                  </div>
-                ))}
-                {(!employeeAttendance || employeeAttendance.length === 0) && (
-                  <p className="text-gray-500 text-center">No active employees</p>
+                
+                {isCashier && (
+                  <p className="text-xs text-muted-foreground mt-2 text-center">
+                    Contact your manager for any special discounts or price adjustments.
+                  </p>
                 )}
               </div>
             </Card>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Payment Dialog */}
+      <Dialog open={isPaymentOpen} onOpenChange={setIsPaymentOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Payment</DialogTitle>
+            <DialogDescription>
+              Complete the transaction using any payment method
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {/* Payment dialog content would go here */}
+            <div className="text-lg font-bold text-center">
+              Total: ${currentSale?.total.toFixed(2) || '0.00'}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Discount Dialog */}
+      <Dialog open={isDiscountOpen} onOpenChange={setIsDiscountOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Apply Discount</DialogTitle>
+            <DialogDescription>
+              Add a discount to the current sale
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {/* Discount dialog content would go here */}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Receipt Dialog */}
+      <Dialog open={isReceiptOpen} onOpenChange={setIsReceiptOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Receipt</DialogTitle>
+            <DialogDescription>
+              Transaction completed successfully
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {/* Receipt content would go here */}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Customer Search Dialog */}
+      <Dialog open={customerDialogOpen} onOpenChange={setCustomerDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Select Customer</DialogTitle>
+            <DialogDescription>
+              Search and select a customer for this sale
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {/* Customer search dialog content would go here */}
+          </div>
+        </DialogContent>
+      </Dialog>
     </POSLayout>
   );
 } 

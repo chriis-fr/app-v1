@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
@@ -34,24 +34,44 @@ export default function POSLayout({ children }: POSLayoutProps) {
   // Check if user is 'owner' to display the compact sidebar
   const { isOwner } = usePermissions();
   const hasCompactSidebar = isOwner;
+  
+  // Determine if user is a cashier based on role
+  const isCashier = user?.role === 'cashier';
 
-  // Example nav items for the main sidebar
-  const navItems = [
-    { icon: Home, label: 'Dashboard', path: '/pos/dashboard' },
-    { icon: ShoppingCart, label: 'POS', path: '/pos' },
-    { icon: Users, label: 'Customers', path: '/pos/customers' },
-    { icon: User, label: 'Staff', path: '/pos/users' },
-    { icon: Package, label: 'Products', path: '/pos/products' },
-    { icon: BarChart2, label: 'Reports', path: '/pos/reports' },
-    { icon: Receipt, label: 'Orders', path: '/pos/orders' },
-    { icon: Settings, label: 'Settings', path: '/pos/settings' },
+  // Navigation items - full list
+  const allNavItems = [
+    { icon: Home, label: 'Dashboard', path: '/pos/dashboard', adminOnly: true },
+    { icon: ShoppingCart, label: 'POS', path: '/pos', adminOnly: false },
+    { icon: Users, label: 'Customers', path: '/pos/customers', adminOnly: true },
+    { icon: User, label: 'Staff', path: '/pos/users', adminOnly: true },
+    { icon: Package, label: 'Products', path: '/pos/products', adminOnly: true },
+    { icon: BarChart2, label: 'Reports', path: '/pos/reports', adminOnly: true },
+    { icon: Receipt, label: 'Orders', path: '/pos/orders', adminOnly: true },
+    { icon: Settings, label: 'Settings', path: '/pos/settings', adminOnly: true },
   ];
+  
+  // Filter navigation items based on user role
+  const navItems = allNavItems.filter(item => !isCashier || !item.adminOnly);
 
   // Logout function
   const handleLogout = () => {
     logout();
     setLocation('/login');
   };
+  
+  // Redirect cashiers to POS page if they try to access restricted pages
+  useEffect(() => {
+    if (isCashier) {
+      const currentPath = location;
+      const isRestrictedPage = allNavItems.some(item => 
+        item.adminOnly && currentPath === item.path
+      );
+      
+      if (isRestrictedPage) {
+        setLocation('/pos');
+      }
+    }
+  }, [location, isCashier, setLocation]);
 
   return (
     <div className="flex h-screen bg-gray-100 relative">

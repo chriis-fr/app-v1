@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/hooks/use-auth';
 import { staticData } from '@/data/static';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DataTable } from '@/components/ui/data-table';
@@ -11,7 +12,8 @@ import {
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
-import { Plus, ShoppingCart } from 'lucide-react';
+import { Plus, ShoppingCart, ArrowRight } from 'lucide-react';
+import { useLocation } from 'wouter';
 
 // Define proper types for orders and inventory data
 type Order = {
@@ -41,9 +43,21 @@ type InventoryItem = {
 };
 
 export default function POSMain() {
+  const { user } = useAuth();
+  const [, setLocation] = useLocation();
   const [activeView, setActiveView] = useState<'orders' | 'inventory'>('orders');
   const orders = staticData.pos.orders as Order[];
   const inventory = staticData.pos.inventory as InventoryItem[];
+  
+  // Determine if user is a cashier based on role
+  const isCashier = user?.role === 'cashier';
+
+  // Redirect cashiers to POS interface
+  useEffect(() => {
+    if (isCashier) {
+      setLocation('/pos');
+    }
+  }, [isCashier, setLocation]);
 
   const orderColumns = [
     { accessorKey: 'id', header: 'Order ID' },
@@ -62,7 +76,27 @@ export default function POSMain() {
     },
   ];
 
-  return (
+  return isCashier ? (
+    <div className="flex flex-col items-center justify-center min-h-screen p-6">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle className="text-2xl text-center">Welcome, {user?.username || 'Cashier'}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-center text-muted-foreground">
+            You are logged in as a cashier. You can access the POS system to process sales transactions.
+          </p>
+          <Button 
+            className="w-full" 
+            size="lg" 
+            onClick={() => setLocation('/pos')}
+          >
+            Go to POS System <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  ) : (
     <DashboardLayout>
       <div className="flex justify-between items-center mb-6">
         <div>

@@ -221,15 +221,15 @@ export default function EditUserPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Basic Information */}
+        {/* Basic Information */}
           <Card>
             <div className="p-6 space-y-4">
               <h2 className="text-lg font-semibold flex items-center">
                 <User className="mr-2 h-5 w-5" />
                 Basic Information
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
                   <Label htmlFor="username">Username</Label>
                   <Input
                     id="username"
@@ -260,19 +260,19 @@ export default function EditUserPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="lastName">Last Name</Label>
-                  <Input
+              <Input
                     id="lastName"
                     value={user.lastName}
                     onChange={(e) => setUser({ ...user, lastName: e.target.value })}
                     required
-                  />
-                </div>
+              />
+            </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
                     value={user.email}
                     onChange={(e) => setUser({ ...user, email: e.target.value })}
                     required
@@ -299,9 +299,9 @@ export default function EditUserPage() {
                 Professional Information
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="role">Role</Label>
-                  <Select
+            <div className="space-y-2">
+              <Label htmlFor="role">Role</Label>
+              <Select
                     value={user.role}
                     onValueChange={(value) => setUser({ ...user, role: value })}
                   >
@@ -315,12 +315,12 @@ export default function EditUserPage() {
                         </SelectItem>
                       ))}
                     </SelectContent>
-                  </Select>
-                </div>
+              </Select>
+            </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="department">Department</Label>
-                  <Select
+            <div className="space-y-2">
+              <Label htmlFor="department">Department</Label>
+              <Select
                     value={user.department}
                     onValueChange={(value) => setUser({ ...user, department: value })}
                   >
@@ -334,28 +334,28 @@ export default function EditUserPage() {
                         </SelectItem>
                       ))}
                     </SelectContent>
-                  </Select>
-                </div>
+              </Select>
+            </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="position">Position</Label>
-                  <Input
-                    id="position"
+            <div className="space-y-2">
+              <Label htmlFor="position">Position</Label>
+              <Input
+                id="position"
                     value={user.position}
                     onChange={(e) => setUser({ ...user, position: e.target.value })}
-                  />
-                </div>
+              />
+            </div>
 
-                <div className="space-y-2">
+              <div className="space-y-2">
                   <Label htmlFor="team">Team</Label>
-                  <Input
+                <Input
                     id="team"
                     value={user.team || ''}
                     onChange={(e) => setUser({ ...user, team: e.target.value })}
-                  />
-                </div>
+                />
+              </div>
 
-                <div className="space-y-2">
+              <div className="space-y-2">
                   <Label htmlFor="hireDate">Hire Date</Label>
                   <Input
                     id="hireDate"
@@ -373,9 +373,9 @@ export default function EditUserPage() {
                     onChange={(e) => setUser({ ...user, managerId: e.target.value })}
                   />
                 </div>
-              </div>
             </div>
-          </Card>
+          </div>
+        </Card>
 
           {/* Location Information */}
           <Card>
@@ -384,45 +384,45 @@ export default function EditUserPage() {
                 <MapPin className="mr-2 h-5 w-5" />
                 Location Information
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
                   <Label htmlFor="office">Office</Label>
-                  <Input
+              <Input
                     id="office"
                     value={user.location?.office || ''}
                     onChange={(e) => setUser({ 
                       ...user, 
                       location: { ...user.location, office: e.target.value } 
-                    })}
-                  />
-                </div>
+                })}
+              />
+            </div>
 
-                <div className="space-y-2">
+            <div className="space-y-2">
                   <Label htmlFor="floor">Floor</Label>
-                  <Input
+              <Input
                     id="floor"
                     value={user.location?.floor || ''}
                     onChange={(e) => setUser({ 
                       ...user, 
                       location: { ...user.location, floor: e.target.value } 
-                    })}
-                  />
-                </div>
+                })}
+              />
+            </div>
 
-                <div className="space-y-2">
+            <div className="space-y-2">
                   <Label htmlFor="deskNumber">Desk Number</Label>
-                  <Input
+              <Input
                     id="deskNumber"
                     value={user.location?.deskNumber || ''}
                     onChange={(e) => setUser({ 
                       ...user, 
                       location: { ...user.location, deskNumber: e.target.value } 
-                    })}
-                  />
-                </div>
-              </div>
+                })}
+              />
             </div>
-          </Card>
+            </div>
+          </div>
+        </Card>
 
           {/* Work Schedule */}
           <Card>
@@ -431,44 +431,44 @@ export default function EditUserPage() {
                 <Clock className="mr-2 h-5 w-5" />
                 Work Schedule
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
                   <Label htmlFor="startTime">Start Time</Label>
-                  <Input
+              <Input
                     id="startTime"
                     type="time"
                     value={user.workSchedule?.startTime || ''}
                     onChange={(e) => setUser({ 
                       ...user, 
                       workSchedule: { ...user.workSchedule, startTime: e.target.value } 
-                    })}
-                  />
-                </div>
+                })}
+              />
+            </div>
 
-                <div className="space-y-2">
+            <div className="space-y-2">
                   <Label htmlFor="endTime">End Time</Label>
-                  <Input
+              <Input
                     id="endTime"
                     type="time"
                     value={user.workSchedule?.endTime || ''}
                     onChange={(e) => setUser({ 
                       ...user, 
                       workSchedule: { ...user.workSchedule, endTime: e.target.value } 
-                    })}
-                  />
-                </div>
+                })}
+              />
+            </div>
 
-                <div className="space-y-2">
+            <div className="space-y-2">
                   <Label htmlFor="timezone">Timezone</Label>
-                  <Input
+              <Input
                     id="timezone"
                     value={user.workSchedule?.timezone || ''}
                     onChange={(e) => setUser({ 
                       ...user, 
                       workSchedule: { ...user.workSchedule, timezone: e.target.value } 
-                    })}
-                  />
-                </div>
+                })}
+              />
+            </div>
               </div>
             </div>
           </Card>
@@ -481,19 +481,19 @@ export default function EditUserPage() {
                 Emergency Contact
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
+            <div className="space-y-2">
                   <Label htmlFor="emergencyName">Contact Name</Label>
-                  <Input
+              <Input
                     id="emergencyName"
                     value={user.emergencyContact?.name || ''}
                     onChange={(e) => setUser({ 
                       ...user, 
                       emergencyContact: { ...user.emergencyContact, name: e.target.value } 
-                    })}
-                  />
-                </div>
+                })}
+              />
+            </div>
 
-                <div className="space-y-2">
+            <div className="space-y-2">
                   <Label htmlFor="emergencyRelationship">Relationship</Label>
                   <Input
                     id="emergencyRelationship"
@@ -559,10 +559,10 @@ export default function EditUserPage() {
                       </div>
                     ))}
                   </div>
-                </div>
               </div>
             </div>
-          </Card>
+          </div>
+        </Card>
 
           {/* Module Access */}
           <Card>
@@ -631,11 +631,11 @@ export default function EditUserPage() {
               ) : (
                 <>
                   <Save className="mr-2 h-4 w-4" />
-                  Save Changes
+            Save Changes
                 </>
               )}
-            </Button>
-          </div>
+          </Button>
+        </div>
         </form>
       </div>
     </ModuleLayout>
