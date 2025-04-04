@@ -29,6 +29,9 @@ axiosInstance.interceptors.response.use(
   }
 );
 
+// Fetcher function for SWR
+export const fetcher = (url: string) => axiosInstance.get(url).then((res) => res.data);
+
 export const api = {
   get: (endpoint: string) => axiosInstance.get(endpoint).then((res) => res.data),
   post: (endpoint: string, data: any) => axiosInstance.post(endpoint, data).then((res) => res.data),

@@ -3,13 +3,14 @@ import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { 
   Home, Store, Users, Calculator, Users2, Wallet,
-  Settings, LogOut
+  Settings, LogOut, Package
 } from 'lucide-react';
 
 const menuItems = [
   { icon: Home, label: 'Dashboard', path: '/dashboard' },
   { icon: Store, label: 'POS', path: '/dashboard/pos' },
   { icon: Users, label: 'HR', path: '/dashboard/hr' },
+  { icon: Package, label: 'Inventory', path: '/dashboard/inventory' },
   { icon: Calculator, label: 'Accounting', path: '/dashboard/accounting' },
   { icon: Users2, label: 'CRM', path: '/dashboard/crm' },
   { icon: Wallet, label: 'Blockchain', path: '/dashboard/blockchain' },

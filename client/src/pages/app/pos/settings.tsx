@@ -208,8 +208,8 @@ export default function POSSettings() {
             <Button variant="outline" onClick={() => setLocation('/pos')}>
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to POS
-            </Button>
-            <div>
+          </Button>
+          <div>
               <h1 className="text-2xl font-semibold">POS Settings</h1>
               <p className="text-sm text-gray-500">Configure your POS system for {settings.organization_name}</p>
             </div>
@@ -245,7 +245,7 @@ export default function POSSettings() {
           </TabsList>
 
           <TabsContent value="general">
-            <Card className="p-6">
+          <Card className="p-6">
               <div className="space-y-6">
                 <div>
                   <Label>Organization Name</Label>
@@ -270,7 +270,7 @@ export default function POSSettings() {
                   </div>
                 </div>
                 
-                <div>
+              <div>
                   <Label>Default Currency</Label>
                   <p className="text-sm text-gray-500 mb-2">The main currency used for transactions</p>
                   <Select
@@ -279,8 +279,8 @@ export default function POSSettings() {
                   >
                     <SelectTrigger className="w-40">
                       <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
+                  </SelectTrigger>
+                  <SelectContent>
                       <SelectItem value="USD">USD ($)</SelectItem>
                       <SelectItem value="EUR">EUR (€)</SelectItem>
                       <SelectItem value="GBP">GBP (£)</SelectItem>
@@ -288,8 +288,8 @@ export default function POSSettings() {
                       <SelectItem value="KES">KES (Ksh)</SelectItem>
                       <SelectItem value="NGN">NGN (₦)</SelectItem>
                       <SelectItem value="ZAR">ZAR (R)</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  </SelectContent>
+                </Select>
                 </div>
                 
                 <div>
@@ -388,9 +388,9 @@ export default function POSSettings() {
                     checked={settings.enable_sms_notifications}
                     onCheckedChange={(checked) => handleSettingChange('enable_sms_notifications', checked)}
                   />
-                </div>
               </div>
-            </Card>
+            </div>
+          </Card>
           </TabsContent>
 
           <TabsContent value="payments">
@@ -453,7 +453,7 @@ export default function POSSettings() {
           </TabsContent>
 
           <TabsContent value="features">
-            <Card className="p-6">
+          <Card className="p-6">
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -564,8 +564,8 @@ export default function POSSettings() {
                     onCheckedChange={(checked) => handleSettingChange('enable_returns', checked)}
                   />
                 </div>
-              </div>
-            </Card>
+            </div>
+          </Card>
           </TabsContent>
           
           <TabsContent value="access">
@@ -627,8 +627,8 @@ export default function POSSettings() {
                     Note: These role permissions are managed by system administrators and cannot be changed here.
                     Only admins and owners can access and modify settings for your organization.
                   </p>
-                </div>
-              </div>
+          </div>
+        </div>
             </Card>
           </TabsContent>
         </Tabs>

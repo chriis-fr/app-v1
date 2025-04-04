@@ -41,6 +41,7 @@ import {
 } from 'lucide-react';
 import POSInfoPage from './modules/pos-info';
 import HRInfoPage from './modules/hr-info';
+import InventoryInfoPage from './modules/inventory-info';
 import { useState } from 'react';
 
 // Dummy data for analytics
@@ -133,9 +134,7 @@ const analyticsData = {
 const moduleInfoPages: Record<string, React.ComponentType> = {
   pos: POSInfoPage,
   hr: HRInfoPage,
-  // Add other module info pages here as they are created
-  // inventory: InventoryInfoPage,
-  // etc.
+  inventory: InventoryInfoPage
 };
 
 export default function ModuleInfoPage() {

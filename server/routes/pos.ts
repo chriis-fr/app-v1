@@ -673,9 +673,9 @@ router.get('/transactions',
         organizationId: req.user.organizationId 
       })
         .sort({ created_at: -1 })
-        .limit(100);
-        
-      res.json(transactions);
+    .limit(100);
+    
+  res.json(transactions);
     } catch (error) {
       res.status(500).json({ message: 'Error fetching transactions' });
     }
@@ -696,8 +696,8 @@ router.post('/transaction',
       };
       
       const transaction = await Transaction.create(transactionData);
-      
-      res.json(transaction);
+  
+  res.json(transaction);
     } catch (error) {
       res.status(500).json({ message: 'Error creating transaction' });
     }

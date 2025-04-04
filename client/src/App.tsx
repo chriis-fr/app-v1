@@ -27,6 +27,15 @@ import NewUserPage from '@/pages/users/new';
 import BusinessPartnersPage from '@/pages/business-partners';
 import BusinessPartnerEditPage from '@/pages/business-partners/[id]';
 import NewBusinessPartnerPage from '@/pages/business-partners/new';
+import InventoryPage from '@/pages/app/inventory';
+import InventorySettings from '@/pages/app/inventory/settings';
+import InventoryReports from '@/pages/app/inventory/reports';
+import InventoryWarehouses from '@/pages/app/inventory/warehouses';
+import InventoryMovements from '@/pages/app/inventory/movements';
+import InventoryAudits from '@/pages/app/inventory/audits';
+import InventorySupplyChain from '@/pages/app/inventory/supply-chain';
+import InventoryBarcode from '@/pages/app/inventory/barcode';
+import InventoryAlerts from '@/pages/app/inventory/alerts';
 
 function App() {
   return (
@@ -52,6 +61,17 @@ function App() {
             <ProtectedRoute path="/pos/orders" component={POSOrders} />
             <ProtectedRoute path="/pos/settings" component={POSSettings} />
             
+            {/* Inventory Routes */}
+            <ProtectedRoute path="/inventory" component={InventoryPage} />
+            <ProtectedRoute path="/inventory/settings" component={InventorySettings} />
+            <ProtectedRoute path="/inventory/reports" component={InventoryReports} />
+            <ProtectedRoute path="/inventory/warehouses" component={InventoryWarehouses} />
+            <ProtectedRoute path="/inventory/movements" component={InventoryMovements} />
+            <ProtectedRoute path="/inventory/audits" component={InventoryAudits} />
+            <ProtectedRoute path="/inventory/supply-chain" component={InventorySupplyChain} />
+            <ProtectedRoute path="/inventory/barcode" component={InventoryBarcode} />
+            <ProtectedRoute path="/inventory/alerts" component={InventoryAlerts} />
+            
             {/* User Management Routes */}
             <ProtectedRoute path="/users" component={UsersPage} />
             <ProtectedRoute path="/users/new" component={NewUserPage} />
@@ -64,8 +84,8 @@ function App() {
             
             {/* Module Info Routes */}
             <ProtectedRoute path="/dashboard/pos/info" component={ModuleInfoPage} />
-            <ProtectedRoute path="/dashboard/hr/info" component={ModuleInfoPage} />
             <ProtectedRoute path="/dashboard/inventory/info" component={ModuleInfoPage} />
+            <ProtectedRoute path="/dashboard/hr/info" component={ModuleInfoPage} />
             <ProtectedRoute path="/dashboard/finance/info" component={ModuleInfoPage} />
             <ProtectedRoute path="/dashboard/blockchain/info" component={ModuleInfoPage} />
             <ProtectedRoute path="/dashboard/accounting/info" component={ModuleInfoPage} />
