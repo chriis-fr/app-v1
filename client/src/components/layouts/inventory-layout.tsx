@@ -1,5 +1,5 @@
 import { useLocation } from "wouter";
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
@@ -13,12 +13,33 @@ import {
   Settings,
   QrCode,
   AlertTriangle,
-  LogOut
+  LogOut,
+  User
 } from "lucide-react";
 import { useAuth } from "../../hooks/use-auth";
 import axios from "axios";
-import CompactSidebar from '@/components/layout/CompactSidebar';
 import { usePermissions } from '@/utils/permissions';
+import { Skeleton } from "@/components/ui/skeleton";
+import UserProfileDropdown from '@/components/layout/UserProfileDropdown';
+
+// Lazy load the CompactSidebar component
+const CompactSidebar = lazy(() => import('@/components/layout/CompactSidebar'));
+
+// Loading skeleton for the sidebar
+const SidebarSkeleton = () => (
+  <div className="py-6 pr-6 lg:py-8">
+    <div className="mb-6 pb-4 border-b">
+      <Skeleton className="h-6 w-3/4 mb-2" />
+      <Skeleton className="h-4 w-1/2 mb-1" />
+      <Skeleton className="h-4 w-2/3" />
+    </div>
+    <div className="space-y-2">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <Skeleton key={i} className="h-10 w-full" />
+      ))}
+    </div>
+  </div>
+);
 
 interface InventoryLayoutProps {
   children: React.ReactNode;
@@ -129,7 +150,11 @@ export default function InventoryLayout({ children }: InventoryLayoutProps) {
 
   return (
     <div className="flex min-h-screen flex-col">
-      {hasCompactSidebar && <CompactSidebar />}
+      {hasCompactSidebar && (
+        <Suspense fallback={<div className="w-[5rem] h-screen bg-background border-r" />}>
+          <CompactSidebar />
+        </Suspense>
+      )}
       <div className={cn(
         "flex flex-1 items-start md:grid md:grid-cols-[220px_minmax(0,1fr)] md:gap-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-10",
         hasCompactSidebar && "lg:ml-[6rem]"
@@ -137,12 +162,15 @@ export default function InventoryLayout({ children }: InventoryLayoutProps) {
         <aside className="fixed top-14 z-30 -ml-2 hidden h-[calc(100vh-3.5rem)] w-full shrink-0 overflow-y-auto border-r md:sticky md:block">
           <div className="py-6 pr-6 lg:py-8">
             {/* Sidebar header (organization + user info) */}
-            <div className="mb-6 pb-4 border-b">
-              <h1 className="text-xl font-semibold">
-                {user?.organization?.name}
-                <br />
-                <span className="text-sm text-gray-500">Inventory</span>
-              </h1>
+            <div className="p-4 border-b">
+              <div className="flex items-center justify-between mb-2">
+                <h1 className="text-xl font-semibold">
+                  {user?.organization?.name}
+                  <br />
+                  <span className="text-sm text-gray-500">Inventory</span>
+                </h1>
+                <UserProfileDropdown />
+              </div>
               <p className="text-sm text-gray-500">{user?.email}</p>
             </div>
             
@@ -176,8 +204,10 @@ export default function InventoryLayout({ children }: InventoryLayoutProps) {
             </nav>
           </div>
         </aside>
-        <main className="flex flex-col flex-1 w-full overflow-hidden mt-4 md:mt-8">
-          {children}
+        <main className="flex flex-col pr-4 flex-1 w-full overflow-hidden mt-4 md:mt-8">
+          <Suspense fallback={<div className="h-full w-full flex items-center justify-center"><Skeleton className="h-8 w-8 rounded-full animate-spin" /></div>}>
+            {children}
+          </Suspense>
         </main>
       </div>
     </div>

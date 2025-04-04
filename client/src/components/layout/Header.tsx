@@ -5,6 +5,7 @@ import { chainslogo } from '@/assets';
 import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
+import UserProfileDropdown from './UserProfileDropdown';
 
 export default function Header() {
   const { user, isLoading } = useAuth();
@@ -76,23 +77,8 @@ export default function Header() {
             <div className="w-8 h-8 bg-gray-200 rounded-full animate-pulse"></div>
           ) : user ? (
             <>
-              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
-                {user.avatarUrl ? (
-                  <img
-                    src={user.avatarUrl}
-                    alt={user.username}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <span className="text-sm font-semibold text-primary">
-                    {getUserInitials(user.firstName, user.lastName)}
-                  </span>
-                )}
-              </div>
-              <div className="ml-2 hidden sm:block">
-                <div className="text-sm font-medium">{user.username}</div>
-                <div className="text-xs text-gray-500">{user.role}</div>
-              </div>
+            {/* <p className="text-sm text-gray-500">profile</p> */}
+            <UserProfileDropdown />
             </>
           ) : (
             <div className="text-sm text-gray-500">Sign in</div>

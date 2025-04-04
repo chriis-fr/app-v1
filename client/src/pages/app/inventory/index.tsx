@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +44,55 @@ import { fetcher } from "../../../lib/api";
 import InventoryLayout from "@/components/layouts/inventory-layout";
 import StockList from "@/components/inventory/StockList";
 import WarehouseList from "@/components/inventory/WarehouseList";
+import { Skeleton } from "@/components/ui/skeleton";
+
+// Loading skeleton for dashboard
+const DashboardSkeleton = () => (
+  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    {[1, 2, 3, 4].map((i) => (
+      <Card key={i}>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">
+            <Skeleton className="h-4 w-[100px]" />
+          </CardTitle>
+          <Skeleton className="h-8 w-8 rounded-full" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">
+            <Skeleton className="h-8 w-[60px]" />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            <Skeleton className="h-3 w-[120px] mt-2" />
+          </p>
+        </CardContent>
+      </Card>
+    ))}
+  </div>
+);
+
+// Loading skeleton for tables
+const TableSkeleton = () => (
+  <div className="space-y-4">
+    <div className="flex items-center justify-between">
+      <Skeleton className="h-8 w-[200px]" />
+      <Skeleton className="h-8 w-[100px]" />
+    </div>
+    <div className="border rounded-md">
+      <div className="h-10 border-b flex items-center px-4">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <Skeleton key={i} className="h-4 w-[100px] mx-2" />
+        ))}
+      </div>
+      {[1, 2, 3, 4, 5].map((i) => (
+        <div key={i} className="h-16 border-b flex items-center px-4">
+          {[1, 2, 3, 4, 5].map((j) => (
+            <Skeleton key={j} className="h-4 w-[100px] mx-2" />
+          ))}
+        </div>
+      ))}
+    </div>
+  </div>
+);
 
 export default function InventoryPage() {
   const [location, setLocation] = useLocation();
@@ -56,6 +105,8 @@ export default function InventoryPage() {
   const [warehouseFilter, setWarehouseFilter] = useState<string>("all");
   const [stockFilter, setStockFilter] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"dashboard" | "cashier">("dashboard");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   
   // Check if user is a cashier
   const isCashier = user?.role === 'cashier';
@@ -63,28 +114,44 @@ export default function InventoryPage() {
   // Check if user can access admin features (admin, owner, manager)
   const canAccessAdminFeatures = ['admin', 'owner', 'manager'].includes(user?.role || '');
   
-  // Fetch warehouses
-  const { data: warehouses, error: warehousesError } = useSWR(
+  // Fetch warehouses with SWR
+  const { data: warehouses, error: warehousesError, isLoading: warehousesLoading } = useSWR(
     '/api/inventory/warehouses',
-    fetcher
+    fetcher,
+    { 
+      revalidateOnFocus: false,
+      dedupingInterval: 60000 // Cache for 1 minute
+    }
   );
   
-  // Fetch stock with filters
-  const { data: stockItems, error: stockError } = useSWR(
+  // Fetch stock with filters and pagination
+  const { data: stockData, error: stockError, isLoading: stockLoading } = useSWR(
     `/api/inventory/stock?${
       warehouseFilter !== "all" ? `warehouseId=${warehouseFilter}&` : ""
     }${
       stockFilter === "low" ? "lowStock=true&" : ""
     }${
       searchTerm ? `search=${encodeURIComponent(searchTerm)}&` : ""
-    }`,
-    fetcher
+    }page=${page}&limit=${pageSize}`,
+    fetcher,
+    { 
+      revalidateOnFocus: false,
+      dedupingInterval: 60000 // Cache for 1 minute
+    }
   );
   
+  // Extract stock items and pagination info
+  const stockItems = stockData?.items || [];
+  const totalStockItems = stockData?.total || 0;
+  
   // Fetch reorder requests
-  const { data: reorderRequests, error: reorderError } = useSWR(
+  const { data: reorderRequests, error: reorderError, isLoading: reorderLoading } = useSWR(
     '/api/inventory/reorders',
-    fetcher
+    fetcher,
+    { 
+      revalidateOnFocus: false,
+      dedupingInterval: 60000 // Cache for 1 minute
+    }
   );
   
   // If user is cashier and tries to access admin view, force cashier view
@@ -98,41 +165,67 @@ export default function InventoryPage() {
   useEffect(() => {
     if (warehousesError) {
       toast({
-        title: "Error",
-        description: "Failed to load warehouses",
+        title: "Error loading warehouses",
+        description: "There was a problem loading the warehouses data",
         variant: "destructive",
       });
     }
+    
     if (stockError) {
       toast({
-        title: "Error",
-        description: "Failed to load stock items",
+        title: "Error loading stock",
+        description: "There was a problem loading the stock data",
         variant: "destructive",
       });
     }
+    
     if (reorderError) {
       toast({
-        title: "Error",
-        description: "Failed to load reorder requests",
+        title: "Error loading reorder requests",
+        description: "There was a problem loading the reorder requests",
         variant: "destructive",
       });
     }
   }, [warehousesError, stockError, reorderError, toast]);
 
+  // Handle refresh
+  const handleRefresh = () => {
+    mutate('/api/inventory/warehouses');
+    mutate(`/api/inventory/stock?${
+      warehouseFilter !== "all" ? `warehouseId=${warehouseFilter}&` : ""
+    }${
+      stockFilter === "low" ? "lowStock=true&" : ""
+    }${
+      searchTerm ? `search=${encodeURIComponent(searchTerm)}&` : ""
+    }page=${page}&limit=${pageSize}`);
+    mutate('/api/inventory/reorders');
+  };
+
+  // Calculate dashboard metrics
+  const totalWarehouses = Array.isArray(warehouses) ? warehouses.length : 0;
+  const lowStockCount = Array.isArray(stockItems) ? stockItems.filter(
+    (item: any) => item.quantity <= item.minimumStockLevel
+  ).length : 0;
+  const pendingReordersCount = Array.isArray(reorderRequests) ? reorderRequests.filter(
+    (request: any) => request.status === 'pending'
+  ).length : 0;
+  const totalStockItemsCount = totalStockItems;
+
+  // Handle pagination
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+  };
+
+  // Handle page size change
+  const handlePageSizeChange = (newSize: number) => {
+    setPageSize(newSize);
+    setPage(1); // Reset to first page when changing page size
+  };
+
   // Handle navigation
   const handleNavigate = (path: string) => {
     setLocation(path);
   };
-
-  // Count low stock items
-  const lowStockCount = Array.isArray(stockItems) ? stockItems.filter(
-    (item: any) => item.quantity <= item.reorderPoint
-  ).length : 0;
-  
-  // Count pending reorder requests
-  const pendingReordersCount = Array.isArray(reorderRequests) ? reorderRequests.filter(
-    (req: any) => req.status === "pending"
-  ).length : 0;
 
   return (
     <InventoryLayout>
@@ -156,7 +249,7 @@ export default function InventoryPage() {
                 <Package2 className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stockItems?.length || 0}</div>
+                <div className="text-2xl font-bold">{totalStockItemsCount}</div>
               </CardContent>
             </Card>
             
@@ -166,7 +259,7 @@ export default function InventoryPage() {
                 <Warehouse className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{warehouses?.length || 0}</div>
+                <div className="text-2xl font-bold">{totalWarehouses}</div>
               </CardContent>
             </Card>
             
