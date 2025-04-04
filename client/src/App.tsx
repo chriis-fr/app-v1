@@ -36,6 +36,7 @@ import InventoryAudits from '@/pages/app/inventory/audits';
 import InventorySupplyChain from '@/pages/app/inventory/supply-chain';
 import InventoryBarcode from '@/pages/app/inventory/barcode';
 import InventoryAlerts from '@/pages/app/inventory/alerts';
+import CRMPage from '@/pages/app/crm';
 
 function App() {
   return (
@@ -71,6 +72,9 @@ function App() {
             <ProtectedRoute path="/inventory/supply-chain" component={InventorySupplyChain} />
             <ProtectedRoute path="/inventory/barcode" component={InventoryBarcode} />
             <ProtectedRoute path="/inventory/alerts" component={InventoryAlerts} />
+            
+            {/* CRM Routes */}
+            <ProtectedRoute path="/crm" component={CRMPage} />
             
             {/* User Management Routes */}
             <ProtectedRoute path="/users" component={UsersPage} />

@@ -42,6 +42,7 @@ import {
 import POSInfoPage from './modules/pos-info';
 import HRInfoPage from './modules/hr-info';
 import InventoryInfoPage from './modules/inventory-info';
+import CRMInfoPage from './modules/crm-info';
 import { useState } from 'react';
 
 // Dummy data for analytics
@@ -127,6 +128,31 @@ const analyticsData = {
       averageCost: 100,
       holdingCost: 12500
     }
+  },
+  crm: {
+    contactStats: {
+      totalContacts: 1250,
+      activeLeads: 450,
+      customers: 380,
+      prospects: 420
+    },
+    leadSources: [
+      { source: 'Email', count: 350 },
+      { source: 'Website', count: 250 },
+      { source: 'Referral', count: 180 },
+      { source: 'Social', count: 120 },
+      { source: 'Other', count: 80 }
+    ],
+    conversionRates: {
+      leadToCustomer: 32,
+      prospectToLead: 45,
+      leadToProposal: 28
+    },
+    responseMetrics: {
+      averageResponseTime: 2.5,
+      firstContactResolution: 78,
+      customerSatisfaction: 92
+    }
   }
 };
 
@@ -134,7 +160,8 @@ const analyticsData = {
 const moduleInfoPages: Record<string, React.ComponentType> = {
   pos: POSInfoPage,
   hr: HRInfoPage,
-  inventory: InventoryInfoPage
+  inventory: InventoryInfoPage,
+  crm: CRMInfoPage
 };
 
 export default function ModuleInfoPage() {
