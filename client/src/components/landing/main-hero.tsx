@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { ArrowRight, Shield, Zap, Globe } from 'lucide-react'
+import { ArrowRight, Shield, Zap, Globe, BarChart2, Users, Settings } from 'lucide-react'
 import { Link } from 'wouter'
 import chainsnobg from '@/assets/chainsnobg.png'
 
@@ -12,14 +12,19 @@ const heroFeatures = [
     description: 'Blockchain-powered security reducing the $4.7T annual fraud losses'
   },
   {
-    icon: Zap,
-    title: 'Future-Ready',
-    description: 'Part of the projected $100B ERP market by 2030'
+    icon: BarChart2,
+    title: 'Real-time Analytics',
+    description: 'AI-powered insights and comprehensive business analytics'
   },
   {
-    icon: Globe,
-    title: 'Global Impact',
-    description: 'Join industry leaders like Walmart and Maersk in blockchain adoption'
+    icon: Users,
+    title: 'Multi-tenant Architecture',
+    description: 'Perfect for businesses of all sizes and NGOs'
+  },
+  {
+    icon: Settings,
+    title: 'Modular Design',
+    description: 'Customize your ERP with only the modules you need'
   }
 ]
 
@@ -35,7 +40,7 @@ export function MainHero() {
       {/* Background Pattern */}
       <div className="absolute inset-0 bg-grid-white/[0.05] bg-[size:60px_60px]" />
       
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-32">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -45,13 +50,13 @@ export function MainHero() {
           <h1 className="text-4xl md:text-6xl font-bold text-white mb-6">
             Transform Your Business with{' '}
             <span className="bg-gradient-to-r from-blue-400 to-blue-200 bg-clip-text text-transparent">
-              Blockchain-Powered ERP
+              Next-Gen ERP
             </span>
           </h1>
           
           <p className="text-xl text-blue-100 mb-8 max-w-3xl mx-auto">
-            Join the $100 billion ERP revolution. Our modular system combines transparency, 
-            security, and flexibility to eliminate the $4.7 trillion global fraud problem.
+            Streamline operations, boost productivity, and drive growth with our comprehensive ERP solution. 
+            From POS, HR, CRM, accounting, blockchain, asset growth, and so much more! - everything you need in ONE platform.
           </p>
 
           <div className="flex flex-col sm:flex-row justify-center gap-4 mb-12">
@@ -68,7 +73,7 @@ export function MainHero() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-3xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
             {heroFeatures.map((feature) => (
               <div 
                 key={feature.title}
@@ -88,10 +93,10 @@ export function MainHero() {
           {/* Add statistics section */}
           <div className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
             {[
-              { label: 'Market Size by 2030', value: '$100B+' },
+              { label: 'Businesses Served', value: '10,000+' },
               { label: 'Fraud Prevention', value: '$4.7T' },
-              { label: 'Enterprise Adoption', value: '70%' },
-              { label: 'Cost Reduction', value: '60%' }
+              { label: 'Cost Reduction', value: '60%' },
+              { label: 'Customer Satisfaction', value: '98%' }
             ].map((stat) => (
               <div key={stat.label} className="bg-white/5 p-4 rounded-lg">
                 <div className="text-3xl font-bold text-blue-400 mb-2">

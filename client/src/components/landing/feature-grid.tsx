@@ -7,40 +7,56 @@ import {
   LineChart, 
   Wallet, 
   Users, 
-  Globe 
+  Globe,
+  ShoppingCart,
+  Package,
+  Building2,
+  Settings,
+  BarChart2,
+  FileText
 } from 'lucide-react'
 import chainsnobg from '@/assets/chainsnobg.png'
 
 const features = [
   {
-    icon: Shield,
-    title: 'Fraud Prevention',
-    description: 'Reduce fraud risks with blockchain-powered transparency and real-time auditing'
-  },
-  {
-    icon: Zap,
-    title: 'Modular Architecture',
-    description: 'Select and implement specific modules as your business grows - from POS to HR'
-  },
-  {
-    icon: LineChart,
-    title: 'Cost Savings',
-    description: 'Subscription-based pricing and reduced operational errors save millions annually'
-  },
-  {
-    icon: Wallet,
-    title: 'Smart Payments',
-    description: 'Support for both traditional and cryptocurrency transactions across B2B, B2C, and C2B'
+    icon: ShoppingCart,
+    title: 'Point of Sale',
+    description: 'Modern POS system with real-time inventory tracking, multiple payment methods, and customer management'
   },
   {
     icon: Users,
-    title: 'Employee Empowerment',
-    description: 'Flexible payment options and smart wallets for international teams'
+    title: 'HR Management',
+    description: 'Comprehensive HR solution with employee records, attendance tracking, and payroll integration'
   },
   {
-    icon: Globe,
-    title: 'Global Operations',
-    description: 'Simplified international payments and multi-currency support for global expansion'
+    icon: Package,
+    title: 'Inventory Control',
+    description: 'Advanced inventory management with stock tracking, warehouse management, and reorder alerts'
+  },
+  {
+    icon: FileText,
+    title: 'Accounting',
+    description: 'Complete financial management with general ledger, accounts payable/receivable, and tax compliance'
+  },
+  {
+    icon: Building2,
+    title: 'Multi-tenant',
+    description: 'Support for multiple businesses and NGOs with separate data isolation and management'
+  },
+  {
+    icon: Settings,
+    title: 'Customizable',
+    description: 'Modular architecture allowing you to choose and implement only the features you need'
+  },
+  {
+    icon: BarChart2,
+    title: 'Analytics',
+    description: 'AI-powered business insights and comprehensive reporting tools for data-driven decisions'
+  },
+  {
+    icon: Shield,
+    title: 'Security',
+    description: 'Enterprise-grade security with role-based access control and blockchain integration'
   }
 ]
 
@@ -51,14 +67,14 @@ export function FeatureGrid() {
         <img src={chainsnobg} alt="chains" className='w-[150px] h-[150px] bg-white rounded-2xl' />
         <div className="text-center mb-16">
           <h2 className="text-3xl font-bold text-gray-900 mb-4">
-            Why Choose Chains ERP?
+            Comprehensive Business Solutions
           </h2>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            A complete solution for businesses of all sizes, combining traditional ERP features with cutting-edge technology
+            A complete suite of tools to manage every aspect of your business operations
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
           {features.map((feature, index) => {
             const Icon = feature.icon
             return (

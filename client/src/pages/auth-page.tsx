@@ -9,39 +9,40 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { insertUserSchema, registerOrganizationSchema, availableModules, organizationTypes } from '@shared/schema';
-import { ShieldCheck, Building2, Users, Box } from 'lucide-react';
+import { insertUserSchema, registerOrganizationSchema, availableModules, organizationTypes, accountingTypes } from '@shared/schema';
+import { 
+  ShieldCheck, 
+  Building2, 
+  Users, 
+  Box, 
+  ArrowRight, 
+  ArrowLeft,
+  LogOut,
+  LayoutGrid,
+  BarChart,
+  Wallet,
+  Database,
+  Network,
+  Workflow,
+  CheckCircle,
+  Clock,
+  AlertCircle,
+  Info
+} from 'lucide-react';
 import type { RegisterOrganization } from '@shared/schema';
+import { useState } from 'react';
 
 interface LoginData {
   username: string;
   password: string;
 }
 
-// export interface RegisterOrganizationData {
-//   id?: string;
-//   username: string;
-//   password: string;
-//   firstName: string;
-//   lastName: string;
-//   email: string;
-//   phoneNumber: string;
-//   type: 'business' | 'ngo';       // belongs to the organization
-//   name: string;                   // organization name
-//   industry: string;               // organization field
-//   selectedModules: string[];      // chosen modules
-//   address?: string;
-//   country?: string;
-//   website?: string;
-//   role: "owner" | "admin" | "manager" | "employee";
-//   isOwner: boolean;
-//   createdAt: Date;
-//   updatedAt: Date;
-// }
+type RegistrationStep = 'organization' | 'accounting' | 'modules' | 'review';
 
 export default function AuthPage() {
-  const { user, loginMutation, registerMutation } = useAuth();
+  const { user, loginMutation, registerMutation, logout } = useAuth();
   const [, setLocation] = useLocation();
+  const [currentStep, setCurrentStep] = useState<RegistrationStep>('organization');
 
   // Redirect if already logged in
   if (user) {
@@ -58,9 +59,232 @@ export default function AuthPage() {
     defaultValues: {
       selectedModules: [],
       type: 'business',
-      // ...
+      accountingSettings: {
+        fiscalYearStart: new Date().toISOString().split('T')[0],
+        fiscalPeriod: 'monthly',
+        defaultCurrency: 'USD',
+        taxTypes: ['VAT'],
+        chartOfAccounts: []
+      }
     }
   });
+
+  const handleNext = () => {
+    switch (currentStep) {
+      case 'organization':
+        setCurrentStep('accounting');
+        break;
+      case 'accounting':
+        setCurrentStep('modules');
+        break;
+      case 'modules':
+        setCurrentStep('review');
+        break;
+      default:
+        break;
+    }
+  };
+
+  const handleBack = () => {
+    switch (currentStep) {
+      case 'accounting':
+        setCurrentStep('organization');
+        break;
+      case 'modules':
+        setCurrentStep('accounting');
+        break;
+      case 'review':
+        setCurrentStep('modules');
+        break;
+      default:
+        break;
+    }
+  };
+
+  const renderRegistrationStep = () => {
+    switch (currentStep) {
+      case 'organization':
+        return (
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium">Organization Details</h3>
+            <div className="space-y-2">
+              <Label>Organization Name</Label>
+              <Input placeholder="Organization Name" {...registerForm.register('name')} />
+              <Select onValueChange={value => registerForm.setValue('type', value as RegisterOrganization['type'])}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Organization Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {organizationTypes.map(type => (
+                    <SelectItem key={type} value={type}>{type.toUpperCase()}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input placeholder="Industry" {...registerForm.register('industry')} />
+              <Input placeholder="Address" {...registerForm.register('address')} />
+              <Input placeholder="Country" {...registerForm.register('country')} />
+              <Input placeholder="Website" {...registerForm.register('website')} />
+            </div>
+            <Button onClick={handleNext} className="w-full">
+              Next <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
+        );
+
+      case 'accounting':
+        return (
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium">Accounting Settings</h3>
+            <div className="space-y-2">
+              <Label>Fiscal Year Start</Label>
+              <Input 
+                type="date" 
+                {...registerForm.register('accountingSettings.fiscalYearStart')} 
+              />
+              <Label>Fiscal Period</Label>
+              <Select onValueChange={value => registerForm.setValue('accountingSettings.fiscalPeriod', value as any)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Fiscal Period" />
+                </SelectTrigger>
+                <SelectContent>
+                  {accountingTypes.fiscalPeriods.map(period => (
+                    <SelectItem key={period} value={period}>{period.toUpperCase()}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Label>Default Currency</Label>
+              <Select onValueChange={value => registerForm.setValue('accountingSettings.defaultCurrency', value as any)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Currency" />
+                </SelectTrigger>
+                <SelectContent>
+                  {accountingTypes.currencies.map(currency => (
+                    <SelectItem key={currency} value={currency}>{currency}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Label>Tax Types</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {accountingTypes.taxTypes.map((tax) => (
+                  <label key={tax} className="flex items-center space-x-2">
+                    <Checkbox
+                      checked={registerForm.watch('accountingSettings.taxTypes')?.includes(tax)}
+                      onCheckedChange={(checked) => {
+                        const current = registerForm.getValues('accountingSettings.taxTypes') || [];
+                        if (checked) {
+                          registerForm.setValue('accountingSettings.taxTypes', [...current, tax]);
+                        } else {
+                          registerForm.setValue(
+                            'accountingSettings.taxTypes',
+                            current.filter(t => t !== tax)
+                          );
+                        }
+                      }}
+                    />
+                    <span className="text-sm">{tax}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={handleBack} className="flex-1">
+                <ArrowLeft className="mr-2 h-4 w-4" /> Back
+              </Button>
+              <Button onClick={handleNext} className="flex-1">
+                Next <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        );
+
+      case 'modules':
+        return (
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium">Select Additional Modules</h3>
+            <p className="text-sm text-gray-500">Choose up to 2 additional modules (Finance module is included by default)</p>
+            <div className="grid grid-cols-2 gap-2">
+              {availableModules.filter(module => module !== 'finance').map((module) => (
+                <label key={module} className="flex items-center space-x-2">
+                  <Checkbox
+                    checked={registerForm.watch('selectedModules')?.includes(module)}
+                    onCheckedChange={(checked) => {
+                      const current = registerForm.getValues('selectedModules') || [];
+                      if (checked && current.length < 2) {
+                        registerForm.setValue('selectedModules', [...current, module]);
+                      } else if (!checked) {
+                        registerForm.setValue(
+                          'selectedModules',
+                          current.filter(m => m !== module)
+                        );
+                      }
+                    }}
+                  />
+                  <span className="text-sm">{module.replace('_', ' ').toUpperCase()}</span>
+                </label>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={handleBack} className="flex-1">
+                <ArrowLeft className="mr-2 h-4 w-4" /> Back
+              </Button>
+              <Button onClick={handleNext} className="flex-1">
+                Next <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        );
+
+      case 'review':
+        return (
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium">Review Your Registration</h3>
+            <div className="space-y-4">
+              <div>
+                <h4 className="font-medium">Organization Details</h4>
+                <div className="mt-2 space-y-1 text-sm">
+                  <p>Name: {registerForm.watch('name')}</p>
+                  <p>Type: {registerForm.watch('type')?.toUpperCase()}</p>
+                  <p>Industry: {registerForm.watch('industry')}</p>
+                  <p>Address: {registerForm.watch('address')}</p>
+                  <p>Country: {registerForm.watch('country')}</p>
+                  <p>Website: {registerForm.watch('website')}</p>
+                </div>
+              </div>
+              <div>
+                <h4 className="font-medium">Accounting Settings</h4>
+                <div className="mt-2 space-y-1 text-sm">
+                  <p>Fiscal Year Start: {registerForm.watch('accountingSettings.fiscalYearStart')}</p>
+                  <p>Fiscal Period: {registerForm.watch('accountingSettings.fiscalPeriod')?.toUpperCase()}</p>
+                  <p>Default Currency: {registerForm.watch('accountingSettings.defaultCurrency')}</p>
+                  <p>Tax Types: {registerForm.watch('accountingSettings.taxTypes')?.join(', ')}</p>
+                </div>
+              </div>
+              <div>
+                <h4 className="font-medium">Selected Modules</h4>
+                <div className="mt-2 space-y-1 text-sm">
+                  <p>Finance (Default)</p>
+                  {registerForm.watch('selectedModules')?.map(module => (
+                    <p key={module}>{module.replace('_', ' ').toUpperCase()}</p>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={handleBack} className="flex-1">
+                <ArrowLeft className="mr-2 h-4 w-4" /> Back
+              </Button>
+              <Button 
+                onClick={() => registerMutation.mutate(registerForm.getValues())} 
+                className="flex-1"
+                disabled={registerMutation.isPending}
+              >
+                {registerMutation.isPending ? 'Creating Organization...' : 'Create Organization'}
+              </Button>
+            </div>
+          </div>
+        );
+    }
+  };
 
   return (
     <div className="min-h-screen grid lg:grid-cols-2">
@@ -85,7 +309,13 @@ export default function AuthPage() {
               </TabsList>
 
               <TabsContent value="login">
-                <form onSubmit={loginForm.handleSubmit((data) => loginMutation.mutate(data))} className="space-y-4">
+                <form onSubmit={loginForm.handleSubmit((data) => {
+                  loginMutation.mutate(data, {
+                    onSuccess: () => {
+                      setLocation('/dashboard');
+                    }
+                  });
+                })} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="login-username">Username</Label>
                     <Input id="login-username" {...loginForm.register('username')} />
@@ -94,6 +324,11 @@ export default function AuthPage() {
                     <Label htmlFor="login-password">Password</Label>
                     <Input id="login-password" type="password" {...loginForm.register('password')} />
                   </div>
+                  {loginMutation.error && (
+                    <div className="text-sm text-red-500">
+                      {loginMutation.error.message}
+                    </div>
+                  )}
                   <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
                     {loginMutation.isPending ? 'Logging in...' : 'Login'}
                   </Button>
@@ -101,65 +336,7 @@ export default function AuthPage() {
               </TabsContent>
 
               <TabsContent value="register">
-                <form onSubmit={registerForm.handleSubmit((data) => registerMutation.mutate(data))} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Organization Details</Label>
-                    <Input placeholder="Organization Name" {...registerForm.register('name')} />
-                    <Select onValueChange={value => registerForm.setValue('type', value as RegisterOrganization['type'])}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Organization Type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {organizationTypes.map(type => (
-                          <SelectItem key={type} value={type}>{type.toUpperCase()}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Input placeholder="Industry" {...registerForm.register('industry')} />
-                    <Input placeholder="Address" {...registerForm.register('address')} />
-                    <Input placeholder="Country" {...registerForm.register('country')} />
-                    <Input placeholder="Website" {...registerForm.register('website')} />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Admin Account</Label>
-                    <Input placeholder="First Name" {...registerForm.register('firstName')} />
-                    <Input placeholder="Last Name" {...registerForm.register('lastName')} />
-                    <Input placeholder="Email" type="email" {...registerForm.register('email')} />
-                    <Input placeholder="Phone Number" {...registerForm.register('phoneNumber')} />
-                    <Input placeholder="Username" {...registerForm.register('username')} />
-                    <Input placeholder="Password" type="password" {...registerForm.register('password')} />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Select Initial Modules (Max 2)</Label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {availableModules.map((module) => (
-                        <label key={module} className="flex items-center space-x-2">
-                          <Checkbox
-                            checked={registerForm.watch('selectedModules')?.includes(module)}
-                            onCheckedChange={(checked) => {
-                              const current = registerForm.getValues('selectedModules') || [];
-                              if (checked && current.length < 2) {
-                                registerForm.setValue('selectedModules', [...current, module]);
-                              } else if (!checked) {
-                                registerForm.setValue(
-                                  'selectedModules',
-                                  current.filter(m => m !== module)
-                                );
-                              }
-                            }}
-                          />
-                          <span className="text-sm">{module.replace('_', ' ').toUpperCase()}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  <Button type="submit" className="w-full" disabled={registerMutation.isPending}>
-                    {registerMutation.isPending ? 'Creating Organization...' : 'Create Organization'}
-                  </Button>
-                </form>
+                {renderRegistrationStep()}
               </TabsContent>
             </Tabs>
           </CardContent>
@@ -206,6 +383,42 @@ export default function AuthPage() {
                 <h3 className="font-semibold mb-1">Multi-Tenant Architecture</h3>
                 <p className="text-muted-foreground">
                   Scalable solution perfect for businesses of all sizes and NGOs
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-4">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <LayoutGrid className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold mb-1">Intuitive Interface</h3>
+                <p className="text-muted-foreground">
+                  Modern, user-friendly design that makes complex operations simple
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-4">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <BarChart className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold mb-1">Real-time Analytics</h3>
+                <p className="text-muted-foreground">
+                  Powerful reporting and analytics tools for data-driven decision making
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-4">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Wallet className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold mb-1">Blockchain Integration</h3>
+                <p className="text-muted-foreground">
+                  Secure, transparent transactions with blockchain technology
                 </p>
               </div>
             </div>

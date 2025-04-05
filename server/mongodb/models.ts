@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { availableModules, organizationTypes, userRoles, departments } from '@shared/schema';
+import { availableModules, organizationTypes, userRoles, departments, OrganizationSettings, Role } from '@shared/schema';
 
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
@@ -28,6 +28,8 @@ const organizationSchema = new mongoose.Schema({
   country: String,
   taxId: String,
   website: String,
+  settings: { type: Object, default: {} },
+  roles: [{ type: Object, default: [] }],
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
@@ -35,17 +37,17 @@ const organizationSchema = new mongoose.Schema({
 const transactionSchema = new mongoose.Schema({
   type: {
     type: String,
-    enum: ['sale', 'purchase', 'payment', 'receipt', 'adjustment'],
+    enum: ['sale', 'refund', 'payment', 'expense'],
     required: true
   },
   amount: { type: Number, required: true },
   currency: { type: String, default: 'USD' },
-  description: String,
-  reference: String,
-  organizationId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'Organization' },
+  description: { type: String, required: true },
+  reference: { type: String },
+  organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: true },
   status: {
     type: String,
-    enum: ['pending', 'completed', 'failed', 'cancelled'],
+    enum: ['pending', 'completed', 'failed', 'refunded'],
     default: 'pending'
   },
   metadata: mongoose.Schema.Types.Mixed,
@@ -54,7 +56,7 @@ const transactionSchema = new mongoose.Schema({
 });
 
 const employeeSchema = new mongoose.Schema({
-  organizationId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'Organization' },
+  organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization' },
   employeeId: { type: String, required: true },
   firstName: String,
   lastName: String,
@@ -119,35 +121,50 @@ const blockchainTransactionSchema = new mongoose.Schema({
 });
 
 const customerSchema = new mongoose.Schema({
-  organizationId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'Organization' },
+  organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: true },
   name: { type: String, required: true },
-  email: String,
-  phone: String,
-  address: String,
+  email: { type: String },
+  phone: { type: String },
+  address: { type: String },
   type: { type: String, enum: ['individual', 'business'] },
   status: { type: String, enum: ['active', 'inactive'], default: 'active' },
   totalPurchases: { type: Number, default: 0 },
-  lastPurchaseDate: Date,
+  lastPurchaseDate: { type: Date },
   notes: String,
+  loyalty_points: { type: Number, default: 0 },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
 
 const posSchema = new mongoose.Schema({
-  organizationId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'Organization' },
-  orderId: { type: String, required: true },
+  orderId: { type: String, required: true, unique: true },
   items: [{
-    productId: String,
-    name: String,
-    quantity: Number,
-    unitPrice: Number,
-    total: Number
+    productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
+    quantity: { type: Number, required: true },
+    unitPrice: { type: Number, required: true },
+    taxRate: { type: Number, required: true },
+    discount: { type: Number, default: 0 },
+    total: { type: Number, required: true }
   }],
-  totalAmount: Number,
-  paymentMethod: { type: String, enum: ['cash', 'card', 'crypto'] },
-  status: { type: String, enum: ['pending', 'completed', 'cancelled'], default: 'pending' },
+  subtotal: { type: Number, required: true },
+  tax: { type: Number, required: true },
+  discount: { type: Number, default: 0 },
+  total: { type: Number, required: true },
   customerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer' },
-  employeeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' },
+  employeeId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  paymentMethod: { type: String, required: true },
+  notes: { type: String },
+  organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: true },
+  status: { 
+    type: String, 
+    enum: ['pending', 'completed', 'cancelled', 'refunded'],
+    default: 'pending'
+  },
+  paymentStatus: {
+    type: String,
+    enum: ['pending', 'paid', 'partially_paid', 'refunded'],
+    default: 'pending'
+  },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
@@ -204,8 +221,8 @@ const payrollSchema = new mongoose.Schema({
   },
   organizationId: {
     type: mongoose.Schema.Types.ObjectId,
-    required: true,
-    ref: 'Organization'
+    ref: 'Organization',
+    required: true
   },
   period: {
     startDate: { type: Date, required: true },
@@ -239,6 +256,52 @@ const payrollSchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now }
 });
 
+const productSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  sku: { type: String, required: true, unique: true },
+  barcode: { type: String },
+  price: { type: Number, required: true },
+  cost: { type: Number, required: true },
+  category_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Category' },
+  stock_quantity: { type: Number, required: true, default: 0 },
+  low_stock_threshold: { type: Number, default: 10 },
+  tax_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Tax' },
+  tax_type: { type: String, enum: ['inclusive', 'exclusive'], default: 'inclusive' },
+  unit_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Unit' },
+  description: { type: String },
+  image_url: { type: String },
+  status: { type: String, enum: ['available', 'unavailable'], default: 'available' },
+  organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: true },
+  created_at: { type: Date, default: Date.now },
+  updated_at: { type: Date, default: Date.now }
+});
+
+const categorySchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  description: { type: String },
+  organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: true },
+  created_at: { type: Date, default: Date.now },
+  updated_at: { type: Date, default: Date.now }
+});
+
+const taxSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  rate: { type: Number, required: true },
+  description: { type: String },
+  organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: true },
+  created_at: { type: Date, default: Date.now },
+  updated_at: { type: Date, default: Date.now }
+});
+
+const unitSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  code: { type: String, required: true },
+  description: { type: String },
+  organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: true },
+  created_at: { type: Date, default: Date.now },
+  updated_at: { type: Date, default: Date.now }
+});
+
 userSchema.virtual('id').get(function () {
   return this._id.toString();
 });
@@ -255,3 +318,7 @@ export const Customer = mongoose.model('Customer', customerSchema);
 export const POS = mongoose.model('POS', posSchema);
 export const Invoice = mongoose.model('Invoice', invoiceSchema);
 export const Payroll = mongoose.model('Payroll', payrollSchema);
+export const Product = mongoose.model('Product', productSchema);
+export const Category = mongoose.model('Category', categorySchema);
+export const Tax = mongoose.model('Tax', taxSchema);
+export const Unit = mongoose.model('Unit', unitSchema);

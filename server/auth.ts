@@ -6,7 +6,8 @@ import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
-import { IUserDocument } from "./storage";
+import { IUserDocument, IOrganizationDocument } from "./storage";
+import { Document, Types } from "mongoose";
 
 // Middleware to check if user has access to specific module
 export function hasModuleAccess(module: string) {
@@ -59,8 +60,8 @@ function normalizeUser(user: IUserDocument): SelectUser {
     isOwner: user.isOwner ?? false,
     // createdAt and updatedAt should be non-null Dates;
     // if null, you can choose a default (e.g., current date)
-    createdAt: user.createdAt ?? new Date(),
-    updatedAt: user.updatedAt ?? new Date(),
+    createdAt: user.createdAt ? new Date(user.createdAt).toISOString() : new Date().toISOString(),
+    updatedAt: user.updatedAt ? new Date(user.updatedAt).toISOString() : new Date().toISOString(),
     permissions: user.permissions ?? [],
   };
 }
@@ -249,6 +250,41 @@ export function setupAuth(app: express.Express) {
       }
       res.sendStatus(200);
     });
+  });
+
+  app.get("/api/auth/me", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    try {
+      const user = await storage.getUser(req.user.id);
+      console.log("User:", user);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const organization = await storage.getOrganization(user.organizationId.toString());
+      console.log("Organization:", organization);
+      if (!organization) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
+
+      const orgDoc = organization as unknown as Document & IOrganizationDocument & { _id: Types.ObjectId };
+
+      res.json({
+        ...normalizeUser(user),
+        organization: {
+          id: orgDoc._id.toString(),
+          name: orgDoc.name,
+          activeModules: orgDoc.activeModules,
+          maxModules: orgDoc.maxModules
+        }
+      });
+    } catch (err) {
+      console.error("Error fetching user data:", err);
+      res.status(500).json({ message: "Error fetching user data" });
+    }
   });
 
   app.get("/api/user", (req, res) => {

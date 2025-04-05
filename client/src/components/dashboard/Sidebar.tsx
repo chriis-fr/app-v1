@@ -3,13 +3,14 @@ import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { 
   Home, Store, Users, Calculator, Users2, Wallet,
-  Settings, LogOut
+  Settings, LogOut, Package
 } from 'lucide-react';
 
 const menuItems = [
   { icon: Home, label: 'Dashboard', path: '/dashboard' },
   { icon: Store, label: 'POS', path: '/dashboard/pos' },
   { icon: Users, label: 'HR', path: '/dashboard/hr' },
+  { icon: Package, label: 'Inventory', path: '/dashboard/inventory' },
   { icon: Calculator, label: 'Accounting', path: '/dashboard/accounting' },
   { icon: Users2, label: 'CRM', path: '/dashboard/crm' },
   { icon: Wallet, label: 'Blockchain', path: '/dashboard/blockchain' },
@@ -17,7 +18,7 @@ const menuItems = [
 
 export function Sidebar() {
   const [location, setLocation] = useLocation();
-  const { logoutMutation } = useAuth();
+  const { logout } = useAuth();
 
   return (
     <div className="w-64 min-h-screen bg-sidebar border-r border-sidebar-border">
@@ -54,7 +55,7 @@ export function Sidebar() {
         <Button
           variant="ghost"
           className="w-full justify-start text-destructive"
-          onClick={() => logoutMutation.mutate()}
+          onClick={logout}
         >
           <LogOut className="mr-2 h-4 w-4" />
           Logout
