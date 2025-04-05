@@ -26,10 +26,11 @@ interface User {
   email: string;
   role: string;
   department: string;
-  position: string;
-  status: 'active' | 'inactive';
-  lastLogin?: string;
+  phoneNumber?: string;
+  organizationId: string;
+  isOwner: boolean;
   createdAt: string;
+  updatedAt: string;
 }
 
 export default function UsersPage() {
@@ -49,7 +50,7 @@ export default function UsersPage() {
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch('/api/users');
+      const response = await fetch('/api/mongodb/users');
       if (!response.ok) {
         throw new Error('Failed to fetch users');
       }
@@ -100,7 +101,8 @@ export default function UsersPage() {
       `${u.firstName} ${u.lastName}`.toLowerCase().includes(searchLower) ||
       u.email.toLowerCase().includes(searchLower) ||
       u.role.toLowerCase().includes(searchLower) ||
-      u.department.toLowerCase().includes(searchLower)
+      u.department.toLowerCase().includes(searchLower) ||
+      (u.phoneNumber && u.phoneNumber.toLowerCase().includes(searchLower))
     );
   });
 
@@ -160,11 +162,14 @@ export default function UsersPage() {
                             {u.firstName} {u.lastName}
                           </h3>
                           <p className="text-sm text-gray-500">{u.email}</p>
+                          {u.phoneNumber && (
+                            <p className="text-sm text-gray-500">{u.phoneNumber}</p>
+                          )}
                         </div>
                       </div>
                       <div
                         className={`w-3 h-3 rounded-full ${
-                          u.status === 'active' ? 'bg-green-500' : 'bg-red-500'
+                          u.isOwner ? 'bg-green-500' : 'bg-blue-500'
                         }`}
                       />
                     </div>
@@ -189,19 +194,17 @@ export default function UsersPage() {
                           </p>
                         </div>
                         <div className="space-y-1">
-                          <p className="text-sm text-gray-500">Position</p>
+                          <p className="text-sm text-gray-500">Username</p>
                           <p className="flex items-center">
-                            <Briefcase className="mr-2 h-4 w-4" />
-                            {u.position || 'Not specified'}
+                            <User className="mr-2 h-4 w-4" />
+                            {u.username}
                           </p>
                         </div>
                         <div className="space-y-1">
-                          <p className="text-sm text-gray-500">Last Login</p>
+                          <p className="text-sm text-gray-500">Created</p>
                           <p className="flex items-center">
                             <Clock className="mr-2 h-4 w-4" />
-                            {u.lastLogin
-                              ? new Date(u.lastLogin).toLocaleString()
-                              : 'Never'}
+                            {new Date(u.createdAt).toLocaleDateString()}
                           </p>
                         </div>
                       </div>

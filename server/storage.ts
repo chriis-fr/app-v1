@@ -25,6 +25,7 @@ export interface IUserDocument extends Document {
   isOwner: boolean;
   createdAt: Date;
   updatedAt: Date;
+  moduleAccess?: string[];
   permissions?: {
     module: string;
     actions: string[];

@@ -102,6 +102,7 @@ export const userSchema = z.object({
   phoneNumber: z.string().min(10),
   organizationId: z.string(),
   isOwner: z.boolean().default(false),
+  moduleAccess: z.array(z.string()).default([]),
   position: z.string().optional(),
   status: z.enum(["active", "inactive"]).default("active"),
   lastLogin: z.date().optional(),

@@ -12,6 +12,7 @@ const userSchema = new mongoose.Schema({
   phoneNumber: String,
   organizationId: { type: mongoose.Schema.Types.ObjectId, required: true },
   isOwner: { type: Boolean, default: false },
+  moduleAccess: { type: [String], enum: availableModules, default: [] },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });

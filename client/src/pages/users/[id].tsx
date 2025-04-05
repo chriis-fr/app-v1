@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/components/ui/use-toast';
 import ModuleLayout from '@/components/layout/ModuleLayout';
 import { useAuth } from '@/hooks/use-auth';
-import { userRoles, departments, modules } from '@shared/schema';
+import { userRoles, departments, availableModules } from '@shared/schema';
 import { 
   User,
   Mail,
@@ -38,11 +38,14 @@ interface User {
   phoneNumber?: string;
   role: string;
   department: string;
-  position: string;
-  status: 'active' | 'inactive';
-  lastLogin?: string;
+  organizationId: string;
+  isOwner: boolean;
   createdAt: string;
-  // Additional fields
+  updatedAt: string;
+  // Additional fields for UI compatibility
+  position?: string;
+  status?: 'active' | 'inactive';
+  lastLogin?: string;
   employeeId?: string;
   hireDate?: string;
   managerId?: string;
@@ -104,10 +107,38 @@ interface User {
     url?: string;
     expiryDate?: string;
   }[];
-  moduleAccess?: {
-    moduleName: string;
-  }[];
+  moduleAccess?: string[];
 }
+
+// Define module display names and descriptions
+const moduleDisplayInfo = {
+  accounting: { name: 'Accounting', description: 'Financial management and accounting' },
+  procurement: { name: 'Procurement', description: 'Purchase and supplier management' },
+  manufacturing: { name: 'Manufacturing', description: 'Production and manufacturing operations' },
+  inventory: { name: 'Inventory', description: 'Stock and inventory management' },
+  order_management: { name: 'Order Management', description: 'Order processing and fulfillment' },
+  warehouse: { name: 'Warehouse', description: 'Warehouse operations and management' },
+  supply_chain: { name: 'Supply Chain', description: 'Supply chain and logistics management' },
+  crm: { name: 'CRM', description: 'Customer relationship management' },
+  project_service: { name: 'Project Service', description: 'Project and service management' },
+  workforce: { name: 'Workforce', description: 'Workforce and staff management' },
+  hr: { name: 'HR', description: 'Human resources management' },
+  ecommerce: { name: 'E-Commerce', description: 'Online store and sales management' },
+  marketing: { name: 'Marketing', description: 'Marketing and campaign management' },
+  pos: { name: 'POS', description: 'Point of sale system' },
+  quality: { name: 'Quality', description: 'Quality control and assurance' },
+  maintenance: { name: 'Maintenance', description: 'Equipment and asset maintenance' },
+  project: { name: 'Project', description: 'Project management and tracking' },
+  analytics: { name: 'Analytics', description: 'Business analytics and reporting' },
+  global_finance: { name: 'Global Finance', description: 'International financial management' },
+  international_trade: { name: 'International Trade', description: 'International trade and compliance' },
+  customer_experience: { name: 'Customer Experience', description: 'Customer experience management' },
+  vendor_management: { name: 'Vendor Management', description: 'Vendor and supplier management' },
+  ai_analytics: { name: 'AI Analytics', description: 'AI-powered analytics and insights' },
+  ecommerce_global: { name: 'Global E-Commerce', description: 'International e-commerce management' },
+  localization: { name: 'Localization', description: 'Multi-language and regional support' },
+  digital_currency: { name: 'Digital Currency', description: 'Digital currency and blockchain' }
+};
 
 export default function EditUserPage() {
   const [, setLocation] = useLocation();
@@ -127,13 +158,45 @@ export default function EditUserPage() {
 
   const fetchUser = async () => {
     try {
-      const response = await fetch(`/api/users/${userId}`);
+      const response = await fetch(`/api/mongodb/users/${userId}`);
       if (!response.ok) {
         throw new Error('Failed to fetch user');
       }
       const data = await response.json();
-      setUser(data);
+      console.log('Raw user data from server:', data);
+      console.log('Module access from server:', data.moduleAccess);
+      
+      // Set default values for UI fields if they don't exist in the database
+      const userWithDefaults = {
+        ...data,
+        position: data.position || '',
+        status: data.status || 'active',
+        lastLogin: data.lastLogin || '',
+        employeeId: data.employeeId || '',
+        hireDate: data.hireDate || '',
+        managerId: data.managerId || '',
+        team: data.team || '',
+        location: data.location || { office: '', floor: '', deskNumber: '' },
+        workSchedule: data.workSchedule || { startTime: '', endTime: '', timezone: '' },
+        emergencyContact: data.emergencyContact || { name: '', relationship: '', phone: '' },
+        skills: data.skills || [],
+        certifications: data.certifications || [],
+        education: data.education || [],
+        performance: data.performance || { lastReviewDate: '', nextReviewDate: '', rating: 0 },
+        compensation: data.compensation || { baseSalary: 0, bonus: 0, stockOptions: 0, currency: 'USD' },
+        benefits: data.benefits || { healthInsurance: false, dentalInsurance: false, visionInsurance: false, retirementPlan: false, lifeInsurance: false },
+        equipment: data.equipment || { laptop: '', monitor: '', phone: '', accessories: [] },
+        accessLevels: data.accessLevels || { systems: [], buildings: [], rooms: [] },
+        documents: data.documents || [],
+        // Ensure moduleAccess is an array of strings
+        moduleAccess: Array.isArray(data.moduleAccess) ? data.moduleAccess : []
+      };
+      
+      console.log('Processed user data:', userWithDefaults);
+      console.log('Final module access:', userWithDefaults.moduleAccess);
+      setUser(userWithDefaults);
     } catch (error) {
+      console.error('Error fetching user:', error);
       toast({
         title: 'Error',
         description: 'Failed to fetch user data',
@@ -150,25 +213,92 @@ export default function EditUserPage() {
 
     setIsSaving(true);
     try {
-      const response = await fetch(`/api/users/${userId}`, {
+      // Create a copy of the user data with only the fields that exist in the MongoDB schema
+      const userDataToUpdate = {
+        username: user.username,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        phoneNumber: user.phoneNumber,
+        role: user.role,
+        department: user.department,
+        organizationId: user.organizationId,
+        isOwner: user.isOwner,
+        // Include any additional fields that might be in the database
+        position: user.position,
+        status: user.status,
+        lastLogin: user.lastLogin,
+        employeeId: user.employeeId,
+        hireDate: user.hireDate,
+        managerId: user.managerId,
+        team: user.team,
+        location: user.location,
+        workSchedule: user.workSchedule,
+        emergencyContact: user.emergencyContact,
+        skills: user.skills,
+        certifications: user.certifications,
+        education: user.education,
+        performance: user.performance,
+        compensation: user.compensation,
+        benefits: user.benefits,
+        equipment: user.equipment,
+        accessLevels: user.accessLevels,
+        documents: user.documents,
+        // Ensure moduleAccess is an array of strings
+        moduleAccess: Array.isArray(user.moduleAccess) ? user.moduleAccess : []
+      };
+
+      console.log('Sending update with moduleAccess:', userDataToUpdate.moduleAccess);
+
+      const response = await fetch(`/api/mongodb/users/${userId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(user),
+        body: JSON.stringify(userDataToUpdate),
       });
 
       if (!response.ok) {
         throw new Error('Failed to update user');
       }
 
+      const updatedUser = await response.json();
+      console.log('Updated user data:', updatedUser);
+      
+      // Update the local user state with the response from the server
+      setUser({
+        ...user,
+        ...updatedUser,
+        // Preserve UI-specific fields that might not be in the response
+        position: user.position,
+        status: user.status,
+        lastLogin: user.lastLogin,
+        employeeId: user.employeeId,
+        hireDate: user.hireDate,
+        managerId: user.managerId,
+        team: user.team,
+        location: user.location,
+        workSchedule: user.workSchedule,
+        emergencyContact: user.emergencyContact,
+        skills: user.skills,
+        certifications: user.certifications,
+        education: user.education,
+        performance: user.performance,
+        compensation: user.compensation,
+        benefits: user.benefits,
+        equipment: user.equipment,
+        accessLevels: user.accessLevels,
+        documents: user.documents,
+        // Ensure moduleAccess is an array of strings
+        moduleAccess: Array.isArray(updatedUser.moduleAccess) ? updatedUser.moduleAccess : []
+      });
+
       toast({
         title: 'Success',
         description: 'User updated successfully',
       });
-
-      setLocation('/users');
     } catch (error) {
+      console.error('Error updating user:', error);
       toast({
         title: 'Error',
         description: 'Failed to update user',
@@ -574,24 +704,38 @@ export default function EditUserPage() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {modules.map((module) => (
-                  <div key={module.id} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={module.id}
-                      checked={user.moduleAccess?.some(ma => ma.moduleName === module.id)}
-                      onCheckedChange={(checked) => {
-                        const newModuleAccess = checked
-                          ? [...(user.moduleAccess || []), { moduleName: module.id }]
-                          : user.moduleAccess?.filter(ma => ma.moduleName !== module.id) || [];
-                        setUser({ ...user, moduleAccess: newModuleAccess });
-                      }}
-                    />
-                    <Label htmlFor={module.id} className="flex flex-col">
-                      <span>{module.name}</span>
-                      <span className="text-sm text-muted-foreground">{module.description}</span>
-                    </Label>
-                  </div>
-                ))}
+                {availableModules.map((moduleId) => {
+                  const isChecked = Array.isArray(user.moduleAccess) && user.moduleAccess.includes(moduleId);
+                  console.log(`Checking module ${moduleId}:`, {
+                    moduleAccess: user.moduleAccess,
+                    isChecked
+                  });
+                  return (
+                    <div key={moduleId} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={moduleId}
+                        checked={isChecked}
+                        onCheckedChange={(checked) => {
+                          const currentModules = Array.isArray(user.moduleAccess) ? user.moduleAccess : [];
+                          const newModuleAccess = checked
+                            ? [...currentModules, moduleId]
+                            : currentModules.filter(ma => ma !== moduleId);
+                          console.log('Module access changed:', {
+                            moduleId,
+                            checked,
+                            currentModules,
+                            newModuleAccess
+                          });
+                          setUser({ ...user, moduleAccess: newModuleAccess });
+                        }}
+                      />
+                      <Label htmlFor={moduleId} className="flex flex-col">
+                        <span>{moduleDisplayInfo[moduleId].name}</span>
+                        <span className="text-sm text-muted-foreground">{moduleDisplayInfo[moduleId].description}</span>
+                      </Label>
+                    </div>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
