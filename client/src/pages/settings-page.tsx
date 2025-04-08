@@ -241,79 +241,79 @@ export default function SettingsPage() {
       </div>
       
       <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Profile Settings</CardTitle>
-            <CardDescription>Manage your profile information and photo</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex flex-col sm:flex-row items-center gap-6">
-              <div className="relative">
-                <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
-                  {profilePhoto ? (
-                    <img
-                      src={profilePhoto}
-                      alt="Profile"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <span className="text-2xl font-semibold text-primary">
-                      {initials}
-                    </span>
-                  )}
-                </div>
-                <div className="absolute bottom-0 right-0">
-                  <label className="cursor-pointer">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handlePhotoUpload}
-                      disabled={isUploading}
-                    />
-                    <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white hover:bg-primary/90">
-                      <Camera className="w-4 h-4" />
-                    </div>
-                  </label>
-                </div>
-                {profilePhoto && (
-                  <Button
-                    variant="destructive"
-                    size="icon"
-                    className="absolute top-0 right-0 w-8 h-8 rounded-full"
-                    onClick={handlePhotoDelete}
-                  >
-                    <X className="w-4 h-4" />
-                  </Button>
+      <Card>
+        <CardHeader>
+          <CardTitle>Profile Settings</CardTitle>
+          <CardDescription>Manage your profile information and photo</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex flex-col sm:flex-row items-center gap-6">
+            <div className="relative">
+              <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
+                {profilePhoto ? (
+                  <img
+                    src={profilePhoto}
+                    alt="Profile"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="text-2xl font-semibold text-primary">
+                    {initials}
+                  </span>
                 )}
               </div>
-              <div className="text-center sm:text-left">
-                <h3 className="text-lg font-semibold">{user.firstName} {user.lastName}</h3>
-                <p className="text-muted-foreground">{user.email}</p>
+              <div className="absolute bottom-0 right-0">
+                <label className="cursor-pointer">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handlePhotoUpload}
+                    disabled={isUploading}
+                  />
+                  <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white hover:bg-primary/90">
+                    <Camera className="w-4 h-4" />
+                  </div>
+                </label>
+              </div>
+              {profilePhoto && (
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  className="absolute top-0 right-0 w-8 h-8 rounded-full"
+                  onClick={handlePhotoDelete}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
+            <div className="text-center sm:text-left">
+              <h3 className="text-lg font-semibold">{user.firstName} {user.lastName}</h3>
+              <p className="text-muted-foreground">{user.email}</p>
+            </div>
+          </div>
+
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="firstName">First Name</Label>
+                <Input id="firstName" {...form.register('firstName')} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lastName">Last Name</Label>
+                <Input id="lastName" {...form.register('lastName')} />
               </div>
             </div>
 
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="firstName">First Name</Label>
-                  <Input id="firstName" {...form.register('firstName')} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="lastName">Last Name</Label>
-                  <Input id="lastName" {...form.register('lastName')} />
-                </div>
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" type="email" {...form.register('email')} />
+            </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" {...form.register('email')} />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="phoneNumber">Phone Number</Label>
-                <Input id="phoneNumber" {...form.register('phoneNumber')} />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="phoneNumber">Phone Number</Label>
+              <Input id="phoneNumber" {...form.register('phoneNumber')} />
+            </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -475,11 +475,11 @@ export default function SettingsPage() {
                   ) : (
                     'Change Password'
                   )}
-                </Button>
+            </Button>
               </div>
-            </form>
-          </CardContent>
-        </Card>
+          </form>
+        </CardContent>
+      </Card>
       </div>
     </div>
   );
