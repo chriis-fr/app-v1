@@ -8,7 +8,7 @@ import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
 import { IUserDocument, IOrganizationDocument } from "./storage";
 import { Document, Types } from "mongoose";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 
 // Middleware to check if user has access to specific module
 export function hasModuleAccess(module: string) {

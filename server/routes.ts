@@ -14,7 +14,7 @@ import prisma from './prisma';
 import type { User as PrismaUser, ModuleAccess, Prisma } from '@prisma/client';
 import type { MongooseUser } from './models/user.model';
 import type { User as SharedUser } from '@shared/schema';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 // Add type declarations for organization document
 interface IOrganizationDocument {
