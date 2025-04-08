@@ -14,6 +14,7 @@ import prisma from './prisma';
 import type { User as PrismaUser, ModuleAccess, Prisma } from '@prisma/client';
 import type { MongooseUser } from './models/user.model';
 import type { User as SharedUser } from '@shared/schema';
+import bcrypt from 'bcrypt';
 
 // Add type declarations for organization document
 interface IOrganizationDocument {
@@ -130,11 +131,70 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
       if (!updatedUser) {
         return res.status(404).json({ message: "User not found" });
       }
-      
+
       res.json(updatedUser);
     } catch (error) {
       console.error('Error updating profile:', error);
       res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+
+  // Add password change endpoint
+  app.put('/api/user/password', async (req: Request, res: Response) => {
+    try {
+      const { userId, currentPassword, newPassword } = req.body;
+      
+      if (!userId || !currentPassword || !newPassword) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      console.log(newPassword);
+      
+      // Find the user in MongoDB
+      const user = await UserModel.findById(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Verify the current password
+      const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+      
+      if (!isPasswordValid) {
+        return res.status(401).json({ message: "Current password is incorrect" });
+      }
+      
+      // Hash the new password
+      const hashedPassword = await hashPassword(newPassword);
+      
+      // Update only the password field in MongoDB
+      await UserModel.findByIdAndUpdate(
+        userId,
+        { $set: { password: hashedPassword } },
+        { new: true }
+      );
+      
+      // Try to update in Prisma if the user exists there
+      try {
+        const prismaUser = await prisma.user.findUnique({
+          where: { id: userId }
+        });
+        
+        if (prismaUser) {
+          await prisma.user.update({
+            where: { id: userId },
+            data: { password: hashedPassword }
+          });
+        }
+      } catch (prismaError) {
+        console.error('Error updating password in Prisma:', prismaError);
+        // Continue even if Prisma update fails
+      }
+      
+      res.json({ message: "Password updated successfully" });
+    } catch (error) {
+      console.error('Error updating password:', error);
+      res.status(500).json({ message: "Failed to update password" });
     }
   });
 
