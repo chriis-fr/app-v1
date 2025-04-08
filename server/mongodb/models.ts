@@ -23,7 +23,7 @@ const organizationSchema = new mongoose.Schema({
   industry: { type: String, required: true },
   size: String,
   walletAddress: { type: String, unique: true },
-  activeModules: { type: [String], enum: availableModules, default: ['dashboard'] },
+  activeModules: { type: [String], enum: availableModules, default: ['accounting'] },
   maxModules: { type: Number, default: 2 },
   address: String,
   country: String,

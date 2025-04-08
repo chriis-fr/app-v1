@@ -47,11 +47,11 @@ interface FormData {
   lastName: string;
   email: string;
   password: string;
-  role: typeof userRoles[number];
+  role: 'owner' | 'admin' | 'manager' | 'employee' | 'contractor';
   department: typeof departments[number];
   position: string;
   status: 'active' | 'inactive';
-  moduleAccess: string[];
+  moduleAccess: typeof availableModules[number][];
 }
 
 export default function NewUserPage() {
@@ -83,20 +83,45 @@ export default function NewUserPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/users', {
+      // Get the current user's organization ID
+      const userResponse = await fetch('/api/auth/me');
+      if (!userResponse.ok) {
+        throw new Error('Failed to fetch current user data');
+      }
+      const userData = await userResponse.json();
+      const organizationId = userData.organizationId;
+      
+      if (!organizationId) {
+        throw new Error('No organization ID found for current user');
+      }
+
+      // Create the user with the current organization ID
+      const newUserData = {
+        ...formData,
+        organizationId: organizationId,
+        isOwner: formData.role === 'owner',
+        // Ensure moduleAccess is an array of valid module names
+        moduleAccess: Array.isArray(formData.moduleAccess) ? 
+          formData.moduleAccess.filter(module => availableModules.includes(module)) : []
+      };
+
+      console.log('Creating user with data:', newUserData);
+
+      const response = await fetch('/api/mongodb/users', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          ...formData,
-        }),
+        body: JSON.stringify(newUserData),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create user');
+        throw new Error(errorData.message || 'Failed to create user');
       }
+
+      const createdUser = await response.json();
+      console.log('User created:', createdUser);
 
       toast({
         title: 'Success',
@@ -105,6 +130,7 @@ export default function NewUserPage() {
 
       setLocation('/users');
     } catch (error) {
+      console.error('Error creating user:', error);
       toast({
         title: 'Error',
         description: error instanceof Error ? error.message : 'Failed to create user',
@@ -189,7 +215,7 @@ export default function NewUserPage() {
                   <Label htmlFor="role">Role</Label>
                   <Select
                     value={formData.role}
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, role: value as typeof userRoles[number] }))}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, role: value as 'owner' | 'admin' | 'manager' | 'employee' | 'contractor' }))}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select role" />
@@ -264,7 +290,6 @@ export default function NewUserPage() {
                       id={module}
                       checked={formData.moduleAccess.includes(module)}
                       onCheckedChange={() => handleModuleToggle(module)}
-                      disabled={currentUser.role !== 'owner' && module === 'finance'}
                     />
                     <Label htmlFor={module}>
                       {module.split('_').map(word => 

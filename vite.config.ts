@@ -35,4 +35,9 @@ export default defineConfig({
     outDir: path.resolve(__dirname, "server/public"),
     emptyOutDir: true,
   },
+  server: {
+    hmr: {
+      overlay: false
+    }
+  }
 });

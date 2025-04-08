@@ -7,3 +7,24 @@ vite.config.ts.*
 .env
 .env.local
 MONGODB_URI
+# Test connection files
+server/test-*.js
+server/check-*.js
+server/update-*.js
+# Database credentials
+server/.env
+**/credentials.json
+**/secrets.json
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+# Build files
+build/
+out/
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo

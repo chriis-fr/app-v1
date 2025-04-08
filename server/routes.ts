@@ -1,14 +1,19 @@
 import express, { Request, Response } from "express";
 import { createServer, type Server } from "http";
-import { setupAuth, hasModuleAccess, hasRole } from "./auth";
+import { setupAuth, hasModuleAccess, hasRole, hashPassword } from "./auth";
 import { storage } from "./storage"
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
-import { User, Organization, OrganizationSettings, Role } from "@shared/schema";
+import { User, Organization as OrganizationType, OrganizationSettings, Role } from "@shared/schema";
 import { v4 as uuidv4 } from 'uuid';
-import { User as UserModel, Organization as OrganizationModel } from './mongodb/models';
+import { UserModel } from "./models/user.model";
+import { Organization } from "./mongodb/models";
 import usersRouter from './src/routes/users';
+import prisma from './prisma';
+import type { User as PrismaUser, ModuleAccess, Prisma } from '@prisma/client';
+import type { MongooseUser } from './models/user.model';
+import type { User as SharedUser } from '@shared/schema';
 
 // Add type declarations for organization document
 interface IOrganizationDocument {
@@ -16,6 +21,38 @@ interface IOrganizationDocument {
   roles: Role[];
   save(): Promise<IOrganizationDocument>;
 }
+
+// Add type for Prisma user update data
+type PrismaUserUpdateData = Prisma.UserUpdateInput & {
+  moduleAccess?: {
+    deleteMany?: {};
+    create?: { module: string; access: string; }[];
+  };
+  employeeId?: string | null;
+  managerId?: string | null;
+  team?: string | null;
+  phoneNumber?: string | null;
+  position?: string | null;
+  status?: string | null;
+  lastLogin?: Date | null;
+  hireDate?: Date | null;
+  location?: Prisma.JsonValue;
+  workSchedule?: Prisma.JsonValue;
+  emergencyContact?: Prisma.JsonValue;
+  skills?: Prisma.JsonValue;
+  certifications?: Prisma.JsonValue;
+  education?: Prisma.JsonValue;
+  performance?: Prisma.JsonValue;
+  compensation?: Prisma.JsonValue;
+  benefits?: Prisma.JsonValue;
+  equipment?: Prisma.JsonValue;
+  accessLevels?: Prisma.JsonValue;
+  documents?: Prisma.JsonValue;
+  wallet?: Prisma.JsonValue;
+  legalDetails?: Prisma.JsonValue;
+  address?: Prisma.JsonValue;
+  permissions?: Prisma.JsonValue;
+};
 
 // Configure multer for file uploads
 const upload = multer({
@@ -35,7 +72,7 @@ const upload = multer({
 
 interface AuthenticatedRequest extends Request {
   isAuthenticated(): this is AuthenticatedRequest;
-  user: User;
+  user: SharedUser;
 }
 
 export async function registerRoutes(app: express.Express): Promise<Server> {
@@ -47,21 +84,54 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
 
   // User profile routes
   app.put('/api/user/profile', async (req: Request, res: Response) => {
-    // Bypass authentication check
     try {
-      const { firstName, lastName, email, phoneNumber } = req.body;
+      const { 
+        firstName, 
+        lastName, 
+        email, 
+        phoneNumber,
+        position,
+        department,
+        employeeId,
+        hireDate,
+        managerId,
+        team,
+        location,
+        workSchedule,
+        emergencyContact,
+        userId
+      } = req.body;
       
-      // Mock user data for testing
-      const user = {
-        id: '1',
-        firstName: firstName || 'John',
-        lastName: lastName || 'Doe',
-        email: email || 'john.doe@example.com',
-        phoneNumber: phoneNumber || '1234567890',
-        updatedAt: new Date()
-      };
+      // Get the current user ID from the request or use the provided one
+      const userToUpdate = userId || '65f8a1b2c3d4e5f6a7b8c9d0'; // Replace with actual user ID from auth
       
-      res.json(user);
+      // Update the user in MongoDB
+      const updatedUser = await UserModel.findByIdAndUpdate(
+        userToUpdate,
+        { 
+          firstName, 
+          lastName, 
+          email, 
+          phoneNumber,
+          position,
+          department,
+          employeeId,
+          hireDate,
+          managerId,
+          team,
+          location,
+          workSchedule,
+          emergencyContact,
+          updatedAt: new Date() 
+        },
+        { new: true, select: '-password -__v' }
+      );
+      
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      res.json(updatedUser);
     } catch (error) {
       console.error('Error updating profile:', error);
       res.status(500).json({ message: "Failed to update profile" });
@@ -793,25 +863,268 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
       const userId = req.params.id;
       const userData = req.body;
       
-      // Remove fields that shouldn't be updated
-      delete userData.password;
-      delete userData._id;
-      delete userData.__v;
+      // Remove MongoDB-specific fields
+      const { _id, __v, ...userDataWithoutMongoFields } = userData;
       
-      const updatedUser = await UserModel.findByIdAndUpdate(
+      // Handle password update if provided
+      if (userDataWithoutMongoFields.password) {
+        userDataWithoutMongoFields.password = await hashPassword(userDataWithoutMongoFields.password);
+      } else {
+        delete userDataWithoutMongoFields.password;
+      }
+
+      // Convert department to enum value if needed
+      if (userDataWithoutMongoFields.department) {
+        userDataWithoutMongoFields.department = userDataWithoutMongoFields.department.replace(' ', '_');
+      }
+
+      // Define fields that should be handled as dates
+      const dateFields = ['lastLogin', 'hireDate'] as const;
+
+      // Define fields that should be handled as JSON
+      const jsonFields = [
+        'location', 'workSchedule', 'emergencyContact', 'skills',
+        'certifications', 'education', 'performance', 'compensation',
+        'benefits', 'equipment', 'accessLevels', 'documents',
+        'wallet', 'legalDetails', 'address', 'permissions'
+      ] as const;
+
+      // Create a copy of the data for Prisma
+      const prismaData: PrismaUserUpdateData = {
+        username: userDataWithoutMongoFields.username,
+        email: userDataWithoutMongoFields.email,
+        firstName: userDataWithoutMongoFields.firstName,
+        lastName: userDataWithoutMongoFields.lastName,
+        phoneNumber: userDataWithoutMongoFields.phoneNumber,
+        position: userDataWithoutMongoFields.position,
+        role: userDataWithoutMongoFields.role,
+        department: userDataWithoutMongoFields.department,
+        organizationId: userDataWithoutMongoFields.organizationId,
+        isOwner: userDataWithoutMongoFields.isOwner,
+        status: userDataWithoutMongoFields.status,
+        employeeId: userDataWithoutMongoFields.employeeId,
+        managerId: userDataWithoutMongoFields.managerId,
+        team: userDataWithoutMongoFields.team,
+        updatedAt: new Date()
+      };
+
+      // Handle date fields
+      for (const field of dateFields) {
+        if (userDataWithoutMongoFields[field]) {
+          (prismaData as any)[field] = new Date(userDataWithoutMongoFields[field]);
+        }
+      }
+
+      // Handle JSON fields
+      for (const field of jsonFields) {
+        if (userDataWithoutMongoFields[field]) {
+          // If the field is already a string, use it as is, otherwise stringify it
+          (prismaData as any)[field] = typeof userDataWithoutMongoFields[field] === 'string'
+            ? userDataWithoutMongoFields[field]
+            : userDataWithoutMongoFields[field];
+        }
+      }
+
+      // Handle moduleAccess separately as it's a relation
+      if (Array.isArray(userDataWithoutMongoFields.moduleAccess)) {
+        // For Prisma, we need to format moduleAccess as a relation
+        prismaData.moduleAccess = {
+          deleteMany: {},
+          create: userDataWithoutMongoFields.moduleAccess.map((module: string) => ({
+            module,
+            access: 'read_write' // Default access level
+          }))
+        };
+      } else if (userDataWithoutMongoFields.moduleAccess && typeof userDataWithoutMongoFields.moduleAccess === 'object') {
+        // If moduleAccess is already an object with the correct structure, use it as is
+        prismaData.moduleAccess = userDataWithoutMongoFields.moduleAccess;
+      }
+
+      // Update in MongoDB first
+      const updatedUserMongoose = await UserModel.findByIdAndUpdate(
         userId,
-        { ...userData, updatedAt: new Date() },
+        { ...userDataWithoutMongoFields, updatedAt: new Date() },
         { new: true, select: '-password -__v' }
       );
       
-      if (!updatedUser) {
+      if (!updatedUserMongoose) {
         return res.status(404).json({ message: "User not found" });
       }
       
-      res.json(updatedUser);
+      // Try to update in Prisma, but don't fail if it doesn't work
+      let updatedUserPrisma = null;
+      try {
+        console.log('Attempting to update user in Prisma with ID:', userId);
+        console.log('Prisma update data:', JSON.stringify(prismaData, null, 2));
+        
+        // Check if the user exists in Prisma before updating
+        const existingUser = await prisma.user.findUnique({
+          where: { id: userId }
+        });
+        
+        if (!existingUser) {
+          console.log('User not found in Prisma database, creating new user');
+          
+          // Create the user in Prisma instead of updating
+          const createData = {
+            id: userId, // Use the same ID as MongoDB
+            username: prismaData.username as string,
+            email: prismaData.email as string,
+            password: updatedUserMongoose.password || 'default_password', // Use a default password if not available
+            role: prismaData.role as string,
+            firstName: prismaData.firstName as string,
+            lastName: prismaData.lastName as string,
+            phoneNumber: prismaData.phoneNumber as string,
+            position: prismaData.position as string,
+            department: prismaData.department as string,
+            organizationId: prismaData.organizationId as string,
+            isOwner: prismaData.isOwner as boolean,
+            status: prismaData.status as string,
+            employeeId: prismaData.employeeId as string,
+            managerId: prismaData.managerId as string,
+            team: prismaData.team as string,
+            location: prismaData.location as any,
+            workSchedule: prismaData.workSchedule as any,
+            emergencyContact: prismaData.emergencyContact as any,
+            skills: prismaData.skills as any,
+            certifications: prismaData.certifications as any,
+            education: prismaData.education as any,
+            performance: prismaData.performance as any,
+            compensation: prismaData.compensation as any,
+            benefits: prismaData.benefits as any,
+            equipment: prismaData.equipment as any,
+            accessLevels: prismaData.accessLevels as any,
+            documents: prismaData.documents as any,
+            wallet: prismaData.wallet as any,
+            legalDetails: prismaData.legalDetails as any,
+            address: prismaData.address as any,
+            permissions: prismaData.permissions as any
+          };
+          
+          // Add moduleAccess if it exists
+          if (prismaData.moduleAccess) {
+            // For creation, we only need the create part, not deleteMany
+            (createData as any).moduleAccess = {
+              create: prismaData.moduleAccess.create || []
+            };
+          }
+          
+          updatedUserPrisma = await prisma.user.create({
+            data: createData,
+            include: {
+              moduleAccess: true
+            }
+          });
+          console.log('Successfully created user in Prisma');
+        } else {
+          // For updates, we need to include deleteMany
+          const updateData = {
+            ...prismaData,
+            moduleAccess: prismaData.moduleAccess || {
+              deleteMany: {},
+              create: []
+            }
+          };
+          
+          updatedUserPrisma = await prisma.user.update({
+            where: { id: userId },
+            data: updateData,
+            include: {
+              moduleAccess: true
+            }
+          });
+          console.log('Successfully updated user in Prisma');
+        }
+      } catch (error) {
+        const prismaError = error as { message?: string };
+        console.error('Error updating user in Prisma:', prismaError);
+        console.error('Prisma error details:', JSON.stringify(prismaError, null, 2));
+        
+        // Check if it's a database connection error
+        if (prismaError.message && prismaError.message.includes('empty database name not allowed')) {
+          console.error('Prisma database connection error: The database name is missing or invalid');
+        }
+        
+        // Continue with the MongoDB update
+      }
+      
+      // If Prisma update failed, just return the MongoDB user
+      if (!updatedUserPrisma) {
+        return res.json(updatedUserMongoose);
+      }
+      
+      // Parse JSON fields from Prisma response
+      const parsedPrismaUser = {
+        ...updatedUserPrisma,
+        // Parse each JSON field
+        ...Object.fromEntries(
+          jsonFields
+            .filter(field => (updatedUserPrisma as any)[field])
+            .map(field => [field, typeof (updatedUserPrisma as any)[field] === 'string' 
+              ? JSON.parse((updatedUserPrisma as any)[field] as string) 
+              : (updatedUserPrisma as any)[field]])
+        )
+      };
+      
+      res.json(parsedPrismaUser);
     } catch (error) {
-      console.error('Error updating user in MongoDB:', error);
+      console.error('Error updating user:', error);
       res.status(500).json({ message: "Failed to update user in database" });
+    }
+  });
+
+  // Create organization in MongoDB
+  app.post('/api/organization', async (req, res) => {
+    try {
+      const orgData = req.body;
+      console.log('Creating organization with data:', orgData);
+
+      // Create new organization in MongoDB
+      const organization = new Organization({
+        ...orgData,
+        activeModules: ['accounting'], // Default module
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+
+      // Save to database
+      await organization.save();
+      console.log('Organization saved to database:', organization);
+
+      res.status(201).json(organization);
+    } catch (error) {
+      console.error('Error creating organization in MongoDB:', error);
+      res.status(500).json({ message: 'Failed to create organization in database' });
+    }
+  });
+
+  // Create user in MongoDB
+  app.post('/api/mongodb/users', async (req, res) => {
+    try {
+      const userData = req.body;
+      console.log('Creating user with data:', userData);
+
+      // Hash the password before saving
+      const hashedPassword = await hashPassword(userData.password);
+      
+      // Create new user in MongoDB
+      const user = new UserModel({
+        ...userData,
+        password: hashedPassword,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+
+      // Save to database
+      await user.save();
+      console.log('User saved to database:', user);
+
+      // Return user without sensitive data
+      const { password, ...userWithoutPassword } = user.toObject();
+      res.status(201).json(userWithoutPassword);
+    } catch (error) {
+      console.error('Error creating user in MongoDB:', error);
+      res.status(500).json({ message: 'Failed to create user in database' });
     }
   });
 

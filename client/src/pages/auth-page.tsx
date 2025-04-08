@@ -30,7 +30,8 @@ import {
   Info
 } from 'lucide-react';
 import type { RegisterOrganization } from '@shared/schema';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import React from 'react';
 
 interface LoginData {
   username: string;
@@ -43,10 +44,18 @@ export default function AuthPage() {
   const { user, loginMutation, registerMutation, logout } = useAuth();
   const [, setLocation] = useLocation();
   const [currentStep, setCurrentStep] = useState<RegistrationStep>('organization');
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
-  // Redirect if already logged in
-  if (user) {
-    setLocation('/dashboard');
+  // Redirect if already logged in, but only once
+  useEffect(() => {
+    if (user && !isRedirecting) {
+      setIsRedirecting(true);
+      setLocation('/dashboard');
+    }
+  }, [user, setLocation, isRedirecting]);
+
+  // If redirecting, show nothing
+  if (isRedirecting) {
     return null;
   }
 
@@ -203,7 +212,7 @@ export default function AuthPage() {
             <h3 className="text-lg font-medium">Select Additional Modules</h3>
             <p className="text-sm text-gray-500">Choose up to 2 additional modules (Finance module is included by default)</p>
             <div className="grid grid-cols-2 gap-2">
-              {availableModules.filter(module => module !== 'finance').map((module) => (
+              {availableModules.filter(module => module !== 'accounting').map((module) => (
                 <label key={module} className="flex items-center space-x-2">
                   <Checkbox
                     checked={registerForm.watch('selectedModules')?.includes(module)}
@@ -274,7 +283,13 @@ export default function AuthPage() {
                 <ArrowLeft className="mr-2 h-4 w-4" /> Back
               </Button>
               <Button 
-                onClick={() => registerMutation.mutate(registerForm.getValues())} 
+                onClick={() => {
+                  const formData = registerForm.getValues();
+                  registerMutation.mutate({
+                    ...formData,
+                    organizationName: formData.name
+                  });
+                }} 
                 className="flex-1"
                 disabled={registerMutation.isPending}
               >

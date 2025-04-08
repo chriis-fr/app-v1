@@ -53,6 +53,7 @@ export const userRoles = [
 // Department types
 // ---------------------------------
 export const departments = [
+  'Executive',
   'Engineering',
   'Sales',
   'Marketing',
@@ -106,6 +107,67 @@ export const userSchema = z.object({
   position: z.string().optional(),
   status: z.enum(["active", "inactive"]).default("active"),
   lastLogin: z.date().optional(),
+  employeeId: z.string().optional(),
+  hireDate: z.string().optional(),
+  managerId: z.string().optional(),
+  team: z.string().optional(),
+  location: z.object({
+    office: z.string().optional(),
+    floor: z.string().optional(),
+    deskNumber: z.string().optional()
+  }).optional(),
+  workSchedule: z.object({
+    startTime: z.string().optional(),
+    endTime: z.string().optional(),
+    timezone: z.string().optional()
+  }).optional(),
+  emergencyContact: z.object({
+    name: z.string().optional(),
+    relationship: z.string().optional(),
+    phone: z.string().optional()
+  }).optional(),
+  skills: z.array(z.string()).optional(),
+  certifications: z.array(z.string()).optional(),
+  education: z.array(z.object({
+    degree: z.string().optional(),
+    institution: z.string().optional(),
+    graduationYear: z.string().optional()
+  })).optional(),
+  performance: z.object({
+    lastReviewDate: z.string().optional(),
+    nextReviewDate: z.string().optional(),
+    rating: z.number().optional()
+  }).optional(),
+  compensation: z.object({
+    baseSalary: z.number().optional(),
+    bonus: z.number().optional(),
+    stockOptions: z.number().optional(),
+    currency: z.string().optional()
+  }).optional(),
+  benefits: z.object({
+    healthInsurance: z.boolean().optional(),
+    dentalInsurance: z.boolean().optional(),
+    visionInsurance: z.boolean().optional(),
+    retirementPlan: z.boolean().optional(),
+    lifeInsurance: z.boolean().optional()
+  }).optional(),
+  equipment: z.object({
+    laptop: z.string().optional(),
+    monitor: z.string().optional(),
+    phone: z.string().optional(),
+    accessories: z.array(z.string()).optional()
+  }).optional(),
+  accessLevels: z.object({
+    systems: z.array(z.string()).optional(),
+    buildings: z.array(z.string()).optional(),
+    rooms: z.array(z.string()).optional()
+  }).optional(),
+  documents: z.array(z.object({
+    id: z.string().optional(),
+    type: z.string().optional(),
+    url: z.string().optional(),
+    expiryDate: z.string().optional()
+  })).optional(),
   wallet: z.object({
     balance: z.number(),
     currency: z.string(),
@@ -325,13 +387,16 @@ export type Organization = Omit<z.infer<typeof organizationSchema>, "createdAt" 
  * We also override some fields to match the shape we want
  * (e.g., createdAt/updatedAt as strings, role as a string).
  */
-export type User = Omit<z.infer<typeof userSchema>, "role" | "createdAt" | "updatedAt"> & {
+export type User = Omit<z.infer<typeof userSchema>, "role" | "createdAt" | "updatedAt" | "lastLogin"> & {
   // We override role from z.enum(...) to a string or role ID
   role: string;
 
   // We override createdAt/updatedAt to strings (instead of Date)
   createdAt: string;
   updatedAt: string;
+
+  // We override lastLogin to be a string (instead of Date)
+  lastLogin?: string;
 
   // Additional fields from the old interface
   avatarUrl?: string | null;
@@ -341,6 +406,27 @@ export type User = Omit<z.infer<typeof userSchema>, "role" | "createdAt" | "upda
 
   // We also keep the "permissions" field we had before
   permissions: { module: string; actions: string[] }[];
+  
+  // Additional fields for user profile
+  employeeId?: string;
+  hireDate?: string;
+  managerId?: string;
+  team?: string;
+  location?: {
+    office?: string;
+    floor?: string;
+    deskNumber?: string;
+  };
+  workSchedule?: {
+    startTime?: string;
+    endTime?: string;
+    timezone?: string;
+  };
+  emergencyContact?: {
+    name?: string;
+    relationship?: string;
+    phone?: string;
+  };
 };
 
 // ---------------------------------

@@ -53,8 +53,10 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         setCurrentUser(userData);
         
         // Fetch the organization data
-        const orgResponse = await fetch(`/api/organizations/${userData.organizationId}`);
-        if (!orgResponse.ok) throw new Error('Failed to fetch organization data');
+        const orgResponse = await fetch(`/api/organization/${userData.organizationId}`);
+        if (!orgResponse.ok) {
+          throw new Error('Failed to fetch organization');
+        }
         const orgData = await orgResponse.json();
         setOrganization(orgData);
         

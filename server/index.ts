@@ -1,7 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import { connectDB } from "./db";
+import { connectDB, disconnectDB } from "./db";
 import dotenv from "dotenv"
 dotenv.config()
 
@@ -41,9 +41,10 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  let server: any;
   try {
     await connectDB()
-    const server = await registerRoutes(app);
+    server = await registerRoutes(app);
 
     // Global error handler
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
@@ -90,6 +91,27 @@ app.use((req, res, next) => {
     };
 
     startServer();
+
+    // Handle graceful shutdown
+    const signals = ['SIGTERM', 'SIGINT'];
+    signals.forEach(signal => {
+      process.on(signal, async () => {
+        console.log(`Received ${signal}. Starting graceful shutdown...`);
+        try {
+          if (server) {
+            server.close(() => {
+              console.log('HTTP server closed');
+            });
+          }
+          await disconnectDB();
+          console.log('Graceful shutdown completed');
+          process.exit(0);
+        } catch (error) {
+          console.error('Error during shutdown:', error);
+          process.exit(1);
+        }
+      });
+    });
   } catch (err) {
     console.error('Fatal server error:', err);
     process.exit(1);

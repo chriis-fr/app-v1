@@ -32,19 +32,18 @@ import { Checkbox } from '@/components/ui/checkbox';
 interface User {
   id: string;
   username: string;
+  password?: string;
+  role: string;
+  department: string;
   firstName: string;
   lastName: string;
   email: string;
   phoneNumber?: string;
-  role: string;
-  department: string;
   organizationId: string;
   isOwner: boolean;
-  createdAt: string;
-  updatedAt: string;
-  // Additional fields for UI compatibility
+  moduleAccess: string[];
   position?: string;
-  status?: 'active' | 'inactive';
+  status: 'active' | 'inactive';
   lastLogin?: string;
   employeeId?: string;
   hireDate?: string;
@@ -67,11 +66,11 @@ interface User {
   };
   skills?: string[];
   certifications?: string[];
-  education?: {
+  education?: Array<{
     degree?: string;
     institution?: string;
     graduationYear?: string;
-  }[];
+  }>;
   performance?: {
     lastReviewDate?: string;
     nextReviewDate?: string;
@@ -101,13 +100,40 @@ interface User {
     buildings?: string[];
     rooms?: string[];
   };
-  documents?: {
+  documents?: Array<{
     id?: string;
     type?: string;
     url?: string;
     expiryDate?: string;
-  }[];
-  moduleAccess?: string[];
+  }>;
+  wallet?: {
+    balance: number;
+    currency: string;
+    bankAccounts: Array<{
+      id: string;
+      bankName: string;
+      accountNumber: string;
+      accountType: string;
+      isDefault: boolean;
+    }>;
+  };
+  legalDetails?: {
+    taxId: string;
+    businessType: string;
+    registrationNumber: string;
+    incorporationDate: string;
+  };
+  address?: {
+    street: string;
+    city: string;
+    state: string;
+    country: string;
+    postalCode: string;
+    isBillingAddress: boolean;
+    isShippingAddress: boolean;
+  };
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 // Define module display names and descriptions
@@ -189,7 +215,14 @@ export default function EditUserPage() {
         accessLevels: data.accessLevels || { systems: [], buildings: [], rooms: [] },
         documents: data.documents || [],
         // Ensure moduleAccess is an array of strings
-        moduleAccess: Array.isArray(data.moduleAccess) ? data.moduleAccess : []
+        moduleAccess: Array.isArray(data.moduleAccess) ? data.moduleAccess : [],
+        // Ensure createdAt and updatedAt are Date objects
+        createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
+        updatedAt: data.updatedAt ? new Date(data.updatedAt) : new Date(),
+        // Add any missing fields from Prisma schema
+        wallet: data.wallet || { balance: 0, currency: 'USD', bankAccounts: [] },
+        legalDetails: data.legalDetails || { taxId: '', businessType: '', registrationNumber: '', incorporationDate: '' },
+        address: data.address || { street: '', city: '', state: '', country: '', postalCode: '', isBillingAddress: false, isShippingAddress: false }
       };
       
       console.log('Processed user data:', userWithDefaults);
@@ -214,7 +247,7 @@ export default function EditUserPage() {
     setIsSaving(true);
     try {
       // Create a copy of the user data with only the fields that exist in the MongoDB schema
-      const userDataToUpdate = {
+      const updateData: Partial<User> = {
         username: user.username,
         firstName: user.firstName,
         lastName: user.lastName,
@@ -224,7 +257,6 @@ export default function EditUserPage() {
         department: user.department,
         organizationId: user.organizationId,
         isOwner: user.isOwner,
-        // Include any additional fields that might be in the database
         position: user.position,
         status: user.status,
         lastLogin: user.lastLogin,
@@ -244,18 +276,30 @@ export default function EditUserPage() {
         equipment: user.equipment,
         accessLevels: user.accessLevels,
         documents: user.documents,
-        // Ensure moduleAccess is an array of strings
-        moduleAccess: Array.isArray(user.moduleAccess) ? user.moduleAccess : []
+        moduleAccess: Array.isArray(user.moduleAccess) ? user.moduleAccess : [],
+        wallet: user.wallet,
+        legalDetails: user.legalDetails,
+        address: user.address
       };
 
-      console.log('Sending update with moduleAccess:', userDataToUpdate.moduleAccess);
+      // Add password if it's been changed
+      if (user.password && user.password !== '') {
+        updateData.password = user.password;
+      }
+
+      // Convert dates to ISO strings for JSON serialization
+      if (updateData.lastLogin) {
+        updateData.lastLogin = updateData.lastLogin.toString();
+      }
+
+      console.log('Sending update with data:', updateData);
 
       const response = await fetch(`/api/mongodb/users/${userId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(userDataToUpdate),
+        body: JSON.stringify(updateData),
       });
 
       if (!response.ok) {
@@ -269,28 +313,8 @@ export default function EditUserPage() {
       setUser({
         ...user,
         ...updatedUser,
-        // Preserve UI-specific fields that might not be in the response
-        position: user.position,
-        status: user.status,
-        lastLogin: user.lastLogin,
-        employeeId: user.employeeId,
-        hireDate: user.hireDate,
-        managerId: user.managerId,
-        team: user.team,
-        location: user.location,
-        workSchedule: user.workSchedule,
-        emergencyContact: user.emergencyContact,
-        skills: user.skills,
-        certifications: user.certifications,
-        education: user.education,
-        performance: user.performance,
-        compensation: user.compensation,
-        benefits: user.benefits,
-        equipment: user.equipment,
-        accessLevels: user.accessLevels,
-        documents: user.documents,
-        // Ensure moduleAccess is an array of strings
-        moduleAccess: Array.isArray(updatedUser.moduleAccess) ? updatedUser.moduleAccess : []
+        createdAt: new Date(updatedUser.createdAt),
+        updatedAt: new Date(updatedUser.updatedAt)
       });
 
       toast({
@@ -415,6 +439,16 @@ export default function EditUserPage() {
                     id="phoneNumber"
                     value={user.phoneNumber || ''}
                     onChange={(e) => setUser({ ...user, phoneNumber: e.target.value })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="Leave blank to keep current password"
+                    onChange={(e) => setUser({ ...user, password: e.target.value })}
                   />
                 </div>
               </div>
@@ -764,6 +798,48 @@ export default function EditUserPage() {
               </div>
             </div>
           </Card>
+
+          {/* Executive/Manager Information */}
+          {(currentUser.role === 'owner' || currentUser.role === 'admin' || currentUser.role === 'manager') && (
+            <Card>
+              <div className="p-6 space-y-4">
+                <h2 className="text-lg font-semibold flex items-center">
+                  <Briefcase className="mr-2 h-5 w-5" />
+                  Executive/Manager Information
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="moduleAccess">Module Access</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {user.moduleAccess?.map((module, index) => (
+                        <div key={index} className="bg-gray-100 px-3 py-1 rounded-full text-sm">
+                          {module}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="createdAt">Created At</Label>
+                    <Input
+                      id="createdAt"
+                      value={user.createdAt ? new Date(user.createdAt).toLocaleString() : ''}
+                      disabled
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="updatedAt">Last Updated</Label>
+                    <Input
+                      id="updatedAt"
+                      value={user.updatedAt ? new Date(user.updatedAt).toLocaleString() : ''}
+                      disabled
+                    />
+                  </div>
+                </div>
+              </div>
+            </Card>
+          )}
 
           <div className="flex justify-end">
             <Button type="submit" disabled={isSaving}>

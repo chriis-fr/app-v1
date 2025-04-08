@@ -11,12 +11,34 @@ import { Camera, Upload, X } from 'lucide-react';
 import { useState } from 'react';
 import { BackButton } from '@/components/ui/back-button';
 import type { User } from '@/hooks/use-auth';
+import { toast } from '@/components/ui/use-toast';
 
 interface ProfileFormData {
   firstName: string;
   lastName: string;
   email: string;
   phoneNumber: string;
+  position?: string;
+  department?: string;
+  employeeId?: string;
+  hireDate?: string;
+  managerId?: string;
+  team?: string;
+  location?: {
+    office?: string;
+    floor?: string;
+    deskNumber?: string;
+  };
+  workSchedule?: {
+    startTime?: string;
+    endTime?: string;
+    timezone?: string;
+  };
+  emergencyContact?: {
+    name?: string;
+    relationship?: string;
+    phone?: string;
+  };
 }
 
 export default function SettingsPage() {
@@ -24,6 +46,7 @@ export default function SettingsPage() {
   const [, setLocation] = useLocation();
   const [profilePhoto, setProfilePhoto] = useState<string | null>(user?.avatarUrl || null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(userSchema.pick({ firstName: true, lastName: true, email: true, phoneNumber: true })),
@@ -32,6 +55,15 @@ export default function SettingsPage() {
       lastName: user?.lastName || '',
       email: user?.email || '',
       phoneNumber: user?.phoneNumber || '',
+      position: user?.position || '',
+      department: user?.department || '',
+      employeeId: user?.employeeId || '',
+      hireDate: user?.hireDate || '',
+      managerId: user?.managerId || '',
+      team: user?.team || '',
+      location: user?.location || { office: '', floor: '', deskNumber: '' },
+      workSchedule: user?.workSchedule || { startTime: '', endTime: '', timezone: '' },
+      emergencyContact: user?.emergencyContact || { name: '', relationship: '', phone: '' },
     },
   });
 
@@ -93,13 +125,17 @@ export default function SettingsPage() {
   };
 
   const onSubmit = async (data: ProfileFormData) => {
+    setIsSaving(true);
     try {
       const response = await fetch('/api/user/profile', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          ...data,
+          userId: user?.id, // Include the user ID for the server to identify the user
+        }),
       });
 
       if (!response.ok) {
@@ -108,8 +144,21 @@ export default function SettingsPage() {
 
       const updatedUser = await response.json();
       setUser(updatedUser);
+      
+      // Show success message
+      toast({
+        title: 'Success',
+        description: 'Profile updated successfully',
+      });
     } catch (error) {
       console.error('Error updating profile:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update profile',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -200,9 +249,105 @@ export default function SettingsPage() {
               <Input id="phoneNumber" {...form.register('phoneNumber')} />
             </div>
 
-            <Button type="submit" className="w-full">
-              Save Changes
-            </Button>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="position">Position</Label>
+                <Input id="position" {...form.register('position')} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="department">Department</Label>
+                <Input id="department" {...form.register('department')} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="employeeId">Employee ID</Label>
+                <Input id="employeeId" {...form.register('employeeId')} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="hireDate">Hire Date</Label>
+                <Input id="hireDate" type="date" {...form.register('hireDate')} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="managerId">Manager ID</Label>
+                <Input id="managerId" {...form.register('managerId')} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="team">Team</Label>
+                <Input id="team" {...form.register('team')} />
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Location</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="location.office">Office</Label>
+                  <Input id="location.office" {...form.register('location.office')} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="location.floor">Floor</Label>
+                  <Input id="location.floor" {...form.register('location.floor')} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="location.deskNumber">Desk Number</Label>
+                  <Input id="location.deskNumber" {...form.register('location.deskNumber')} />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Work Schedule</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="workSchedule.startTime">Start Time</Label>
+                  <Input id="workSchedule.startTime" type="time" {...form.register('workSchedule.startTime')} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="workSchedule.endTime">End Time</Label>
+                  <Input id="workSchedule.endTime" type="time" {...form.register('workSchedule.endTime')} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="workSchedule.timezone">Timezone</Label>
+                  <Input id="workSchedule.timezone" {...form.register('workSchedule.timezone')} />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Emergency Contact</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="emergencyContact.name">Name</Label>
+                  <Input id="emergencyContact.name" {...form.register('emergencyContact.name')} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="emergencyContact.relationship">Relationship</Label>
+                  <Input id="emergencyContact.relationship" {...form.register('emergencyContact.relationship')} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="emergencyContact.phone">Phone</Label>
+                  <Input id="emergencyContact.phone" {...form.register('emergencyContact.phone')} />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <Button type="submit" disabled={isSaving}>
+                {isSaving ? (
+                  <>
+                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    Saving...
+                  </>
+                ) : (
+                  'Save Changes'
+                )}
+              </Button>
+            </div>
           </form>
         </CardContent>
       </Card>

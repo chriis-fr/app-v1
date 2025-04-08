@@ -102,10 +102,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Check if user session exists
     const checkSession = async () => {
       try {
-        const response = await fetch('/api/auth/me');
-        if (response.ok) {
-          const userData = await response.json();
-          setUser(userData);
+        // Only check session if we don't already have a user
+        if (!user) {
+          const response = await fetch('/api/auth/me');
+          if (response.ok) {
+            const userData = await response.json();
+            setUser(userData);
+          }
         }
       } catch (error) {
         console.error('Session check failed:', error);
@@ -115,7 +118,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     checkSession();
-  }, []);
+  }, [user]);
 
   const login = async (email: string, password: string) => {
     try {
@@ -128,8 +131,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
+      // Call the logout endpoint
       await fetch('/api/auth/logout', { method: 'POST' });
+      
+      // Clear the user state
       setUser(null);
+      
+      // Clear any cached data in localStorage or sessionStorage
+      localStorage.removeItem('user');
+      sessionStorage.removeItem('user');
+      
+      // Force a page reload to clear any cached state
+      window.location.href = '/auth';
     } catch (error) {
       console.error('Logout failed:', error);
       throw error;

@@ -17,7 +17,7 @@ export default function UserProfileDropdown() {
 
   const handleLogout = () => {
     logout();
-    setLocation('/login');
+    setLocation('/auth');
   };
 
   // Function to get user's initials for avatar

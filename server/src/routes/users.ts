@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { UserModel } from '../../models/user.model';
+import { hashPassword } from '../../auth';
 
 const router = Router();
 
@@ -15,6 +17,8 @@ const createUserSchema = z.object({
   position: z.string(),
   status: z.enum(['active', 'inactive']),
   moduleAccess: z.array(z.string()).optional(),
+  organizationId: z.string(),
+  isOwner: z.boolean().default(false),
 });
 
 const updateUserSchema = z.object({
@@ -85,17 +89,38 @@ router.post('/', async (req, res) => {
     const validatedData = createUserSchema.parse(req.body);
     const { password, ...userData } = validatedData;
 
-    // Mock user data for testing
-    const user = {
-      id: Math.random().toString(36).substring(7),
+    // Check if user already exists
+    const existingUser = await UserModel.findOne({ 
+      $or: [
+        { username: userData.username },
+        { email: userData.email }
+      ]
+    });
+
+    if (existingUser) {
+      return res.status(400).json({ 
+        message: 'User already exists',
+        field: existingUser.username === userData.username ? 'username' : 'email'
+      });
+    }
+
+    // Create new user
+    const user = new UserModel({
       ...userData,
-      moduleAccess: userData.moduleAccess?.map(module => ({ moduleName: module })) || [],
+      password: await hashPassword(password),
+      moduleAccess: userData.moduleAccess || [],
       createdAt: new Date(),
       updatedAt: new Date()
-    };
+    });
+
+    // Save to database
+    await user.save();
     
-    res.status(201).json(user);
+    // Return user without password
+    const { password: _, ...userWithoutPassword } = user.toObject();
+    res.status(201).json(userWithoutPassword);
   } catch (error) {
+    console.error('Error creating user:', error);
     if (error instanceof z.ZodError) {
       return res.status(400).json({ message: 'Validation error', errors: error.errors });
     }

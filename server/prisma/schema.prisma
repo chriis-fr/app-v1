@@ -1,26 +1,62 @@
+datasource db {
+  provider = "mongodb"
+  url      = "mongodb+srv://caspianodhis:caspianodhis@chains.y7dhi.mongodb.net/chains?retryWrites=true&w=majority&appName=chains"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
 model User {
-  id            String         @id @default(cuid())
+  id            String         @id @default(auto()) @map("_id") @db.ObjectId
   username      String
-  firstName     String
-  lastName      String
-  email         String         @unique
+  email         String        @unique
   password      String
   role          String
-  department    String
-  position      String
-  status        String
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  department    String?
+  firstName     String?
+  lastName      String?
+  phoneNumber   String?
+  position      String?
+  organizationId String?
+  isOwner       Boolean?
+  status        String?       @default("active")
+  lastLogin     DateTime?
+  employeeId    String?
+  hireDate      DateTime?
+  managerId     String?       @db.ObjectId
+  team          String?
+  location      Json?
+  workSchedule  Json?
+  emergencyContact Json?
+  skills        Json?
+  certifications Json?
+  education     Json?
+  performance   Json?
+  compensation  Json?
+  benefits      Json?
+  equipment     Json?
+  accessLevels  Json?
+  documents     Json?
+  wallet        Json?
+  legalDetails  Json?
+  address       Json?
   moduleAccess  ModuleAccess[]
+  permissions   Json?         @default("[]")
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@map("users")
 }
 
 model ModuleAccess {
-  id        String   @id @default(cuid())
-  userId    String
-  moduleName String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  module    String
+  access    String   @default("read_write")
+  user      User     @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([userId, moduleName])
+  @@map("moduleAccess")
 } 

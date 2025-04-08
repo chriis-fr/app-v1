@@ -8,11 +8,20 @@ import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
 import { IUserDocument, IOrganizationDocument } from "./storage";
 import { Document, Types } from "mongoose";
+import bcrypt from "bcrypt";
 
 // Middleware to check if user has access to specific module
 export function hasModuleAccess(module: string) {
   return async (req: Request, res: Response, next: NextFunction) => {
-    // Always allow requests through without checking for module access
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const user = req.user as unknown as IUserDocument;
+    if (!user.moduleAccess || !user.moduleAccess.includes(module)) {
+      return res.status(403).json({ message: "No access to this module" });
+    }
+
     next();
   };
 }
@@ -63,17 +72,14 @@ declare global {
 
 const scryptAsync = promisify(scrypt);
 
-async function hashPassword(password: string) {
-  const salt = randomBytes(16).toString("hex");
-  const buf = (await scryptAsync(password, salt, 64)) as Buffer;
-  return `${buf.toString("hex")}.${salt}`;
+// Helper function to hash passwords
+export async function hashPassword(password: string): Promise<string> {
+  const salt = await bcrypt.genSalt(10);
+  return bcrypt.hash(password, salt);
 }
 
 async function comparePasswords(supplied: string, stored: string) {
-  const [hashed, salt] = stored.split(".");
-  const hashedBuf = Buffer.from(hashed, "hex");
-  const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
-  return timingSafeEqual(hashedBuf, suppliedBuf);
+  return bcrypt.compare(supplied, stored);
 }
 
 export function setupAuth(app: express.Express) {
@@ -140,6 +146,7 @@ export function setupAuth(app: express.Express) {
     try {
       // Accept the client's format and handle the transformation server-side
       const formData = req.body;
+      console.log('Registration form data:', formData);
 
       const existingUser = await storage.getUserByUsername(formData.username);
       if (existingUser) {
@@ -159,7 +166,9 @@ export function setupAuth(app: express.Express) {
         updatedAt: new Date()
       };
       
+      console.log('Creating organization with data:', organizationData);
       const organization = await storage.createOrganization(organizationData);
+      console.log('Organization created:', organization);
       
       // Step 2: Create the user with the new organization ID
       const userData = {
@@ -170,18 +179,22 @@ export function setupAuth(app: express.Express) {
         email: formData.email,
         phoneNumber: formData.phoneNumber || null,
         role: "owner",
-        department: "executive",
+        department: "Executive",
         organizationId: organization._id,
         isOwner: true,
+        moduleAccess: formData.selectedModules || [], // Use the selected modules from the form
         createdAt: new Date(),
         updatedAt: new Date(),
         permissions: []
       };
 
+      console.log('Creating user with data:', userData);
       const user = await storage.createUser(userData);
+      console.log('User created:', user);
 
       req.login(normalizeUser(user), (err) => {
         if (err) {
+          console.error('Login error after registration:', err);
           return next(err);
         }
         res.status(201).json({ 
@@ -190,6 +203,7 @@ export function setupAuth(app: express.Express) {
         });
       });
     } catch (err) {
+      console.error('Registration error:', err);
       const errorMessage = err instanceof Error ? err.message : "Unknown error";
       res.status(500).json({ 
         message: "Registration failed", 
@@ -231,12 +245,18 @@ export function setupAuth(app: express.Express) {
     )(req, res, next);
   });
 
-  app.post("/api/logout", (req, res, next) => {
-    req.logout((err) => {
+  app.post("/api/auth/logout", (req, res, next) => {
+    // Clear the session
+    req.session.destroy((err) => {
       if (err) {
-        console.error("Logout error:", err);
+        console.error("Session destruction error:", err);
         return next(err);
       }
+      
+      // Clear the authentication cookie
+      res.clearCookie('connect.sid');
+      
+      // Send success response
       res.sendStatus(200);
     });
   });

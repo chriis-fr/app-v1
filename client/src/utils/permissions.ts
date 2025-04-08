@@ -2,10 +2,10 @@ import { useAuth } from '@/hooks/use-auth';
 
 // Role hierarchy (higher number = more permissions)
 const roleHierarchy = {
-  'Owner': 4,
-  'Organization Admin': 3,
-  'Manager': 2,
-  'User': 1
+  'owner': 4,
+  'admin': 3,
+  'manager': 2,
+  'employee': 1
 };
 
 export function usePermissions() {
@@ -14,17 +14,19 @@ export function usePermissions() {
   const canAccessModule = (moduleName: string) => {
     if (!user) return false;
     
-    // In a real implementation, you would check module permissions
-    // based on the user's role and assigned permissions
+    // Check if user has explicit access to the module
+    if (user.moduleAccess && user.moduleAccess.includes(moduleName)) {
+      return true;
+    }
     
-    // For demo purposes, we'll use the role hierarchy
+    // Fallback to role-based access
     const userRoleLevel = roleHierarchy[user.role as keyof typeof roleHierarchy] || 0;
     
     // Admin and above can access everything
     if (userRoleLevel >= 3) return true;
     
     // Example of restricted modules for lower roles
-    const restrictedModules = ['Security', 'Settings'];
+    const restrictedModules = ['security', 'settings'];
     if (userRoleLevel < 3 && restrictedModules.includes(moduleName)) {
       return false;
     }
