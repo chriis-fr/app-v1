@@ -15,6 +15,7 @@ import type { User as PrismaUser, ModuleAccess, Prisma } from '@prisma/client';
 import type { MongooseUser } from './models/user.model';
 import type { User as SharedUser } from '@shared/schema';
 import bcrypt from 'bcryptjs';
+import hrRouter from './src/routes/hr';
 
 // Add type declarations for organization document
 interface IOrganizationDocument {
@@ -82,6 +83,9 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
 
   // Mount users routes
   app.use('/api/users', usersRouter);
+
+  // Mount HR routes
+  app.use('/api/hr', hrRouter);
 
   // User profile routes
   app.put('/api/user/profile', async (req: Request, res: Response) => {

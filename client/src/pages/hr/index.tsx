@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
-import BaseModuleInfo from './base-module-info';
-import AnalyticsDashboard, { TimeRange } from '@/components/analytics/analytics-dashboard';
+import { useLocation } from 'wouter';
+import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
+import ModuleLayout from '@/components/layout/ModuleLayout';
 import { useAuth } from '@/hooks/use-auth';
 import { 
   Users,
@@ -13,47 +15,17 @@ import {
   CreditCard,
   Calendar,
   Shield,
+  Plus,
   Search
 } from 'lucide-react';
 import { CredentialVerification } from '@/components/hr/CredentialVerification';
 import { SkillMatching } from '@/components/hr/SkillMatching';
 import { DataTable } from '@/components/ui/data-table';
-import { columns, Employee } from '@/pages/hr/columns';
+import { columns, Employee } from './columns';
 import { Payroll } from '@/components/hr/Payroll';
 
-// Dummy data for HR metrics
-const hrData = {
-  dailyStats: [
-    { date: '2024-03-01', value: 150 },
-    { date: '2024-03-02', value: 155 },
-    { date: '2024-03-03', value: 148 },
-    { date: '2024-03-04', value: 162 },
-    { date: '2024-03-05', value: 158 },
-    { date: '2024-03-06', value: 165 },
-    { date: '2024-03-07', value: 170 }
-  ],
-  topDepartments: [
-    { name: 'Engineering', value: 45 },
-    { name: 'Sales', value: 35 },
-    { name: 'Marketing', value: 25 },
-    { name: 'Operations', value: 20 },
-    { name: 'Finance', value: 15 }
-  ],
-  employeeStatus: [
-    { name: 'Active', value: 85 },
-    { name: 'On Leave', value: 10 },
-    { name: 'Training', value: 5 }
-  ],
-  metrics: [
-    { name: 'Total Employees', value: 250, change: '+5%', trend: 'up' as const },
-    { name: 'Average Tenure', value: '3.2 years', change: '+0.3', trend: 'up' as const },
-    { name: 'Turnover Rate', value: '8.5%', change: '-2%', trend: 'down' as const },
-    { name: 'Training Hours', value: '24.5', change: '+3.2', trend: 'up' as const }
-  ]
-};
-
-export default function HRInfoPage() {
-  const [timeRange, setTimeRange] = useState<TimeRange>('week');
+export default function HRModule() {
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -61,8 +33,13 @@ export default function HRInfoPage() {
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
+    if (!user || !user.moduleAccess?.includes('hr')) {
+      setLocation('/dashboard');
+      return;
+    }
+
     fetchEmployees();
-  }, []);
+  }, [user]);
 
   const fetchEmployees = async () => {
     try {
@@ -96,6 +73,7 @@ export default function HRInfoPage() {
       });
       const data = await response.json();
       if (data.success) {
+        // Update the local state with the verified credential
         setEmployees(employees.map(emp => 
           emp.id === userId
             ? {
@@ -129,64 +107,26 @@ export default function HRInfoPage() {
     employee.department.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleExportData = () => {
-    console.log('Exporting HR data...');
-  };
-
-  const handleGenerateReport = () => {
-    console.log('Generating HR report...');
-  };
-
-  const handleViewRawData = () => {
-    console.log('Viewing raw HR data...');
-  };
-
-  const handleRefreshData = () => {
-    console.log('Refreshing HR data...');
-  };
+  if (loading) {
+    return (
+      <ModuleLayout>
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
+        </div>
+      </ModuleLayout>
+    );
+  }
 
   return (
-    <BaseModuleInfo
-      moduleName="HR Management"
-      description="Comprehensive human resources management and analytics"
-      icon="users"
-      timeRange={timeRange}
-      onTimeRangeChange={setTimeRange}
-      onExportData={handleExportData}
-      onGenerateReport={handleGenerateReport}
-      onViewRawData={handleViewRawData}
-      onRefreshData={handleRefreshData}
-    >
-      <div className="space-y-6">
-        <AnalyticsDashboard
-          moduleId="hr"
-          moduleName="HR Management"
-          timeRange={timeRange}
-          onTimeRangeChange={setTimeRange}
-          onExportData={handleExportData}
-          onRefresh={handleRefreshData}
-          metrics={hrData.metrics}
-          dailyStats={hrData.dailyStats}
-          topItems={hrData.topDepartments}
-          distributionData={hrData.employeeStatus}
-          insights={[
-            {
-              title: 'Employee Growth Trend',
-              description: 'Positive growth in engineering department with 5 new hires this month',
-              type: 'success'
-            },
-            {
-              title: 'Training Impact',
-              description: 'Training hours increased by 15% leading to improved performance metrics',
-              type: 'info'
-            },
-            {
-              title: 'Retention Improvement',
-              description: 'Turnover rate decreased by 2% due to new retention initiatives',
-              type: 'success'
-            }
-          ]}
-        />
+    <ModuleLayout>
+      <div className="container mx-auto py-6">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold">HR Management</h1>
+          <Button onClick={() => setLocation('/users/new')}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Employee
+          </Button>
+        </div>
 
         <div className="mb-6">
           <div className="relative">
@@ -237,7 +177,7 @@ export default function HRInfoPage() {
                 <DataTable
                   columns={columns}
                   data={filteredEmployees}
-                  onRowClick={(employee) => window.location.href = `/users/${employee.id}`}
+                  onRowClick={(employee) => setLocation(`/users/${employee.id}`)}
                 />
               </CardContent>
             </Card>
@@ -319,9 +259,9 @@ export default function HRInfoPage() {
             </Card>
           </TabsContent>
 
-          {/* Add other tabs content for timeoff and performance */}
+          {/* Add other tabs content for payroll, timeoff, and performance */}
         </Tabs>
       </div>
-    </BaseModuleInfo>
+    </ModuleLayout>
   );
 } 
