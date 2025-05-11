@@ -6,6 +6,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/hooks/use-auth';
+import { useLocation } from 'wouter';
+import { Button } from '@/components/ui/button';
 import { 
   Users,
   Briefcase,
@@ -59,6 +61,22 @@ export default function HRInfoPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [, setLocation] = useLocation();
+
+  // Check if user has access to HR module
+  if (!user?.moduleAccess?.includes('hr') && !user?.isOwner) {
+    return (
+      <div className="flex min-h-screen">
+        <div className="flex-1 p-8">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-red-600 mb-4">Access Denied</h1>
+            <p className="text-gray-600 mb-4">You don't have permission to access the HR module.</p>
+            <Button onClick={() => setLocation('/dashboard')}>Return to Dashboard</Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   useEffect(() => {
     fetchEmployees();

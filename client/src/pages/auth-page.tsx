@@ -32,25 +32,26 @@ import {
 import type { RegisterOrganization } from '@shared/schema';
 import { useState, useEffect } from 'react';
 import React from 'react';
+import { toast } from '@/components/ui/use-toast';
 
 interface LoginData {
-  username: string;
+  email: string;
   password: string;
 }
 
-type RegistrationStep = 'organization' | 'accounting' | 'modules' | 'review';
+type RegistrationStep = 'owner' | 'organization' | 'accounting' | 'modules' | 'review';
 
 export default function AuthPage() {
   const { user, loginMutation, registerMutation, logout } = useAuth();
   const [, setLocation] = useLocation();
-  const [currentStep, setCurrentStep] = useState<RegistrationStep>('organization');
+  const [currentStep, setCurrentStep] = useState<RegistrationStep>('owner');
   const [isRedirecting, setIsRedirecting] = useState(false);
 
   // Redirect if already logged in, but only once
   useEffect(() => {
     if (user && !isRedirecting) {
       setIsRedirecting(true);
-      setLocation('/dashboard');
+    setLocation('/dashboard');
     }
   }, [user, setLocation, isRedirecting]);
 
@@ -60,7 +61,7 @@ export default function AuthPage() {
   }
 
   const loginForm = useForm<LoginData>({
-    resolver: zodResolver(insertUserSchema.pick({ username: true, password: true })),
+    resolver: zodResolver(insertUserSchema.pick({ email: true, password: true })),
   });
 
   const registerForm = useForm<RegisterOrganization>({
@@ -80,6 +81,9 @@ export default function AuthPage() {
 
   const handleNext = () => {
     switch (currentStep) {
+      case 'owner':
+        setCurrentStep('organization');
+        break;
       case 'organization':
         setCurrentStep('accounting');
         break;
@@ -96,6 +100,9 @@ export default function AuthPage() {
 
   const handleBack = () => {
     switch (currentStep) {
+      case 'organization':
+        setCurrentStep('owner');
+        break;
       case 'accounting':
         setCurrentStep('organization');
         break;
@@ -112,6 +119,30 @@ export default function AuthPage() {
 
   const renderRegistrationStep = () => {
     switch (currentStep) {
+      case 'owner':
+        return (
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium">Owner Information</h3>
+            <div className="space-y-2">
+              <Label>First Name</Label>
+              <Input placeholder="First Name" {...registerForm.register('firstName')} />
+              <Label>Last Name</Label>
+              <Input placeholder="Last Name" {...registerForm.register('lastName')} />
+              <Label>Email</Label>
+              <Input type="email" placeholder="Email" {...registerForm.register('email')} />
+              <Label>Phone Number</Label>
+              <Input placeholder="Phone Number" {...registerForm.register('phoneNumber')} />
+              <Label>Username</Label>
+              <Input placeholder="Username" {...registerForm.register('username')} />
+              <Label>Password</Label>
+              <Input type="password" placeholder="Password" {...registerForm.register('password')} />
+            </div>
+            <Button onClick={handleNext} className="w-full">
+              Next <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
+        );
+
       case 'organization':
         return (
           <div className="space-y-4">
@@ -134,9 +165,14 @@ export default function AuthPage() {
               <Input placeholder="Country" {...registerForm.register('country')} />
               <Input placeholder="Website" {...registerForm.register('website')} />
             </div>
-            <Button onClick={handleNext} className="w-full">
-              Next <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={handleBack} className="flex-1">
+                <ArrowLeft className="mr-2 h-4 w-4" /> Back
+              </Button>
+              <Button onClick={handleNext} className="flex-1">
+                Next <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
           </div>
         );
 
@@ -150,10 +186,11 @@ export default function AuthPage() {
                 type="date" 
                 {...registerForm.register('accountingSettings.fiscalYearStart')} 
               />
-              <Label>Fiscal Period</Label>
-              <Select onValueChange={value => registerForm.setValue('accountingSettings.fiscalPeriod', value as any)}>
+              <Select 
+                onValueChange={value => registerForm.setValue('accountingSettings.fiscalPeriod', value as any)}
+              >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select Fiscal Period" />
+                  <SelectValue placeholder="Fiscal Period" />
                 </SelectTrigger>
                 <SelectContent>
                   {accountingTypes.fiscalPeriods.map(period => (
@@ -161,48 +198,22 @@ export default function AuthPage() {
                   ))}
                 </SelectContent>
               </Select>
-              <Label>Default Currency</Label>
-              <Select onValueChange={value => registerForm.setValue('accountingSettings.defaultCurrency', value as any)}>
+              <Select 
+                onValueChange={value => registerForm.setValue('accountingSettings.defaultCurrency', value as any)}
+              >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select Currency" />
+                  <SelectValue placeholder="Default Currency" />
                 </SelectTrigger>
                 <SelectContent>
                   {accountingTypes.currencies.map(currency => (
-                    <SelectItem key={currency} value={currency}>{currency}</SelectItem>
+                    <SelectItem key={currency} value={currency}>{currency.toUpperCase()}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <Label>Tax Types</Label>
-              <div className="grid grid-cols-2 gap-2">
-                {accountingTypes.taxTypes.map((tax) => (
-                  <label key={tax} className="flex items-center space-x-2">
-                    <Checkbox
-                      checked={registerForm.watch('accountingSettings.taxTypes')?.includes(tax)}
-                      onCheckedChange={(checked) => {
-                        const current = registerForm.getValues('accountingSettings.taxTypes') || [];
-                        if (checked) {
-                          registerForm.setValue('accountingSettings.taxTypes', [...current, tax]);
-                        } else {
-                          registerForm.setValue(
-                            'accountingSettings.taxTypes',
-                            current.filter(t => t !== tax)
-                          );
-                        }
-                      }}
-                    />
-                    <span className="text-sm">{tax}</span>
-                  </label>
-                ))}
-              </div>
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={handleBack} className="flex-1">
-                <ArrowLeft className="mr-2 h-4 w-4" /> Back
-              </Button>
-              <Button onClick={handleNext} className="flex-1">
-                Next <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
+            <Button onClick={handleNext} className="w-full">
+              Next <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
           </div>
         );
 
@@ -210,36 +221,30 @@ export default function AuthPage() {
         return (
           <div className="space-y-4">
             <h3 className="text-lg font-medium">Select Additional Modules</h3>
-            <p className="text-sm text-gray-500">Choose up to 2 additional modules (Finance module is included by default)</p>
-            <div className="grid grid-cols-2 gap-2">
-              {availableModules.filter(module => module !== 'accounting').map((module) => (
-                <label key={module} className="flex items-center space-x-2">
+            <p className="text-sm text-muted-foreground">
+              Choose up to 2 additional modules. Accounting is included by default.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {availableModules.filter(module => module !== 'accounting').map(module => (
+                <div key={module} className="flex items-center space-x-2">
                   <Checkbox
+                    id={module}
                     checked={registerForm.watch('selectedModules')?.includes(module)}
                     onCheckedChange={(checked) => {
-                      const current = registerForm.getValues('selectedModules') || [];
-                      if (checked && current.length < 2) {
-                        registerForm.setValue('selectedModules', [...current, module]);
-                      } else if (!checked) {
-                        registerForm.setValue(
-                          'selectedModules',
-                          current.filter(m => m !== module)
-                        );
-                      }
+                      const currentModules = registerForm.watch('selectedModules') || [];
+                      const newModules = checked
+                        ? [...currentModules, module].slice(0, 2)
+                        : currentModules.filter(m => m !== module);
+                      registerForm.setValue('selectedModules', newModules);
                     }}
                   />
-                  <span className="text-sm">{module.replace('_', ' ').toUpperCase()}</span>
-                </label>
+                  <Label htmlFor={module}>{module.replace('_', ' ').toUpperCase()}</Label>
+                </div>
               ))}
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={handleBack} className="flex-1">
-                <ArrowLeft className="mr-2 h-4 w-4" /> Back
-              </Button>
-              <Button onClick={handleNext} className="flex-1">
-                Next <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
+            <Button onClick={handleNext} className="w-full">
+              Next <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
           </div>
         );
 
@@ -248,6 +253,16 @@ export default function AuthPage() {
           <div className="space-y-4">
             <h3 className="text-lg font-medium">Review Your Registration</h3>
             <div className="space-y-4">
+              <div>
+                <h4 className="font-medium">Owner Information</h4>
+                <div className="mt-2 space-y-1 text-sm">
+                  <p>First Name: {registerForm.watch('firstName')}</p>
+                  <p>Last Name: {registerForm.watch('lastName')}</p>
+                  <p>Email: {registerForm.watch('email')}</p>
+                  <p>Phone: {registerForm.watch('phoneNumber')}</p>
+                  <p>Username: {registerForm.watch('username')}</p>
+                </div>
+              </div>
               <div>
                 <h4 className="font-medium">Organization Details</h4>
                 <div className="mt-2 space-y-1 text-sm">
@@ -288,12 +303,30 @@ export default function AuthPage() {
                   registerMutation.mutate({
                     ...formData,
                     organizationName: formData.name
+                  }, {
+                    onSuccess: () => {
+                      setLocation('/dashboard');
+                    },
+                    onError: (error) => {
+                      toast({
+                        title: "Registration Failed",
+                        description: error.message,
+                        variant: "destructive",
+                      });
+                    }
                   });
                 }} 
                 className="flex-1"
                 disabled={registerMutation.isPending}
               >
-                {registerMutation.isPending ? 'Creating Organization...' : 'Create Organization'}
+                {registerMutation.isPending ? (
+                  <>
+                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    Creating Organization...
+                  </>
+                ) : (
+                  'Create Organization'
+                )}
               </Button>
             </div>
           </div>
@@ -332,8 +365,8 @@ export default function AuthPage() {
                   });
                 })} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="login-username">Username</Label>
-                    <Input id="login-username" {...loginForm.register('username')} />
+                    <Label htmlFor="login-email">Email</Label>
+                    <Input id="login-email" type="email" {...loginForm.register('email')} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="login-password">Password</Label>

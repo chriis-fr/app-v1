@@ -1,10 +1,33 @@
 datasource db {
   provider = "mongodb"
-  url      = "mongodb+srv://caspianodhis:caspianodhis@chains.y7dhi.mongodb.net/chains?retryWrites=true&w=majority&appName=chains"
+  url      = env("MONGODB_URI")
 }
 
 generator client {
   provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+model Organization {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  name          String
+  type          String
+  industry      String
+  size          String?
+  walletAddress String?  @unique
+  activeModules String[]
+  maxModules    Int      @default(2)
+  address       String?
+  country       String?
+  taxId         String?
+  website       String?
+  settings      Json?
+  roles         Json?
+  users         User[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("organizations")
 }
 
 model User {
@@ -18,7 +41,8 @@ model User {
   lastName      String?
   phoneNumber   String?
   position      String?
-  organizationId String?
+  organizationId String?      @db.ObjectId
+  organization  Organization? @relation(fields: [organizationId], references: [id])
   isOwner       Boolean?
   status        String?       @default("active")
   lastLogin     DateTime?
@@ -52,9 +76,9 @@ model User {
 model ModuleAccess {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id])
   module    String
   access    String   @default("read_write")
-  user      User     @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

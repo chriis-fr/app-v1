@@ -80,7 +80,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const registerMutation = useMutation<void, Error, RegisterData>({
     mutationFn: async (data) => {
-      const response = await fetch('/api/auth/register', {
+      const response = await fetch('/api/organization', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -93,8 +93,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error(error.message || 'Registration failed');
       }
 
-      const userData = await response.json();
-      setUser(userData);
+      const { owner, organization, token } = await response.json();
+      
+      // Store the token in localStorage
+      localStorage.setItem('token', token);
+      
+      // Set the user state
+      setUser(owner);
+      setError(null);
+
+      // Wait a moment to ensure the token is set
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Verify the session is active
+      const meResponse = await fetch('/api/auth/me');
+      if (!meResponse.ok) {
+        throw new Error('Failed to verify session after registration');
+      }
     },
   });
 
@@ -104,10 +119,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         // Only check session if we don't already have a user
         if (!user) {
-          const response = await fetch('/api/auth/me');
-          if (response.ok) {
-            const userData = await response.json();
-            setUser(userData);
+        const response = await fetch('/api/auth/me');
+        if (response.ok) {
+          const userData = await response.json();
+          setUser(userData);
           }
         }
       } catch (error) {
