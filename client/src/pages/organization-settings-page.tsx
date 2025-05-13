@@ -383,6 +383,50 @@ export default function OrganizationSettingsPage() {
               </form>
             </CardContent>
           </Card>
+
+          {user?.organization?.settings?.modules?.enabled.includes('blockchain') && (
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold mb-4">Blockchain Settings</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Wallet Address</label>
+                  <input
+                    type="text"
+                    className="w-full p-2 border rounded"
+                    placeholder="0x..."
+                    value={user?.organization?.walletAddress || ''}
+                    readOnly
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Smart Contract Preferences</label>
+                  <div className="space-y-2">
+                    <label className="flex items-center">
+                      <input type="checkbox" className="mr-2" />
+                      Enable automatic contract deployment
+                    </label>
+                    <label className="flex items-center">
+                      <input type="checkbox" className="mr-2" />
+                      Enable multi-signature transactions
+                    </label>
+                    <label className="flex items-center">
+                      <input type="checkbox" className="mr-2" />
+                      Enable gas price optimization
+                    </label>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Network Preferences</label>
+                  <select className="w-full p-2 border rounded">
+                    <option value="ethereum">Ethereum Mainnet</option>
+                    <option value="polygon">Polygon</option>
+                    <option value="arbitrum">Arbitrum</option>
+                    <option value="optimism">Optimism</option>
+                  </select>
+                </div>
+              </div>
+            </Card>
+          )}
         </div>
       </div>
     </div>

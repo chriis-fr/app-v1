@@ -4,7 +4,9 @@
   "type": "module",
   "license": "MIT",
   "scripts": {
-    "prisma:generate": "cd server && npx prisma generate",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio",
     "dev": "npm run prisma:generate && nodemon -w server -e ts,json -x tsx server/index.ts",
     "build": "npm run prisma:generate && vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "start": "NODE_ENV=production node dist/index.js",
@@ -84,7 +86,9 @@
     "react-hook-form": "^7.53.1",
     "react-icons": "^5.5.0",
     "react-resizable-panels": "^2.1.4",
+    "react-router-dom": "^7.6.0",
     "recharts": "^2.15.2",
+    "sonner": "^2.0.3",
     "swr": "^2.3.3",
     "tailwind-merge": "^2.5.4",
     "tailwindcss-animate": "^1.0.7",
@@ -112,7 +116,8 @@
     "@types/ws": "^8.5.13",
     "@vitejs/plugin-react": "^4.3.2",
     "autoprefixer": "^10.4.20",
-    "drizzle-kit": "^0.30.4"
+    "drizzle-kit": "^0.30.4",
+    "prisma": "^6.7.0"
   },
   "optionalDependencies": {
     "bufferutil": "^4.0.8"

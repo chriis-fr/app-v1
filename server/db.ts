@@ -10,18 +10,56 @@ if (!mongo_uri) {
   throw new Error("MONGODB_URI must be set. Did you forget to provision a database?");
 }
 
-export async function connectDB() {
-  try {
-    // Connect Mongoose
-    await mongoose.connect(mongo_uri);
-    console.log('Connected to MongoDB via Mongoose');
+const MAX_RETRIES = 5;
+const RETRY_DELAY = 5000; // 5 seconds
 
-    // Test Prisma connection
-    await prisma.$connect();
-    console.log('Connected to MongoDB via Prisma');
-  } catch (error) {
-    console.error('Database connection error:', error);
-    throw error;
+async function wait(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+export async function connectDB() {
+  let retries = 0;
+  
+  while (retries < MAX_RETRIES) {
+    try {
+      // Connect Mongoose with SSL options
+      await mongoose.connect(mongo_uri, {
+        ssl: true,
+        tls: true,
+        tlsAllowInvalidCertificates: false,
+        retryWrites: true,
+        w: 'majority'
+      });
+      console.log('Connected to MongoDB via Mongoose');
+
+      // Test Prisma connection
+      await prisma.$connect();
+      console.log('Connected to MongoDB via Prisma');
+      return; // Successfully connected
+    } catch (error) {
+      retries++;
+      console.error(`Database connection attempt ${retries} failed:`, error);
+      
+      if (error instanceof Error) {
+        if (error.message.includes('IP whitelist')) {
+          console.error('\nIP Whitelist Error:');
+          console.error('Your current IP address is not whitelisted in MongoDB Atlas.');
+          console.error('Please add your IP to the whitelist in MongoDB Atlas:');
+          console.error('1. Go to MongoDB Atlas dashboard');
+          console.error('2. Click "Network Access" in the left sidebar');
+          console.error('3. Click "Add IP Address"');
+          console.error('4. Add your current IP or 0.0.0.0/0 for development\n');
+        }
+      }
+
+      if (retries === MAX_RETRIES) {
+        console.error('Max retries reached. Could not connect to database.');
+        throw error;
+      }
+
+      console.log(`Retrying in ${RETRY_DELAY/1000} seconds...`);
+      await wait(RETRY_DELAY);
+    }
   }
 }
 

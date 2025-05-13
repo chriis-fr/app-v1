@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { AuthenticatedUser } from '../src/middleware/auth';
 
 interface UserPermission {
   module: string;
@@ -20,13 +21,18 @@ declare global {
 
 export function checkPermission(module: string, action: string) {
   return async (req: Request, res: Response, next: NextFunction) => {
-    const user = req.user;
+    const user = req.user as AuthenticatedUser;
     
     if (!user) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const permission = user.permissions.find((p: UserPermission) => p.module === module);
+    // Owners have full access
+    if (user.isOwner) {
+      return next();
+    }
+
+    const permission = user.permissions.find(p => p.module === module);
     if (!permission || !permission.actions.includes(action)) {
       return res.status(403).json({ error: 'Forbidden' });
     }

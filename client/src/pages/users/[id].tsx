@@ -759,12 +759,12 @@ export default function EditUserPage() {
                   });
                   return (
                     <div key={moduleId} className="flex items-center space-x-2">
-                      <Checkbox
+                    <Checkbox
                         id={moduleId}
                         checked={isChecked}
-                        onCheckedChange={(checked) => {
+                      onCheckedChange={(checked) => {
                           const currentModules = Array.isArray(user.moduleAccess) ? user.moduleAccess : [];
-                          const newModuleAccess = checked
+                        const newModuleAccess = checked
                             ? [...currentModules, moduleId]
                             : currentModules.filter(ma => ma !== moduleId);
                           console.log('Module access changed:', {
@@ -773,14 +773,14 @@ export default function EditUserPage() {
                             currentModules,
                             newModuleAccess
                           });
-                          setUser({ ...user, moduleAccess: newModuleAccess });
-                        }}
-                      />
+                        setUser({ ...user, moduleAccess: newModuleAccess });
+                      }}
+                    />
                       <Label htmlFor={moduleId} className="flex flex-col">
                         <span>{moduleDisplayInfo[moduleId].name}</span>
                         <span className="text-sm text-muted-foreground">{moduleDisplayInfo[moduleId].description}</span>
-                      </Label>
-                    </div>
+                    </Label>
+                  </div>
                   );
                 })}
               </div>

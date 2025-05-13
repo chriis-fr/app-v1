@@ -3,11 +3,12 @@ import { Contact } from '../models/contact.model';
 import { hasRole } from '../auth';
 import { validateRequest } from '../middleware/validate';
 import { z } from 'zod';
+import { AuthenticatedUser } from '../src/middleware/auth';
 import { User as SelectUser } from '@shared/schema';
 
 // Extend the Express Request type to include our user
 interface AuthenticatedRequest extends Request {
-  user?: SelectUser;
+  user?: AuthenticatedUser;
 }
 
 const router = Router();

@@ -37,6 +37,11 @@ import InventorySupplyChain from '@/pages/app/inventory/supply-chain';
 import InventoryBarcode from '@/pages/app/inventory/barcode';
 import InventoryAlerts from '@/pages/app/inventory/alerts';
 import CRMPage from '@/pages/app/crm';
+import AccountingPage from '@/pages/accounting';
+import AccountingModulePage from '@/pages/accounting/module';
+import FinancePage from '@/pages/finance';
+import FinanceModulePage from '@/pages/finance/module';
+import SupportPage from '@/pages/support-page';
 
 function App() {
   return (
@@ -46,6 +51,7 @@ function App() {
           <Switch>
             <Route path="/" component={LandingPage} />
             <Route path="/auth" component={AuthPage} />
+            <Route path="/support" component={SupportPage} />
             <ProtectedRoute path="/dashboard" component={Dashboard} />
             <ProtectedRoute path="/settings" component={SettingsPage} />
             <ProtectedRoute path="/organization-settings" component={OrganizationSettingsPage} />
@@ -108,6 +114,10 @@ function App() {
             <ProtectedRoute path="/dashboard/real-estate/info" component={ModuleInfoPage} />
             <ProtectedRoute path="/dashboard/security/info" component={ModuleInfoPage} />
             <ProtectedRoute path="/dashboard/workflow/info" component={ModuleInfoPage} />
+            <ProtectedRoute path="/dashboard/accounting" component={AccountingPage} />
+            <ProtectedRoute path="/dashboard/accounting/:module" component={AccountingModulePage} />
+            <ProtectedRoute path="/dashboard/finance" component={FinancePage} />
+            <ProtectedRoute path="/dashboard/finance/:module" component={FinanceModulePage} />
             <Route component={NotFound} />
           </Switch>
           <Toaster />

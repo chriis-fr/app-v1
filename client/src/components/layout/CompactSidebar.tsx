@@ -3,7 +3,6 @@ import {
   LayoutGrid,
   ShoppingBag,
   Users,
-  Package,
   DollarSign,
   Building2,
   Wallet,
@@ -29,14 +28,30 @@ import {
   CreditCard,
   Bitcoin,
   Target,
-  AlertTriangle
+  AlertTriangle,
+  LucideIcon
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { chainslogo } from '@/assets';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/hooks/use-auth';
 
-const navigation = [
+interface SubItem {
+  name: string;
+  route: string;
+  icon: LucideIcon;
+  module?: string;
+}
+
+interface NavigationItem {
+  name: string;
+  icon: LucideIcon;
+  route: string;
+  module?: string;
+  subItems?: SubItem[];
+}
+
+const navigation: NavigationItem[] = [
   {
     name: 'Dashboard', 
     icon: LayoutGrid,
@@ -45,7 +60,8 @@ const navigation = [
   {
     name: 'Point of Sale', 
     icon: ShoppingBag,
-    route: '/pos'
+    route: '/pos',
+    module: 'pos'
   },
   {
     name: 'Users', 
@@ -60,17 +76,17 @@ const navigation = [
   {
     name: 'Finance Activity', 
     icon: Wallet,
-    route: '/finance',
+    route: '/dashboard/finance',
     subItems: [
-      { name: 'Overview', route: '/finance', icon: BarChart },
-      { name: 'Blockchain Wallets', route: '/finance/wallets', icon: Wallet },
-      { name: 'Bank Accounts', route: '/finance/bank-accounts', icon: Landmark },
-      { name: 'Transactions', route: '/finance/transactions', icon: CreditCard },
-      { name: 'Investments', route: '/finance/investments', icon: DollarSign },
-      { name: 'Cryptocurrency', route: '/finance/crypto', icon: Bitcoin },
-      { name: 'Financial Reports', route: '/finance/reports', icon: Receipt },
-      { name: 'Accounting', route: '/finance/accounting', icon: Calculator },
-      { name: 'Payments', route: '/finance/payments', icon: WalletCards }
+      { name: 'Overview', route: '/dashboard/finance', icon: BarChart },
+      { name: 'Blockchain Wallets', route: '/dashboard/finance/wallets', icon: Wallet },
+      { name: 'Bank Accounts', route: '/dashboard/finance/bank-accounts', icon: Landmark },
+      { name: 'Transactions', route: '/dashboard/finance/transactions', icon: CreditCard },
+      { name: 'Investments', route: '/dashboard/finance/investments', icon: DollarSign },
+      { name: 'Cryptocurrency', route: '/dashboard/finance/crypto', icon: Bitcoin },
+      { name: 'Financial Reports', route: '/dashboard/finance/reports', icon: Receipt },
+      { name: 'Accounting', route: '/dashboard/finance/accounting', icon: Calculator },
+      { name: 'Payments', route: '/dashboard/finance/payments', icon: WalletCards }
     ]
   },
   {
@@ -86,11 +102,6 @@ const navigation = [
     ]
   },
   {
-    name: 'Inventory', 
-    icon: Package,
-    route: '/inventory'
-  },
-  {
     name: 'Analytics', 
     icon: BarChart,
     route: '/analytics'
@@ -103,7 +114,7 @@ const navigation = [
   {
     name: 'Accounting', 
     icon: Receipt,
-    route: '/accounting'
+    route: '/dashboard/accounting'
   }
 ];
 
@@ -111,6 +122,25 @@ export default function CompactSidebar() {
   const [location, setLocation] = useLocation();
   const { user } = useAuth();
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
+
+  // Filter navigation items based on user's module access
+  const filteredNavigation = navigation.filter(item => {
+    // If item requires a specific module
+    if (item.module) {
+      return user?.moduleAccess?.includes(item.module);
+    }
+    // If item has subItems, check if any subItem requires a specific module
+    if (item.subItems) {
+      return item.subItems.some(subItem => {
+        if (subItem.module) {
+          return user?.moduleAccess?.includes(subItem.module);
+        }
+        return true;
+      });
+    }
+    // If no module requirement, show the item
+    return true;
+  });
 
   return (
     <div className="w-20 bg-[#282881] h-screen fixed left-0 text-white flex flex-col items-center">
@@ -124,7 +154,7 @@ export default function CompactSidebar() {
 
       {/* Navigation Items */}
       <div className="py-6 space-y-2 overflow-y-auto flex-1">
-        {navigation.map((item) => {
+        {filteredNavigation.map((item) => {
           const isActive = location.startsWith(item.route);
           const isHovered = hoveredItem === item.name;
 

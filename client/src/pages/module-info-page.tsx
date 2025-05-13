@@ -43,6 +43,7 @@ import POSInfoPage from './modules/pos-info';
 import HRInfoPage from './modules/hr-info';
 import InventoryInfoPage from './modules/inventory-info';
 import CRMInfoPage from './modules/crm-info';
+import AccountingInfoPage from './modules/accounting-info';
 import { useState } from 'react';
 
 // Dummy data for analytics
@@ -161,7 +162,8 @@ const moduleInfoPages: Record<string, React.ComponentType> = {
   pos: POSInfoPage,
   hr: HRInfoPage,
   inventory: InventoryInfoPage,
-  crm: CRMInfoPage
+  crm: CRMInfoPage,
+  accounting: AccountingInfoPage
 };
 
 export default function ModuleInfoPage() {

@@ -186,7 +186,7 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
-      
+
       // Verify the current password
       const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
       

@@ -11,56 +11,93 @@ import { Document, Types } from "mongoose";
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
 import jwt from 'jsonwebtoken';
+import { AuthenticatedUser } from './src/middleware/auth';
 
 const prisma = new PrismaClient();
 
+// Extend Express Request type
+declare global {
+  namespace Express {
+    interface User {
+      id: string;
+      email: string;
+      role: string;
+      organizationId: string;
+      isOwner: boolean;
+      moduleAccess: string[];
+      department?: string;
+      permissions: { module: string; actions: string[] }[];
+    }
+  }
+}
+
 // Middleware to check if user has access to specific module
-export function hasModuleAccess(module: string) {
-  return async (req: Request, res: Response, next: NextFunction) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ message: "Not authenticated" });
+export const hasModuleAccess = (module: string) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const user = req.user as AuthenticatedUser;
+
+    if (!user) {
+      return res.status(401).json({ message: 'Authentication required' });
     }
 
-    const user = req.user as unknown as IUserDocument;
-    
-    // Check if user is owner
+    // Owners have full access
     if (user.isOwner) {
-      return next(); // Owners have access to everything
+      return next();
     }
 
-    // Check if user is admin
+    // Check for explicit module access
+    if (user.moduleAccess.includes(module)) {
+      return next();
+    }
+
+    // Check for permissions
+    const modulePermissions = user.permissions.find(p => p.module === module);
+    if (modulePermissions && modulePermissions.actions.length > 0) {
+      return next();
+    }
+
+    // For admins, check department-based access
     if (user.role === 'admin') {
-      // Admins can only access their assigned module
-      const userModule = user.department.toLowerCase();
-      if (module === userModule) {
+      const departmentModules: { [key: string]: string[] } = {
+        'Finance': ['accounting', 'payroll', 'invoicing'],
+        'HR': ['hr', 'payroll', 'recruitment'],
+        'Operations': ['inventory', 'warehouse', 'supply_chain'],
+        'Sales': ['crm', 'sales', 'marketing'],
+        'IT': ['system', 'security', 'analytics']
+      };
+
+      const userDepartment = user.department;
+      if (userDepartment && departmentModules[userDepartment]?.includes(module)) {
         return next();
       }
-      return res.status(403).json({ message: "Admins can only access their assigned module" });
     }
 
-    // For regular employees, check module access
-    const moduleAccess = await prisma.moduleAccess.findFirst({
-      where: {
-        userId: String(user.id), // Convert to string to match Prisma's type
-        module: module
-      }
-    });
-
-    if (!moduleAccess) {
-      return res.status(403).json({ message: "No access to this module" });
-    }
-
-    next();
+    return res.status(403).json({ message: 'Access denied' });
   };
-}
+};
 
 // Middleware to check user role
-export function hasRole(roles: string[]) { 
+export const hasRole = (roles: string[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
-    // Always allow requests through without checking for role
-    next();
+    const user = req.user as AuthenticatedUser;
+
+    if (!user) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+
+    // Owners have full access
+    if (user.isOwner) {
+      return next();
+    }
+
+    // Check if user's role is in the allowed roles
+    if (roles.includes(user.role)) {
+      return next();
+    }
+
+    return res.status(403).json({ message: 'Access denied' });
   };
-}
+};
 
 // Helper function to normalize a raw IUserDocument into a SelectUser.
 function normalizeUser(user: IUserDocument): SelectUser {
@@ -88,14 +125,8 @@ function normalizeUser(user: IUserDocument): SelectUser {
     // if null, you can choose a default (e.g., current date)
     createdAt: user.createdAt ? new Date(user.createdAt).toISOString() : new Date().toISOString(),
     updatedAt: user.updatedAt ? new Date(user.updatedAt).toISOString() : new Date().toISOString(),
-    permissions: user.permissions ?? [],
+    permissions: user.permissions || [],
   };
-}
-
-declare global {
-  namespace Express {
-    interface User extends SelectUser {}
-  }
 }
 
 const scryptAsync = promisify(scrypt);
@@ -168,8 +199,20 @@ export function setupAuth(app: Express) {
           data: { lastLogin: new Date() }
         });
 
+        // Transform user to match Express User interface
+        const expressUser: Express.User = {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+          organizationId: user.organizationId || '',
+          isOwner: user.isOwner || false,
+          moduleAccess: user.moduleAccess.map(ma => ma.module),
+          department: user.department || undefined,
+          permissions: user.permissions as { module: string; actions: string[] }[]
+        };
+
         console.log('Login successful for user:', email);
-        return done(null, user);
+        return done(null, expressUser);
       } catch (error) {
         console.error('Login error:', error);
         return done(error);
@@ -177,7 +220,7 @@ export function setupAuth(app: Express) {
     }
   ));
 
-  passport.serializeUser((user: any, done) => {
+  passport.serializeUser((user: Express.User, done) => {
     done(null, user.id);
   });
 
@@ -190,7 +233,24 @@ export function setupAuth(app: Express) {
           organization: true
         }
       });
-      done(null, user);
+
+      if (!user) {
+        return done(null, false);
+      }
+
+      // Transform user to match Express User interface
+      const expressUser: Express.User = {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        organizationId: user.organizationId || '',
+        isOwner: user.isOwner || false,
+        moduleAccess: user.moduleAccess.map(ma => ma.module),
+        department: user.department || undefined,
+        permissions: user.permissions as { module: string; actions: string[] }[]
+      };
+
+      done(null, expressUser);
     } catch (error) {
       done(error);
     }
@@ -267,7 +327,7 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/login", (req, res, next) => {
-    passport.authenticate('local', (err: any, user: any, info: { message: string }) => {
+    passport.authenticate('local', async (err: any, user: any, info: { message: string }) => {
       if (err) {
         console.error('Login error:', err);
         return res.status(500).json({ message: 'Internal server error' });
@@ -275,6 +335,19 @@ export function setupAuth(app: Express) {
       
       if (!user) {
         return res.status(401).json({ message: info.message || 'Invalid email or password' });
+      }
+
+      // Fetch full user data with organization
+      const fullUser = await prisma.user.findUnique({
+        where: { id: user.id },
+        include: {
+          moduleAccess: true,
+          organization: true
+        }
+      });
+
+      if (!fullUser) {
+        return res.status(401).json({ message: 'User not found' });
       }
 
       req.login(user, (err) => {
@@ -312,9 +385,31 @@ export function setupAuth(app: Express) {
           maxAge: 24 * 60 * 60 * 1000
         });
 
-        // Return user data without sensitive information
-        const { password, ...userWithoutPassword } = user;
-        res.json({ user: userWithoutPassword, token });
+        // Return user data with organization and module access
+        const { password, ...userWithoutPassword } = fullUser;
+        res.json({ 
+          user: {
+            ...userWithoutPassword,
+            moduleAccess: fullUser.moduleAccess.map(ma => ma.module),
+            organization: fullUser.organization ? {
+              id: fullUser.organization.id,
+              name: fullUser.organization.name,
+              type: fullUser.organization.type,
+              industry: fullUser.organization.industry,
+              size: fullUser.organization.size,
+              walletAddress: fullUser.organization.walletAddress,
+              activeModules: fullUser.organization.activeModules,
+              maxModules: fullUser.organization.maxModules,
+              address: fullUser.organization.address,
+              country: fullUser.organization.country,
+              taxId: fullUser.organization.taxId,
+              website: fullUser.organization.website,
+              settings: fullUser.organization.settings,
+              roles: fullUser.organization.roles
+            } : null
+          }, 
+          token 
+        });
       });
     })(req, res, next);
   });
@@ -327,13 +422,50 @@ export function setupAuth(app: Express) {
     });
   });
 
-  app.get("/api/auth/me", (req, res) => {
+  app.get("/api/auth/me", async (req, res) => {
     if (!req.user) {
       return res.status(401).json({ message: 'Not authenticated' });
     }
     
-    const { password, ...userWithoutPassword } = req.user as any;
-    res.json(userWithoutPassword);
+    try {
+      // Fetch full user data with organization
+      const fullUser = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        include: {
+          moduleAccess: true,
+          organization: true
+        }
+      });
+
+      if (!fullUser) {
+        return res.status(401).json({ message: 'User not found' });
+      }
+
+      const { password, ...userWithoutPassword } = fullUser;
+      res.json({
+        ...userWithoutPassword,
+        moduleAccess: fullUser.moduleAccess.map(ma => ma.module),
+        organization: fullUser.organization ? {
+          id: fullUser.organization.id,
+          name: fullUser.organization.name,
+          type: fullUser.organization.type,
+          industry: fullUser.organization.industry,
+          size: fullUser.organization.size,
+          walletAddress: fullUser.organization.walletAddress,
+          activeModules: fullUser.organization.activeModules,
+          maxModules: fullUser.organization.maxModules,
+          address: fullUser.organization.address,
+          country: fullUser.organization.country,
+          taxId: fullUser.organization.taxId,
+          website: fullUser.organization.website,
+          settings: fullUser.organization.settings,
+          roles: fullUser.organization.roles
+        } : null
+      });
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+      res.status(500).json({ message: 'Failed to fetch user data' });
+    }
   });
 
   app.get("/api/user", (req, res) => {

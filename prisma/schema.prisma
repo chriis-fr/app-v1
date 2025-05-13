@@ -1,0 +1,145 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+// Accounting Models
+model Account {
+  id              String         @id @default(auto()) @map("_id") @db.ObjectId
+  code            String
+  name            String
+  type            String
+  description     String?
+  isActive        Boolean        @default(true)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  organizationId  String         @db.ObjectId
+  organization    Organization   @relation(fields: [organizationId], references: [id])
+  journalLines    JournalLine[]
+}
+
+model JournalEntry {
+  id              String         @id @default(auto()) @map("_id") @db.ObjectId
+  date            DateTime
+  reference       String
+  description     String?
+  status          String         @default("draft")
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  organizationId  String         @db.ObjectId
+  organization    Organization   @relation(fields: [organizationId], references: [id])
+  createdById     String         @db.ObjectId
+  createdBy       User           @relation(fields: [createdById], references: [id])
+  lines           JournalLine[]
+}
+
+model JournalLine {
+  id              String         @id @default(auto()) @map("_id") @db.ObjectId
+  journalEntryId  String         @db.ObjectId
+  journalEntry    JournalEntry   @relation(fields: [journalEntryId], references: [id])
+  accountId       String         @db.ObjectId
+  account         Account        @relation(fields: [accountId], references: [id])
+  debit           Float
+  credit          Float
+  description     String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+}
+
+model FinancialPeriod {
+  id              String         @id @default(auto()) @map("_id") @db.ObjectId
+  name            String
+  startDate       DateTime
+  endDate         DateTime
+  isClosed        Boolean        @default(false)
+  organizationId  String         @db.ObjectId
+  organization    Organization   @relation(fields: [organizationId], references: [id])
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+}
+
+// Update Organization model to include accounting relations
+model Organization {
+  id              String           @id @default(auto()) @map("_id") @db.ObjectId
+  name            String
+  type            String
+  industry        String
+  size            String?
+  walletAddress   String?         @unique
+  activeModules   String[]
+  maxModules      Int             @default(2)
+  address         String?
+  country         String?
+  taxId           String?
+  website         String?
+  settings        Json?
+  roles           Json?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  users           User[]
+  accounts        Account[]
+  journalEntries  JournalEntry[]
+  financialPeriods FinancialPeriod[]
+}
+
+// Update User model to include all fields from MongoDB schema
+model User {
+  id              String           @id @default(auto()) @map("_id") @db.ObjectId
+  username        String           @unique
+  password        String
+  role            String           // 'owner' | 'admin' | 'manager' | 'employee' | 'contractor'
+  department      String?          // 'Executive' | 'Engineering' | 'Sales' | 'Marketing' | 'Finance' | 'HR' | 'Operations' | 'IT' | 'Customer Support' | 'Product' | 'Design'
+  firstName       String
+  lastName        String
+  email           String           @unique
+  phoneNumber     String?
+  organizationId  String           @db.ObjectId
+  organization    Organization     @relation(fields: [organizationId], references: [id])
+  isOwner         Boolean          @default(false)
+  moduleAccess    ModuleAccess[]
+  permissions     Json?            // Array of { module: string, actions: string[] }
+  position        String?
+  status          String           @default("active") // 'active' | 'inactive'
+  lastLogin       DateTime?
+  employeeId      String?
+  hireDate        String?
+  managerId       String?
+  team            String?
+  location        Json?            // { office?: string, floor?: string, deskNumber?: string }
+  workSchedule    Json?            // { startTime?: string, endTime?: string, timezone?: string }
+  emergencyContact Json?           // { name?: string, relationship?: string, phone?: string }
+  skills          String[]
+  certifications  String[]
+  education       Json?            // Array of { degree?: string, institution?: string, graduationYear?: string }
+  performance     Json?            // { lastReviewDate?: string, nextReviewDate?: string, rating?: number }
+  compensation    Json?            // { baseSalary?: number, bonus?: number, stockOptions?: number, currency?: string }
+  benefits        Json?            // { healthInsurance?: boolean, dentalInsurance?: boolean, visionInsurance?: boolean, retirementPlan?: boolean, lifeInsurance?: boolean }
+  equipment       Json?            // { laptop?: string, monitor?: string, phone?: string, accessories?: string[] }
+  accessLevels    Json?            // { systems?: string[], buildings?: string[], rooms?: string[] }
+  documents       Json?            // Array of { id?: string, type?: string, url?: string, expiryDate?: string }
+  wallet          Json?            // { balance: number, currency: string, bankAccounts: Array<{ id: string, bankName: string, accountNumber: string, accountType: string, isDefault: boolean }> }
+  legalDetails    Json?            // { taxId: string, businessType: string, registrationNumber: string, incorporationDate: string }
+  address         Json?            // { street?: string, city?: string, state?: string, country?: string, postalCode?: string, isBillingAddress?: boolean, isShippingAddress?: boolean }
+  avatarUrl       String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  journalEntries  JournalEntry[]
+
+  @@index([organizationId])
+}
+
+model ModuleAccess {
+  id              String           @id @default(auto()) @map("_id") @db.ObjectId
+  module          String
+  userId          String           @db.ObjectId
+  user            User             @relation(fields: [userId], references: [id])
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+} 
