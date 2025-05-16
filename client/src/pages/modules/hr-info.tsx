@@ -1,13 +1,11 @@
 import { useState, useEffect } from 'react';
-import BaseModuleInfo from './base-module-info';
-import AnalyticsDashboard, { TimeRange } from '@/components/analytics/analytics-dashboard';
+import { useLocation } from 'wouter';
+import { useAuth } from '@/hooks/use-auth';
+import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
-import { useAuth } from '@/hooks/use-auth';
-import { useLocation } from 'wouter';
-import { Button } from '@/components/ui/button';
+import CompactSidebar from '@/components/layout/CompactSidebar';
 import { 
   Users,
   Briefcase,
@@ -15,12 +13,15 @@ import {
   CreditCard,
   Calendar,
   Shield,
-  Search
+  Settings,
+  BarChart,
+  UserPlus,
+  Clock
 } from 'lucide-react';
 import { CredentialVerification } from '@/components/hr/CredentialVerification';
 import { SkillMatching } from '@/components/hr/SkillMatching';
 import { DataTable } from '@/components/ui/data-table';
-import { columns, Employee } from '@/pages/hr/columns';
+import { columns, Employee, Credential } from '@/pages/hr/columns';
 import { Payroll } from '@/components/hr/Payroll';
 
 // Dummy data for HR metrics
@@ -55,50 +56,44 @@ const hrData = {
 };
 
 export default function HRInfoPage() {
-  const [timeRange, setTimeRange] = useState<TimeRange>('week');
-  const { toast } = useToast();
-  const { user } = useAuth();
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(true);
+  const [timeRange, setTimeRange] = useState('week');
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
 
-  // Check if user has access to HR module
-  if (!user?.moduleAccess?.includes('hr') && !user?.isOwner) {
+  useEffect(() => {
+    if (!user) {
+      setLocation('/auth');
+      return;
+    }
+
+    // Check if user is owner or in executive department
+    const isAuthorized = user.role === 'owner' || 
+                        (user.department?.toLowerCase() === 'executive' && user.moduleAccess?.includes('hr'));
+
+    if (!isAuthorized) {
+      toast({
+        title: 'Access Denied',
+        description: 'Only owners and executive department members can access this page.',
+        variant: 'destructive',
+      });
+      setLocation('/dashboard');
+      return;
+    }
+
+    setIsLoading(false);
+  }, [user]);
+
+  if (isLoading) {
     return (
-      <div className="flex min-h-screen">
-        <div className="flex-1 p-8">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-red-600 mb-4">Access Denied</h1>
-            <p className="text-gray-600 mb-4">You don't have permission to access the HR module.</p>
-            <Button onClick={() => setLocation('/dashboard')}>Return to Dashboard</Button>
-          </div>
-        </div>
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
       </div>
     );
   }
-
-  useEffect(() => {
-    fetchEmployees();
-  }, []);
-
-  const fetchEmployees = async () => {
-    try {
-      const response = await fetch('/api/mongodb/users');
-      if (!response.ok) throw new Error('Failed to fetch employees');
-      const data = await response.json();
-      setEmployees(data);
-    } catch (error) {
-      console.error('Error fetching employees:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to fetch employees',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleVerifyCredential = async (credentialId: string, userId: string) => {
     try {
@@ -120,7 +115,14 @@ export default function HRInfoPage() {
                 ...emp,
                 credentials: emp.credentials?.map(cred => 
                   cred.id === credentialId 
-                    ? { ...cred, verified: true, blockchainHash: data.blockchainHash }
+                    ? { 
+                        ...cred, 
+                        verified: true, 
+                        blockchainHash: data.blockchainHash,
+                        title: cred.title,
+                        issuer: cred.issuer,
+                        date: cred.date
+                      }
                     : cred
                 )
               }
@@ -164,182 +166,182 @@ export default function HRInfoPage() {
   };
 
   return (
-    <BaseModuleInfo
-      moduleName="HR Management"
-      description="Comprehensive human resources management and analytics"
-      icon="users"
-      timeRange={timeRange}
-      onTimeRangeChange={setTimeRange}
-      onExportData={handleExportData}
-      onGenerateReport={handleGenerateReport}
-      onViewRawData={handleViewRawData}
-      onRefreshData={handleRefreshData}
-    >
-      <div className="space-y-6">
-        <AnalyticsDashboard
-          moduleId="hr"
-          moduleName="HR Management"
-          timeRange={timeRange}
-          onTimeRangeChange={setTimeRange}
-          onExportData={handleExportData}
-          onRefresh={handleRefreshData}
-          metrics={hrData.metrics}
-          dailyStats={hrData.dailyStats}
-          topItems={hrData.topDepartments}
-          distributionData={hrData.employeeStatus}
-          insights={[
-            {
-              title: 'Employee Growth Trend',
-              description: 'Positive growth in engineering department with 5 new hires this month',
-              type: 'success'
-            },
-            {
-              title: 'Training Impact',
-              description: 'Training hours increased by 15% leading to improved performance metrics',
-              type: 'info'
-            },
-            {
-              title: 'Retention Improvement',
-              description: 'Turnover rate decreased by 2% due to new retention initiatives',
-              type: 'success'
-            }
-          ]}
-        />
-
-        <div className="mb-6">
-          <div className="relative">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search employees..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-8"
-            />
-          </div>
-        </div>
-
-        <Tabs defaultValue="employees" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="employees">
+    <div className="flex h-screen">
+      <CompactSidebar />
+      <div className="flex-1 ml-20">
+        <div className="container mx-auto py-6">
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-bold">HR Module Management</h1>
+            <Button onClick={() => setLocation('/hr')}>
               <Users className="mr-2 h-4 w-4" />
-              Employees
-            </TabsTrigger>
-            <TabsTrigger value="skills">
-              <Briefcase className="mr-2 h-4 w-4" />
-              Skills & Matching
-            </TabsTrigger>
-            <TabsTrigger value="credentials">
-              <FileText className="mr-2 h-4 w-4" />
-              Credentials
-            </TabsTrigger>
-            <TabsTrigger value="payroll">
-              <CreditCard className="mr-2 h-4 w-4" />
-              Payroll
-            </TabsTrigger>
-            <TabsTrigger value="timeoff">
-              <Calendar className="mr-2 h-4 w-4" />
-              Time Off
-            </TabsTrigger>
-            <TabsTrigger value="performance">
-              <Shield className="mr-2 h-4 w-4" />
-              Performance
-            </TabsTrigger>
-          </TabsList>
+              View HR Dashboard
+            </Button>
+          </div>
 
-          <TabsContent value="employees">
-            <Card>
-              <CardHeader>
-                <CardTitle>Employee Management</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <DataTable
-                  columns={columns}
-                  data={filteredEmployees}
-                  onRowClick={(employee) => window.location.href = `/users/${employee.id}`}
-                />
-              </CardContent>
-            </Card>
-          </TabsContent>
+          <Tabs defaultValue="overview" className="space-y-4">
+            <TabsList>
+              <TabsTrigger value="overview">
+                <BarChart className="mr-2 h-4 w-4" />
+                Overview
+              </TabsTrigger>
+              <TabsTrigger value="settings">
+                <Settings className="mr-2 h-4 w-4" />
+                Settings
+              </TabsTrigger>
+              <TabsTrigger value="roles">
+                <Shield className="mr-2 h-4 w-4" />
+                Roles & Permissions
+              </TabsTrigger>
+              <TabsTrigger value="workflows">
+                <Briefcase className="mr-2 h-4 w-4" />
+                Workflows
+              </TabsTrigger>
+              <TabsTrigger value="reports">
+                <FileText className="mr-2 h-4 w-4" />
+                Reports
+              </TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="skills">
-            <Card>
-              <CardHeader>
-                <CardTitle>Skill Matching</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <SkillMatching
-                  projectRequirements={{
-                    skills: ['javascript', 'typescript', 'react', 'node.js'],
-                    experience: 3
-                  }}
-                />
-              </CardContent>
-            </Card>
-          </TabsContent>
+            <TabsContent value="overview">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Module Overview</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Total Employees</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-2xl font-bold">0</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Active Departments</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-2xl font-bold">0</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Pending Approvals</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-2xl font-bold">0</p>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-          <TabsContent value="credentials">
-            <Card>
-              <CardHeader>
-                <CardTitle>Credential Verification</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  {filteredEmployees.map((employee) => (
-                    <div key={employee.id} className="space-y-4">
-                      <h3 className="font-medium">{employee.firstName} {employee.lastName}</h3>
-                      <CredentialVerification
-                        credentials={employee.credentials || []}
-                        onVerify={(credentialId) => handleVerifyCredential(credentialId, employee.id)}
-                      />
+            <TabsContent value="settings">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Module Settings</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-lg font-medium mb-2">General Settings</h3>
+                      <p className="text-muted-foreground">
+                        Configure general HR module settings and preferences
+                      </p>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+                    <div>
+                      <h3 className="text-lg font-medium mb-2">Integration Settings</h3>
+                      <p className="text-muted-foreground">
+                        Manage integrations with other modules and external services
+                      </p>
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-medium mb-2">Notification Settings</h3>
+                      <p className="text-muted-foreground">
+                        Configure notification preferences for HR-related events
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-          <TabsContent value="payroll">
-            <Card>
-              <CardHeader>
-                <CardTitle>Payroll Management</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  {filteredEmployees.map((employee) => (
-                    <Payroll
-                      key={employee.id}
-                      employee={employee}
-                      onUpdate={async (employeeId, compensation) => {
-                        try {
-                          const response = await fetch(`/api/hr/${employeeId}/compensation`, {
-                            method: 'PUT',
-                            headers: {
-                              'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({
-                              compensation
-                            }),
-                          });
-                          if (!response.ok) throw new Error('Failed to update compensation');
-                          const updatedEmployee = await response.json();
-                          setEmployees(employees.map(emp => 
-                            emp.id === employeeId ? updatedEmployee : emp
-                          ));
-                        } catch (error) {
-                          console.error('Error updating compensation:', error);
-                          throw error;
-                        }
-                      }}
-                    />
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+            <TabsContent value="roles">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Roles & Permissions</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-lg font-medium mb-2">HR Roles</h3>
+                      <p className="text-muted-foreground">
+                        Manage HR-specific roles and their permissions
+                      </p>
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-medium mb-2">Access Control</h3>
+                      <p className="text-muted-foreground">
+                        Configure access levels for different HR functions
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-          {/* Add other tabs content for timeoff and performance */}
-        </Tabs>
+            <TabsContent value="workflows">
+              <Card>
+                <CardHeader>
+                  <CardTitle>HR Workflows</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-lg font-medium mb-2">Approval Workflows</h3>
+                      <p className="text-muted-foreground">
+                        Configure approval processes for HR operations
+                      </p>
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-medium mb-2">Automation Rules</h3>
+                      <p className="text-muted-foreground">
+                        Set up automated HR processes and notifications
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="reports">
+              <Card>
+                <CardHeader>
+                  <CardTitle>HR Reports</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-lg font-medium mb-2">Standard Reports</h3>
+                      <p className="text-muted-foreground">
+                        Access and configure standard HR reports
+                      </p>
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-medium mb-2">Custom Reports</h3>
+                      <p className="text-muted-foreground">
+                        Create and manage custom HR reports
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </div>
       </div>
-    </BaseModuleInfo>
+    </div>
   );
 } 

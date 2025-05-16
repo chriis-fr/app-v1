@@ -42,6 +42,8 @@ import AccountingModulePage from '@/pages/accounting/module';
 import FinancePage from '@/pages/finance';
 import FinanceModulePage from '@/pages/finance/module';
 import SupportPage from '@/pages/support-page';
+import HRPage from '@/pages/hr';
+import HRInfoPage from '@/pages/modules/hr-info';
 
 function App() {
   return (
@@ -67,6 +69,11 @@ function App() {
             <ProtectedRoute path="/pos/reports" component={POSReports} />
             <ProtectedRoute path="/pos/orders" component={POSOrders} />
             <ProtectedRoute path="/pos/settings" component={POSSettings} />
+            
+            {/* HR Routes */}
+            <ProtectedRoute path="/hr" component={HRPage} requiredModule="hr" />
+            <ProtectedRoute path="/dashboard/hr" component={HRPage} requiredModule="hr" />
+            <ProtectedRoute path="/dashboard/hr/info" component={HRInfoPage} requiredModule="hr" />
             
             {/* Inventory Routes */}
             <ProtectedRoute path="/inventory" component={InventoryPage} />
@@ -95,7 +102,6 @@ function App() {
             {/* Module Info Routes */}
             <ProtectedRoute path="/dashboard/pos/info" component={ModuleInfoPage} />
             <ProtectedRoute path="/dashboard/inventory/info" component={ModuleInfoPage} />
-            <ProtectedRoute path="/dashboard/hr/info" component={ModuleInfoPage} />
             <ProtectedRoute path="/dashboard/finance/info" component={ModuleInfoPage} />
             <ProtectedRoute path="/dashboard/blockchain/info" component={ModuleInfoPage} />
             <ProtectedRoute path="/dashboard/accounting/info" component={ModuleInfoPage} />

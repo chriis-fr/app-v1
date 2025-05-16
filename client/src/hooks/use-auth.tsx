@@ -1,6 +1,8 @@
 import * as React from 'react';
 import { useMutation, UseMutationResult, useQuery } from '@tanstack/react-query';
 import { User as SchemaUser, OrganizationSettings, Role } from '@shared/schema';
+import { createContext, useContext, useState, useEffect } from 'react';
+import { useLocation } from 'wouter';
 
 // Define types
 interface Organization {
@@ -49,54 +51,43 @@ interface RegisterData {
 
 interface AuthContextType {
   user: User | null;
+  isAuthenticated: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => void;
   isLoading: boolean;
   error: string | null;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
   loginMutation: UseMutationResult<void, Error, LoginData>;
   registerMutation: UseMutationResult<void, Error, RegisterData>;
   setUser: React.Dispatch<React.SetStateAction<User | null>>;
 }
 
 // Create context
-const AuthContext = React.createContext<AuthContextType>({
-  user: null,
-  isLoading: true,
-  error: null,
-  login: async () => {},
-  logout: async () => {},
-  loginMutation: {} as UseMutationResult<void, Error, LoginData>,
-  registerMutation: {} as UseMutationResult<void, Error, RegisterData>,
-  setUser: () => {},
-});
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Provider component
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = React.useState<User | null>(null);
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [, setLocation] = useLocation();
 
-  // Use React Query to fetch user data
-  const { data: userData, isLoading: isUserLoading } = useQuery({
-    queryKey: ['user'],
-    queryFn: async () => {
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  const checkAuth = async () => {
+    try {
       const response = await fetch('/api/auth/me');
-      if (!response.ok) {
-        throw new Error('Failed to fetch user data');
+      if (response.ok) {
+        const data = await response.json();
+        setUser(data);
       }
-      return response.json();
-    },
-    retry: false,
-    refetchOnWindowFocus: false,
-  });
-
-  // Update user state when data is fetched
-  React.useEffect(() => {
-    if (userData) {
-      setUser(userData);
+    } catch (error) {
+      console.error('Auth check failed:', error);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(isUserLoading);
-  }, [userData, isUserLoading]);
+  };
 
   const loginMutation = useMutation<void, Error, LoginData>({
     mutationFn: async (data) => {
@@ -189,40 +180,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string) => {
     try {
       await loginMutation.mutateAsync({ email, password });
+      setLocation('/dashboard');
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Login failed');
       throw error;
     }
   };
 
-  const logout = async () => {
-    try {
-      // Call the logout endpoint
-      await fetch('/api/auth/logout', { method: 'POST' });
-      
-      // Clear the user state
-      setUser(null);
-      
-      // Clear any cached data in localStorage or sessionStorage
-      localStorage.removeItem('user');
-      sessionStorage.removeItem('user');
-      
-      // Force a page reload to clear any cached state
-      window.location.href = '/auth';
-    } catch (error) {
-      console.error('Logout failed:', error);
-      throw error;
-    }
+  const logout = () => {
+    setUser(null);
+    setLocation('/auth');
   };
 
   return (
     <AuthContext.Provider
       value={{
         user,
-        isLoading,
-        error,
+        isAuthenticated: !!user,
         login,
         logout,
+        isLoading,
+        error,
         loginMutation,
         registerMutation,
         setUser,
@@ -234,8 +212,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 }
 
 export function useAuth() {
-  const context = React.useContext(AuthContext);
-  if (!context) {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;

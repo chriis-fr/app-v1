@@ -1,7 +1,17 @@
 import { ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { ArrowUpDown } from 'lucide-react';
+
+export interface Credential {
+  id: string;
+  title: string;
+  type: 'education' | 'certification' | 'experience';
+  name: string;
+  issuer: string;
+  date: string;
+  verified: boolean;
+  blockchainHash?: string;
+}
 
 export interface Employee {
   id: string;
@@ -10,39 +20,39 @@ export interface Employee {
   email: string;
   department: string;
   position: string;
-  status: 'active' | 'inactive' | 'on_leave' | 'terminated';
-  hireDate: string;
-  managerId?: string;
-  team?: string;
-  skills?: string[];
-  experienceYears: number;
-  credentials?: Array<{
-    id: string;
-    type: 'education' | 'certification' | 'experience';
-    title: string;
-    issuer: string;
-    date: string;
-    verified: boolean;
-    blockchainHash?: string;
-  }>;
-  compensation?: {
-    baseSalary: number;
-    bonus: number;
-    stockOptions: number;
-    currency: string;
-  };
+  status: 'active' | 'on_leave' | 'terminated';
+  joinDate: string;
+  credentials?: Credential[];
 }
-
-type BadgeVariant = 'default' | 'secondary' | 'destructive' | 'outline';
 
 export const columns: ColumnDef<Employee>[] = [
   {
     accessorKey: 'firstName',
-    header: 'First Name',
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        >
+          First Name
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      );
+    },
   },
   {
     accessorKey: 'lastName',
-    header: 'Last Name',
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        >
+          Last Name
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      );
+    },
   },
   {
     accessorKey: 'email',
@@ -50,7 +60,17 @@ export const columns: ColumnDef<Employee>[] = [
   },
   {
     accessorKey: 'department',
-    header: 'Department',
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        >
+          Department
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      );
+    },
   },
   {
     accessorKey: 'position',
@@ -58,45 +78,27 @@ export const columns: ColumnDef<Employee>[] = [
   },
   {
     accessorKey: 'status',
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-        >
-          Status
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
+    header: 'Status',
     cell: ({ row }) => {
       const status = row.getValue('status') as string;
-      const statusMap: Record<string, BadgeVariant> = {
-        active: 'default',
-        inactive: 'secondary',
-        on_leave: 'outline',
-        terminated: 'destructive'
-      };
-      
       return (
-        <Badge variant={statusMap[status] || 'secondary'}>
-          {status ? status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ') : 'Unknown'}
-        </Badge>
+        <div className="flex items-center">
+          <div className={`h-2 w-2 rounded-full mr-2 ${
+            status === 'active' ? 'bg-green-500' :
+            status === 'on_leave' ? 'bg-yellow-500' :
+            'bg-red-500'
+          }`} />
+          <span className="capitalize">{status.replace('_', ' ')}</span>
+        </div>
       );
     },
   },
   {
-    accessorKey: 'hireDate',
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-        >
-          Hire Date
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
+    accessorKey: 'joinDate',
+    header: 'Join Date',
+    cell: ({ row }) => {
+      const date = new Date(row.getValue('joinDate'));
+      return date.toLocaleDateString();
     },
   },
 ]; 

@@ -16,7 +16,9 @@ import {
   Calendar,
   Shield,
   Plus,
-  Search
+  Search,
+  UserPlus,
+  Clock
 } from 'lucide-react';
 import { CredentialVerification } from '@/components/hr/CredentialVerification';
 import { SkillMatching } from '@/components/hr/SkillMatching';
@@ -24,7 +26,7 @@ import { DataTable } from '@/components/ui/data-table';
 import { columns, Employee } from './columns';
 import { Payroll } from '@/components/hr/Payroll';
 
-export default function HRModule() {
+export default function HRPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
@@ -122,6 +124,11 @@ export default function HRModule() {
       <div className="container mx-auto py-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">HR Management</h1>
+          {user?.role === 'admin' && (
+            <Button onClick={() => setLocation('/dashboard/hr/info')}>
+              Admin View
+            </Button>
+          )}
           <Button onClick={() => setLocation('/users/new')}>
             <Plus className="mr-2 h-4 w-4" />
             Add Employee
@@ -165,6 +172,18 @@ export default function HRModule() {
             <TabsTrigger value="performance">
               <Shield className="mr-2 h-4 w-4" />
               Performance
+            </TabsTrigger>
+            <TabsTrigger value="attendance">
+              <Clock className="mr-2 h-4 w-4" />
+              Attendance
+            </TabsTrigger>
+            <TabsTrigger value="documents">
+              <FileText className="mr-2 h-4 w-4" />
+              Documents
+            </TabsTrigger>
+            <TabsTrigger value="leave">
+              <Calendar className="mr-2 h-4 w-4" />
+              Leave Management
             </TabsTrigger>
           </TabsList>
 
@@ -259,7 +278,44 @@ export default function HRModule() {
             </Card>
           </TabsContent>
 
-          {/* Add other tabs content for payroll, timeoff, and performance */}
+          <TabsContent value="attendance">
+            <Card>
+              <CardHeader>
+                <CardTitle>Attendance Records</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">
+                  View and manage employee attendance records
+                </p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="documents">
+            <Card>
+              <CardHeader>
+                <CardTitle>Employee Documents</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">
+                  Access and manage employee documents and records
+                </p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="leave">
+            <Card>
+              <CardHeader>
+                <CardTitle>Leave Management</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">
+                  View and manage employee leave requests
+                </p>
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       </div>
     </ModuleLayout>

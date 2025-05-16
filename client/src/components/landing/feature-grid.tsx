@@ -19,25 +19,26 @@ import chainsnobg from '@/assets/chainsnobg.png'
 
 const features = [
   {
-    icon: ShoppingCart,
-    title: 'Point of Sale',
-    description: 'Modern POS system with real-time inventory tracking, multiple payment methods, and customer management'
-  },
-  {
     icon: Users,
     title: 'HR Management',
     description: 'Comprehensive HR solution with employee records, attendance tracking, and payroll integration'
   },
   {
-    icon: Package,
-    title: 'Inventory Control',
-    description: 'Advanced inventory management with stock tracking, warehouse management, and reorder alerts'
+    icon: ShoppingCart,
+    title: 'Point of Sale',
+    description: 'Modern POS system with real-time inventory tracking, multiple payment methods, and customer management'
   },
   {
     icon: FileText,
     title: 'Accounting',
     description: 'Complete financial management with general ledger, accounts payable/receivable, and tax compliance'
   },
+  {
+    icon: Package,
+    title: 'Inventory Control',
+    description: 'Advanced inventory management with stock tracking, warehouse management, and reorder alerts'
+  },
+  
   {
     icon: Building2,
     title: 'Multi-tenant',
