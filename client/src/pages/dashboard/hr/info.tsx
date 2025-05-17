@@ -257,8 +257,6 @@ export default function HRInfo() {
               </CardContent>
             </Card>
           </TabsContent>
-
-          {/* Add other tabs content for timeoff and performance */}
         </Tabs>
       </div>
     </DashboardLayout>

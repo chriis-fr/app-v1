@@ -59,17 +59,19 @@ export function MainHero() {
             From POS, HR, CRM, accounting, blockchain, asset growth, and so much more! - everything you need in ONE platform.
           </p>
 
-          <div className="flex flex-col sm:flex-row justify-center gap-4 mb-12">
-            <Link href="https://forms.gle/ABRUTcqUXt93vvAF8">
-              <a className="inline-flex items-center px-6 py-3 rounded-lg bg-blue-500 text-white font-medium hover:bg-blue-600 transition-colors">
-                Get Started Free
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </a>
+          <div className="flex flex-col sm:flex-row justify-center gap-4 mb-12 cursor-pointer">
+            <Link 
+              href="https://forms.gle/nHs8eDTv5D727yfq5"
+              className="inline-flex items-center px-6 py-3 rounded-lg bg-blue-500 text-white font-medium hover:bg-blue-600 transition-colors"
+            >
+              Get Started Free
+              <ArrowRight className="ml-2 h-5 w-5" />
             </Link>
-            <Link href="/auth">
-              <a className="inline-flex items-center px-6 py-3 rounded-lg bg-white/10 text-white font-medium hover:bg-white/20 transition-colors">
-                Request Demo
-              </a>
+            <Link 
+              href="/auth"
+              className="inline-flex items-center px-6 py-3 rounded-lg bg-white/10 text-white font-medium hover:bg-white/20 transition-colors"
+            >
+              Request Demo
             </Link>
           </div>
 

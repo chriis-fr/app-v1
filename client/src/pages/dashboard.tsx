@@ -2,6 +2,9 @@ import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { staticData } from '@/data/static';
 import { useAuth } from '@/hooks/use-auth';
+import { useRoleAccess } from '@/hooks/use-role-access';
+import { useLocation } from 'wouter';
+import { useEffect } from 'react';
 import { AIInsights } from '@/components/dashboard/AIInsights';
 import { BusinessHealth } from '@/components/dashboard/BusinessHealth';
 import { AIAnalytics } from '@/components/dashboard/AIAnalytics';
@@ -16,6 +19,19 @@ import CRMMain from '@/components/modules/crm/CRMMain';
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const { canAccessDashboard } = useRoleAccess();
+  const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    if (!canAccessDashboard()) {
+      setLocation('/');
+      return;
+    }
+  }, [canAccessDashboard, setLocation]);
+
+  if (!canAccessDashboard()) {
+    return null;
+  }
 
   // Return department-specific dashboard based on user's department
   switch(user?.department?.toLowerCase()) {
