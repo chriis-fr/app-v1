@@ -124,22 +124,62 @@ const allModules: ModuleInfo[] = [
   {
     id: 'blockchain',
     name: 'Blockchain Integration',
-    description: 'Leverage blockchain technology for secure transactions',
+    description: 'Leverage blockchain technology for secure, transparent, and efficient business operations',
     icon: Wallet,
     features: [
-      'Smart contracts',
-      'Digital assets',
-      'Transaction tracking',
-      'Security protocols',
-      'Integration APIs'
+      'Smart contract automation',
+      'Digital asset management',
+      'Supply chain tracking',
+      'Secure payment processing',
+      'Decentralized identity verification'
     ],
     benefits: [
-      'Enhanced security',
-      'Transparency',
-      'Automated processes',
-      'Cost reduction'
+      'Enhanced transaction security',
+      'Improved supply chain transparency',
+      'Reduced operational costs',
+      'Automated compliance and auditing'
     ],
     category: 'finance'
+  },
+  {
+    id: 'accounting',
+    name: 'Accounting',
+    description: 'Streamline your accounting processes with our comprehensive system',
+    icon: Receipt,
+    features: [
+      'Double-entry bookkeeping',
+      'Financial statements',
+      'Tax management',
+      'Audit trails',
+      'Multi-currency support'
+    ],
+    benefits: [
+      'Accurate financial records',
+      'Compliance with standards',
+      'Efficient tax filing',
+      'Better financial insights'
+    ],
+    category: 'finance'
+  },
+  {
+    id: 'analytics',
+    name: 'AI Analytics',
+    description: 'Harness the power of AI for business intelligence',
+    icon: BarChart,
+    features: [
+      'Predictive analytics',
+      'Business intelligence',
+      'Data visualization',
+      'Custom reports',
+      'Real-time insights'
+    ],
+    benefits: [
+      'Data-driven decisions',
+      'Improved forecasting',
+      'Competitive advantage',
+      'Business growth'
+    ],
+    category: 'reporting'
   },
   {
     id: 'manufacturing',
@@ -162,6 +202,66 @@ const allModules: ModuleInfo[] = [
     category: 'operations'
   },
   {
+    id: 'warehouse',
+    name: 'Warehouse Management',
+    description: 'Efficient warehouse operations management',
+    icon: Package,
+    features: [
+      'Storage optimization',
+      'Order fulfillment',
+      'Inventory tracking',
+      'Space utilization',
+      'Shipping integration'
+    ],
+    benefits: [
+      'Reduced operational costs',
+      'Improved efficiency',
+      'Better space utilization',
+      'Faster order processing'
+    ],
+    category: 'operations'
+  },
+  {
+    id: 'procurement',
+    name: 'Procurement',
+    description: 'Streamline your procurement processes',
+    icon: ShoppingCart,
+    features: [
+      'Vendor management',
+      'Purchase orders',
+      'Supplier evaluation',
+      'Contract management',
+      'Spend analysis'
+    ],
+    benefits: [
+      'Cost savings',
+      'Better supplier relationships',
+      'Process automation',
+      'Improved compliance'
+    ],
+    category: 'operations'
+  },
+  {
+    id: 'logistics',
+    name: 'Logistics',
+    description: 'Optimize your supply chain and logistics',
+    icon: Truck,
+    features: [
+      'Route optimization',
+      'Fleet management',
+      'Delivery tracking',
+      'Supply chain visibility',
+      'Performance metrics'
+    ],
+    benefits: [
+      'Reduced delivery times',
+      'Lower transportation costs',
+      'Better customer service',
+      'Improved efficiency'
+    ],
+    category: 'operations'
+  },
+  {
     id: 'crm',
     name: 'Customer Relationship Management',
     description: 'Build and maintain strong customer relationships',
@@ -180,6 +280,166 @@ const allModules: ModuleInfo[] = [
       'Data-driven decisions'
     ],
     category: 'business'
+  },
+  {
+    id: 'projects',
+    name: 'Project Management',
+    description: 'Manage projects efficiently from start to finish',
+    icon: Briefcase,
+    features: [
+      'Task management',
+      'Resource allocation',
+      'Timeline tracking',
+      'Budget control',
+      'Team collaboration'
+    ],
+    benefits: [
+      'On-time delivery',
+      'Cost control',
+      'Better team coordination',
+      'Improved project success'
+    ],
+    category: 'business'
+  },
+  {
+    id: 'tasks',
+    name: 'Task Management',
+    description: 'Organize and track tasks effectively',
+    icon: ClipboardList,
+    features: [
+      'Task assignment',
+      'Priority management',
+      'Deadline tracking',
+      'Progress monitoring',
+      'Team collaboration'
+    ],
+    benefits: [
+      'Improved productivity',
+      'Better organization',
+      'Clear accountability',
+      'Efficient workflow'
+    ],
+    category: 'business'
+  },
+  {
+    id: 'calendar',
+    name: 'Calendar & Scheduling',
+    description: 'Manage schedules and appointments efficiently',
+    icon: Calendar,
+    features: [
+      'Event scheduling',
+      'Meeting management',
+      'Resource booking',
+      'Reminder system',
+      'Calendar sharing'
+    ],
+    benefits: [
+      'Better time management',
+      'Reduced scheduling conflicts',
+      'Improved coordination',
+      'Enhanced productivity'
+    ],
+    category: 'business'
+  },
+  {
+    id: 'reports',
+    name: 'Reports & Analytics',
+    description: 'Generate comprehensive business reports',
+    icon: FileBarChart,
+    features: [
+      'Custom reports',
+      'Data visualization',
+      'Export capabilities',
+      'Scheduled reports',
+      'Interactive dashboards'
+    ],
+    benefits: [
+      'Better decision making',
+      'Improved insights',
+      'Time savings',
+      'Data-driven strategy'
+    ],
+    category: 'reporting'
+  },
+  {
+    id: 'audit',
+    name: 'Audit & Compliance',
+    description: 'Ensure compliance and maintain audit trails',
+    icon: FileCheck,
+    features: [
+      'Compliance tracking',
+      'Audit logging',
+      'Policy management',
+      'Risk assessment',
+      'Documentation'
+    ],
+    benefits: [
+      'Regulatory compliance',
+      'Risk reduction',
+      'Better governance',
+      'Improved accountability'
+    ],
+    category: 'reporting'
+  },
+  {
+    id: 'compliance',
+    name: 'Compliance Management',
+    description: 'Manage regulatory compliance effectively',
+    icon: FileWarning,
+    features: [
+      'Regulation tracking',
+      'Policy enforcement',
+      'Compliance reporting',
+      'Risk management',
+      'Document control'
+    ],
+    benefits: [
+      'Regulatory adherence',
+      'Risk mitigation',
+      'Better governance',
+      'Reduced penalties'
+    ],
+    category: 'reporting'
+  },
+  {
+    id: 'workflow',
+    name: 'Workflow Automation',
+    description: 'Automate and optimize business processes',
+    icon: Workflow,
+    features: [
+      'Process automation',
+      'Workflow design',
+      'Task routing',
+      'Approval management',
+      'Integration capabilities'
+    ],
+    benefits: [
+      'Process efficiency',
+      'Reduced errors',
+      'Faster processing',
+      'Better control'
+    ],
+    category: 'other'
+  },
+  {
+    id: 'security',
+    name: 'Security Management',
+    description: 'Protect your business with advanced security',
+    icon: Shield,
+    features: [
+      'Access control',
+      'Security monitoring',
+      'Threat detection',
+      'Compliance management',
+      'Incident response'
+    ],
+    benefits: [
+      'Enhanced security',
+      'Risk reduction',
+      'Compliance assurance',
+      'Better protection'
+    ],
+    category: 'other'
   }
 ];
 

@@ -37,6 +37,14 @@ import InventorySupplyChain from '@/pages/app/inventory/supply-chain';
 import InventoryBarcode from '@/pages/app/inventory/barcode';
 import InventoryAlerts from '@/pages/app/inventory/alerts';
 import CRMPage from '@/pages/app/crm';
+import AccountingPage from '@/pages/accounting';
+import AccountingModulePage from '@/pages/accounting/module';
+import FinancePage from '@/pages/finance';
+import FinanceModulePage from '@/pages/finance/module';
+import SupportPage from '@/pages/support-page';
+import HRPage from '@/pages/hr';
+import HRInfoPage from '@/pages/modules/hr-info';
+import { HRReports } from './components/hr/HRReports';
 
 function App() {
   return (
@@ -46,6 +54,7 @@ function App() {
           <Switch>
             <Route path="/" component={LandingPage} />
             <Route path="/auth" component={AuthPage} />
+            <Route path="/support" component={SupportPage} />
             <ProtectedRoute path="/dashboard" component={Dashboard} />
             <ProtectedRoute path="/settings" component={SettingsPage} />
             <ProtectedRoute path="/organization-settings" component={OrganizationSettingsPage} />
@@ -61,6 +70,12 @@ function App() {
             <ProtectedRoute path="/pos/reports" component={POSReports} />
             <ProtectedRoute path="/pos/orders" component={POSOrders} />
             <ProtectedRoute path="/pos/settings" component={POSSettings} />
+            
+            {/* HR Routes */}
+            <ProtectedRoute path="/hr" component={HRPage} requiredModule="hr" />
+            <ProtectedRoute path="/dashboard/hr" component={HRPage} requiredModule="hr" />
+            <ProtectedRoute path="/dashboard/hr/info" component={HRInfoPage} requiredModule="hr" />
+            <ProtectedRoute path="/dashboard/hr/reports" component={HRReports} requiredModule="hr" />
             
             {/* Inventory Routes */}
             <ProtectedRoute path="/inventory" component={InventoryPage} />
@@ -89,7 +104,6 @@ function App() {
             {/* Module Info Routes */}
             <ProtectedRoute path="/dashboard/pos/info" component={ModuleInfoPage} />
             <ProtectedRoute path="/dashboard/inventory/info" component={ModuleInfoPage} />
-            <ProtectedRoute path="/dashboard/hr/info" component={ModuleInfoPage} />
             <ProtectedRoute path="/dashboard/finance/info" component={ModuleInfoPage} />
             <ProtectedRoute path="/dashboard/blockchain/info" component={ModuleInfoPage} />
             <ProtectedRoute path="/dashboard/accounting/info" component={ModuleInfoPage} />
@@ -108,6 +122,10 @@ function App() {
             <ProtectedRoute path="/dashboard/real-estate/info" component={ModuleInfoPage} />
             <ProtectedRoute path="/dashboard/security/info" component={ModuleInfoPage} />
             <ProtectedRoute path="/dashboard/workflow/info" component={ModuleInfoPage} />
+            <ProtectedRoute path="/dashboard/accounting" component={AccountingPage} />
+            <ProtectedRoute path="/dashboard/accounting/:module" component={AccountingModulePage} />
+            <ProtectedRoute path="/dashboard/finance" component={FinancePage} />
+            <ProtectedRoute path="/dashboard/finance/:module" component={FinanceModulePage} />
             <Route component={NotFound} />
           </Switch>
           <Toaster />

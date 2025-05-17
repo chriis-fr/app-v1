@@ -21,7 +21,8 @@ export default function UserProfileDropdown() {
   };
 
   // Function to get user's initials for avatar
-  const getUserInitials = (firstName: string, lastName: string) => {
+  const getUserInitials = (firstName?: string, lastName?: string) => {
+    if (!firstName || !lastName) return '?';
     return `${firstName[0]}${lastName[0]}`.toUpperCase();
   };
 

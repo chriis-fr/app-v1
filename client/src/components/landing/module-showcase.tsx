@@ -28,28 +28,15 @@ import {
   PieChart,
   Wrench
 } from 'lucide-react'
+import { Link } from 'wouter'
 
 const modules = [
   {
-    title: 'Point of Sale',
-    description: 'Streamline your retail operations with our comprehensive POS system',
-    icon: ShoppingCart,
-    color: 'bg-blue-500',
-    features: ['Real-time inventory', 'Multiple payment methods', 'Customer management', 'Receipt generation']
-  },
-  {
-    title: 'HR Management',
-    description: 'Efficient workforce management with smart payroll and attendance tracking',
-    icon: Users,
-    color: 'bg-green-500',
-    features: ['Employee records', 'Attendance tracking', 'Payroll integration', 'Performance reviews']
-  },
-  {
-    title: 'Inventory',
-    description: 'Advanced inventory control with real-time tracking and management',
-    icon: Package,
-    color: 'bg-purple-500',
-    features: ['Stock tracking', 'Warehouse management', 'Reorder alerts', 'Barcode scanning']
+    title: 'Global Finance',
+    description: 'Navigate international financial challenges with ease',
+    icon: Globe,
+    color: 'bg-emerald-500',
+    features: ['Multi-currency support', 'Global tax compliance', 'Exchange rate management', 'International payment gateways']
   },
   {
     title: 'Accounting',
@@ -59,19 +46,36 @@ const modules = [
     features: ['General ledger', 'Accounts payable/receivable', 'Financial reporting', 'Tax compliance']
   },
   {
+    title: 'HR Management',
+    description: 'Efficient workforce management with smart payroll and attendance tracking',
+    icon: Users,
+    color: 'bg-green-500',
+    features: ['Employee records', 'Attendance tracking', 'Payroll integration', 'Performance reviews']
+  },
+  {
+    title: 'Point of Sale',
+    description: 'Streamline your retail operations with our comprehensive POS system',
+    icon: ShoppingCart,
+    color: 'bg-blue-500',
+    features: ['Real-time inventory', 'Multiple payment methods', 'Customer management', 'Receipt generation']
+  },
+  
+  {
+    title: 'Inventory',
+    description: 'Advanced inventory control with real-time tracking and management',
+    icon: Package,
+    color: 'bg-purple-500',
+    features: ['Stock tracking', 'Warehouse management', 'Reorder alerts', 'Barcode scanning']
+  },
+  
+  {
     title: 'Multi-tenant',
     description: 'Support for multiple businesses and organizations',
     icon: Building2,
     color: 'bg-pink-500',
     features: ['Data isolation', 'Role-based access', 'Custom branding', 'Independent settings']
   },
-  {
-    title: 'Blockchain',
-    description: 'Secure transactions with blockchain technology',
-    icon: Wallet,
-    color: 'bg-indigo-500',
-    features: ['Smart contracts', 'Digital assets', 'Transaction tracking', 'Security protocols']
-  },
+  
   {
     title: 'Analytics',
     description: 'AI-powered business insights and reporting',
@@ -87,60 +91,20 @@ const modules = [
     features: ['Role-based access', 'Audit trails', 'Data encryption', 'Compliance management']
   },
   {
-    title: 'Global Finance',
-    description: 'Navigate international financial challenges with ease',
-    icon: Globe,
-    color: 'bg-emerald-500',
-    features: ['Multi-currency support', 'Global tax compliance', 'Exchange rate management', 'International payment gateways']
-  },
-  {
-    title: 'International Trade',
-    description: 'Simplify import/export operations and compliance',
-    icon: Ship,
-    color: 'bg-sky-500',
-    features: ['Customs documentation', 'Tariff management', 'Trade compliance', 'International shipping']
-  },
-  {
-    title: 'Customer Experience',
-    description: 'Enhance customer satisfaction across global markets',
-    icon: HeartHandshake,
-    color: 'bg-rose-500',
-    features: ['Feedback analysis', 'Sentiment tracking', 'Cultural adaptations', 'Service quality monitoring']
-  },
-  {
-    title: 'Manufacturing',
-    description: 'Optimize production planning and factory operations',
-    icon: Factory,
-    color: 'bg-amber-500',
-    features: ['Production planning', 'Quality control', 'Material requirements', 'Work order management']
-  },
-  {
-    title: 'Supply Chain & Vendor',
-    description: 'Manage global suppliers and optimize logistics',
-    icon: Truck,
-    color: 'bg-cyan-500',
-    features: ['Supplier networks', 'Logistics optimization', 'Vendor performance', 'Supply chain visibility']
-  },
-  {
     title: 'AI Analytics',
     description: 'Leverage artificial intelligence for advanced business insights',
     icon: Brain,
     color: 'bg-violet-500',
     features: ['Predictive algorithms', 'Machine learning', 'Decision support', 'Pattern recognition']
   },
+ 
+  
   {
-    title: 'Global E-commerce',
-    description: 'Expand your online retail presence worldwide',
-    icon: ShoppingBag,
-    color: 'bg-fuchsia-500',
-    features: ['Marketplace integration', 'Local payment methods', 'Cross-border selling', 'Global inventory sync']
-  },
-  {
-    title: 'Localization',
-    description: 'Adapt your business for different markets and languages',
-    icon: Languages,
-    color: 'bg-orange-500',
-    features: ['Multi-language support', 'Cultural adaptation', 'Regional compliance', 'Localized user experience']
+    title: 'International Trade',
+    description: 'Simplify import/export operations and compliance',
+    icon: Ship,
+    color: 'bg-sky-500',
+    features: ['Customs documentation', 'Tariff management', 'Trade compliance', 'International shipping']
   },
   {
     title: 'Digital Currency',
@@ -150,12 +114,61 @@ const modules = [
     features: ['Crypto payments', 'Blockchain receipts', 'Digital wallets', 'Transaction transparency']
   },
   {
+    title: 'Manufacturing',
+    description: 'Optimize production planning and factory operations',
+    icon: Factory,
+    color: 'bg-amber-500',
+    features: ['Production planning', 'Quality control', 'Material requirements', 'Work order management']
+  },
+  {
+    title: 'Customer Experience',
+    description: 'Enhance customer satisfaction across global markets',
+    icon: HeartHandshake,
+    color: 'bg-rose-500',
+    features: ['Feedback analysis', 'Sentiment tracking', 'Cultural adaptations', 'Service quality monitoring']
+  },
+  
+
+ 
+
+  
+  {
+    title: 'Global E-commerce',
+    description: 'Expand your online retail presence worldwide',
+    icon: ShoppingBag,
+    color: 'bg-fuchsia-500',
+    features: ['Marketplace integration', 'Local payment methods', 'Cross-border selling', 'Global inventory sync']
+  },
+  {
+    title: 'Blockchain',
+    description: 'Secure transactions with blockchain technology',
+    icon: Wallet,
+    color: 'bg-indigo-500',
+    features: ['Smart contracts', 'Digital assets', 'Transaction tracking', 'Security protocols']
+  },
+  {
+    title: 'Localization',
+    description: 'Adapt your business for different markets and languages',
+    icon: Languages,
+    color: 'bg-orange-500',
+    features: ['Multi-language support', 'Cultural adaptation', 'Regional compliance', 'Localized user experience']
+  },
+  {
     title: 'Warehouse Management',
     description: 'Optimize your warehouse operations and inventory placement',
     icon: Database,
     color: 'bg-blue-600',
     features: ['Location tracking', 'Picking optimization', 'Inventory layout', 'Warehouse efficiency']
   },
+  {
+    title: 'Supply Chain & Vendor',
+    description: 'Manage global suppliers and optimize logistics',
+    icon: Truck,
+    color: 'bg-cyan-500',
+    features: ['Supplier networks', 'Logistics optimization', 'Vendor performance', 'Supply chain visibility']
+  },
+  
+  
   {
     title: 'Project Service',
     description: 'Comprehensive tools for service project management',
@@ -348,9 +361,14 @@ export function ModuleShowcase() {
             <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
               Our modular ERP system adapts to your business needs today while preparing you for global expansion tomorrow.
             </p>
-            <button className="px-8 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors">
+            <a 
+              href="https://forms.gle/nHs8eDTv5D727yfq5"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block px-8 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+            >
               Start Your Free Trial
-            </button>
+            </a>
           </motion.div>
         </div>
       </div>

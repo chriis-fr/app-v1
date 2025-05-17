@@ -15,6 +15,8 @@ import type { User as PrismaUser, ModuleAccess, Prisma } from '@prisma/client';
 import type { MongooseUser } from './models/user.model';
 import type { User as SharedUser } from '@shared/schema';
 import bcrypt from 'bcryptjs';
+import hrRouter from './src/routes/hr';
+import jwt from 'jsonwebtoken';
 
 // Add type declarations for organization document
 interface IOrganizationDocument {
@@ -76,12 +78,40 @@ interface AuthenticatedRequest extends Request {
   user: SharedUser;
 }
 
+// Define industry types
+type Industry = 'technology' | 'manufacturing' | 'retail' | 'healthcare' | 'finance' | 
+  'education' | 'construction' | 'logistics' | 'hospitality' | 'real_estate' | 
+  'legal' | 'consulting' | 'agriculture' | 'media' | 'energy';
+
+// Industry-specific module recommendations
+const industryModules: Record<Industry | 'default', string[]> = {
+  technology: ['project', 'inventory', 'hr', 'crm'],
+  manufacturing: ['inventory', 'manufacturing', 'warehouse', 'procurement'],
+  retail: ['pos', 'inventory', 'crm', 'ecommerce'],
+  healthcare: ['hr', 'inventory', 'crm', 'compliance'],
+  finance: ['accounting', 'blockchain', 'compliance', 'analytics'],
+  education: ['hr', 'crm', 'projects', 'calendar'],
+  construction: ['projects', 'inventory', 'warehouse', 'procurement'],
+  logistics: ['warehouse', 'inventory', 'logistics', 'procurement'],
+  hospitality: ['pos', 'crm', 'calendar', 'inventory'],
+  real_estate: ['crm', 'projects', 'calendar', 'inventory'],
+  legal: ['crm', 'projects', 'calendar', 'compliance'],
+  consulting: ['projects', 'crm', 'calendar', 'hr'],
+  agriculture: ['inventory', 'warehouse', 'procurement', 'manufacturing'],
+  media: ['projects', 'crm', 'calendar', 'inventory'],
+  energy: ['inventory', 'projects', 'compliance', 'analytics'],
+  default: ['hr', 'inventory', 'crm', 'projects']
+};
+
 export async function registerRoutes(app: express.Express): Promise<Server> {
   // Set up authentication routes
   setupAuth(app);
 
   // Mount users routes
   app.use('/api/users', usersRouter);
+
+  // Mount HR routes
+  app.use('/api/hr', hrRouter);
 
   // User profile routes
   app.put('/api/user/profile', async (req: Request, res: Response) => {
@@ -156,7 +186,7 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
-      
+
       // Verify the current password
       const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
       
@@ -959,7 +989,9 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
         position: userDataWithoutMongoFields.position,
         role: userDataWithoutMongoFields.role,
         department: userDataWithoutMongoFields.department,
-        organizationId: userDataWithoutMongoFields.organizationId,
+        organization: userDataWithoutMongoFields.organizationId ? {
+          connect: { id: userDataWithoutMongoFields.organizationId }
+        } : undefined,
         isOwner: userDataWithoutMongoFields.isOwner,
         status: userDataWithoutMongoFields.status,
         employeeId: userDataWithoutMongoFields.employeeId,
@@ -1037,7 +1069,9 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
             phoneNumber: prismaData.phoneNumber as string,
             position: prismaData.position as string,
             department: prismaData.department as string,
-            organizationId: prismaData.organizationId as string,
+            organization: userDataWithoutMongoFields.organizationId ? {
+              connect: { id: userDataWithoutMongoFields.organizationId }
+            } : undefined,
             isOwner: prismaData.isOwner as boolean,
             status: prismaData.status as string,
             employeeId: prismaData.employeeId as string,
@@ -1139,22 +1173,284 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
       const orgData = req.body;
       console.log('Creating organization with data:', orgData);
 
-      // Create new organization in MongoDB
-      const organization = new Organization({
-        ...orgData,
-        activeModules: ['accounting'], // Default module
-        createdAt: new Date(),
-        updatedAt: new Date()
+      // Check if email is already used
+      const existingUser = await prisma.user.findUnique({
+        where: { email: orgData.email }
       });
 
-      // Save to database
-      await organization.save();
-      console.log('Organization saved to database:', organization);
+      if (existingUser) {
+        return res.status(400).json({ 
+          message: 'This email is already registered. Please use a different email address.' 
+        });
+      }
 
-      res.status(201).json(organization);
+      // Get recommended modules based on industry
+      const industry = (orgData.industry?.toLowerCase() || 'default') as Industry;
+      const recommendedModules = industryModules[industry] || industryModules.default;
+      
+      // Ensure accounting is always included
+      const primaryModule = 'accounting';
+      
+      // Combine primary module with selected modules (max 2 additional)
+      const selectedModules = orgData.selectedModules || [];
+      const additionalModules = selectedModules
+        .filter((module: string) => module !== primaryModule)
+        .slice(0, 2); // Limit to 2 additional modules
+      
+      const activeModules = [primaryModule, ...additionalModules];
+
+      // Create new organization in Prisma with all data
+      const organization = await prisma.organization.create({
+        data: {
+          name: orgData.name,
+          type: orgData.type || 'business',
+          industry: orgData.industry,
+          size: orgData.size,
+          activeModules: activeModules,
+          maxModules: 3, // Fixed at 3 (1 primary + 2 additional)
+          address: orgData.address,
+          country: orgData.country,
+          taxId: orgData.taxId,
+          website: orgData.website,
+          settings: {
+            theme: {
+              primaryColor: '#282881',
+              secondaryColor: '#ffffff',
+              darkMode: false,
+              fontFamily: 'Inter',
+              borderRadius: '0.5rem',
+              spacing: '1rem'
+            },
+            branding: {
+              logo: null,
+              favicon: null,
+              companyName: orgData.name,
+              tagline: orgData.tagline || '',
+              website: orgData.website || '',
+              email: orgData.email || '',
+              phone: orgData.phoneNumber || '',
+              address: orgData.address || '',
+              socialMedia: {
+                facebook: orgData.socialMedia?.facebook || '',
+                twitter: orgData.socialMedia?.twitter || '',
+                linkedin: orgData.socialMedia?.linkedin || '',
+                instagram: orgData.socialMedia?.instagram || ''
+              }
+            },
+            modules: {
+              enabled: activeModules,
+              defaultModule: primaryModule,
+              moduleSettings: {
+                accounting: {
+                  fiscalYearStart: orgData.fiscalYearStart || '01-01',
+                  currency: orgData.currency || 'USD',
+                  taxRate: orgData.taxRate || 0,
+                  invoicePrefix: orgData.invoicePrefix || 'INV-',
+                  paymentTerms: orgData.paymentTerms || 'Net 30'
+                },
+                inventory: {
+                  lowStockThreshold: 10,
+                  reorderPoint: 5,
+                  enableBarcode: true,
+                  enableSerialNumbers: true
+                },
+                hr: {
+                  enableTimeTracking: true,
+                  enableLeaveManagement: true,
+                  enablePerformanceReviews: true,
+                  enablePayroll: true
+                }
+              }
+            },
+            notifications: {
+              email: {
+                enabled: true,
+                smtpServer: orgData.smtpServer || '',
+                smtpPort: orgData.smtpPort || 587,
+                smtpUsername: orgData.smtpUsername || '',
+                smtpPassword: orgData.smtpPassword || '',
+                fromEmail: orgData.fromEmail || orgData.email || ''
+              },
+              push: {
+                enabled: true,
+                vapidPublicKey: orgData.vapidPublicKey || '',
+                vapidPrivateKey: orgData.vapidPrivateKey || ''
+              },
+              sms: {
+                enabled: false,
+                provider: orgData.smsProvider || '',
+                apiKey: orgData.smsApiKey || '',
+                fromNumber: orgData.smsFromNumber || ''
+              }
+            },
+            security: {
+              twoFactorAuth: false,
+              sessionTimeout: 30,
+              passwordPolicy: {
+                minLength: 8,
+                requireSpecialChars: true,
+                requireNumbers: true,
+                requireUppercase: true,
+                requireLowercase: true,
+                maxAge: 90 // days
+              },
+              ipWhitelist: orgData.ipWhitelist || [],
+              allowedDomains: orgData.allowedDomains || []
+            },
+            integrations: {
+              paymentGateways: [],
+              emailService: {
+                provider: orgData.emailProvider || '',
+                apiKey: orgData.emailApiKey || '',
+                fromEmail: orgData.fromEmail || orgData.email || ''
+              },
+              smsService: {
+                provider: orgData.smsProvider || '',
+                apiKey: orgData.smsApiKey || '',
+                fromNumber: orgData.smsFromNumber || ''
+              },
+              storage: {
+                provider: orgData.storageProvider || 'local',
+                bucket: orgData.storageBucket || '',
+                region: orgData.storageRegion || '',
+                accessKey: orgData.storageAccessKey || '',
+                secretKey: orgData.storageSecretKey || ''
+              }
+            },
+            backup: {
+              frequency: 'daily',
+              retention: 30,
+              autoBackup: true,
+              backupLocation: orgData.backupLocation || 'local',
+              lastBackup: null,
+              nextBackup: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours from now
+            },
+            legalCompliance: {
+              country: orgData.country,
+              taxJurisdiction: orgData.country,
+              fiscalYearStart: orgData.fiscalYearStart || '01-01',
+              currency: orgData.currency || 'USD',
+              taxId: orgData.taxId || '',
+              registrationNumber: orgData.registrationNumber || '',
+              vatNumber: orgData.vatNumber || '',
+              businessType: orgData.businessType || 'LLC',
+              incorporationDate: orgData.incorporationDate || new Date().toISOString(),
+              complianceDocuments: orgData.complianceDocuments || [],
+              dataProtection: {
+                gdprCompliant: orgData.gdprCompliant || false,
+                dataRetentionPeriod: orgData.dataRetentionPeriod || 365,
+                privacyPolicyUrl: orgData.privacyPolicyUrl || '',
+                termsOfServiceUrl: orgData.termsOfServiceUrl || ''
+              }
+            },
+            recommendedModules: recommendedModules,
+            primaryModule: primaryModule
+          },
+          roles: [
+            {
+              name: 'Owner',
+              description: 'Full access to all features',
+              permissions: ['all'],
+              isSystem: true,
+              moduleAccess: activeModules.map(module => ({
+                module,
+                access: 'read_write'
+              }))
+            },
+            {
+              name: 'Admin',
+              description: 'Access to most features except sensitive data',
+              permissions: ['dashboard', 'order_management', 'inventory', 'hr'],
+              isSystem: true,
+              moduleAccess: activeModules.map(module => ({
+                module,
+                access: 'read_write'
+              }))
+            },
+            {
+              name: 'Employee',
+              description: 'Basic access to required features',
+              permissions: ['dashboard', 'order_management'],
+              isSystem: true,
+              moduleAccess: activeModules.map(module => ({
+                module,
+                access: 'read'
+              }))
+            }
+          ]
+        }
+      });
+
+      // Create the owner user with full access
+      const ownerPassword = await bcrypt.hash(orgData.password, 10);
+      const owner = await prisma.user.create({
+        data: {
+          username: orgData.username,
+          email: orgData.email,
+          password: ownerPassword,
+          role: 'owner',
+          department: 'Executive',
+          firstName: orgData.firstName,
+          lastName: orgData.lastName,
+          phoneNumber: orgData.phoneNumber,
+          organizationId: organization.id,
+          isOwner: true,
+          status: 'active',
+          position: 'Owner',
+          moduleAccess: {
+            create: activeModules.map(module => ({
+              module,
+              access: 'read_write'
+            }))
+          }
+        }
+      });
+
+      // Generate JWT token for automatic login
+      const token = jwt.sign(
+        { 
+          id: owner.id,
+          email: owner.email,
+          role: owner.role,
+          organizationId: organization.id,
+          isOwner: true
+        },
+        process.env.JWT_SECRET || 'your-secret-key',
+        { expiresIn: '24h' }
+      );
+
+      // Set the token in an HTTP-only cookie
+      res.cookie('token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+      });
+
+      // Also set a non-HTTP-only cookie for client-side access
+      res.cookie('auth_token', token, {
+        httpOnly: false,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 24 * 60 * 60 * 1000
+      });
+
+      // Return the response with organization and owner data
+      res.status(201).json({
+        organization: {
+          ...organization,
+          recommendedModules: recommendedModules,
+          primaryModule: primaryModule
+        },
+        owner: {
+          ...owner,
+          password: undefined // Don't send password back
+        },
+        token // Include token in response for client-side storage
+      });
     } catch (error) {
-      console.error('Error creating organization in MongoDB:', error);
-      res.status(500).json({ message: 'Failed to create organization in database' });
+      console.error('Error creating organization:', error);
+      res.status(500).json({ message: 'Failed to create organization' });
     }
   });
 
@@ -1167,24 +1463,61 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
       // Hash the password before saving
       const hashedPassword = await hashPassword(userData.password);
       
-      // Create new user in MongoDB
-      const user = new UserModel({
-        ...userData,
-        password: hashedPassword,
-        createdAt: new Date(),
-        updatedAt: new Date()
+      // Determine module access based on role
+      let moduleAccess = [];
+      if (userData.role === 'owner') {
+        // Owners get full access to all modules
+        const organization = await prisma.organization.findUnique({
+          where: { id: userData.organizationId }
+        });
+        moduleAccess = organization?.activeModules.map(module => ({
+          module,
+          access: 'read_write'
+        })) || [];
+      } else if (userData.role === 'admin') {
+        // Admins get access only to their assigned module
+        moduleAccess = [{
+          module: userData.department.toLowerCase(),
+          access: 'read_write'
+        }];
+      } else {
+        // Regular employees get basic access
+        moduleAccess = [
+          { module: 'tasks', access: 'read_write' },
+          { module: 'calendar', access: 'read_write' }
+        ];
+      }
+      
+      // Create new user in Prisma
+      const user = await prisma.user.create({
+        data: {
+          username: userData.username,
+          email: userData.email,
+          password: hashedPassword,
+          role: userData.role,
+          department: userData.department,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          phoneNumber: userData.phoneNumber,
+          organizationId: userData.organizationId,
+          isOwner: userData.role === 'owner',
+          status: 'active',
+          position: userData.position,
+          moduleAccess: {
+            create: moduleAccess
+          }
+        },
+        include: {
+          moduleAccess: true
+        }
       });
 
-      // Save to database
-      await user.save();
-      console.log('User saved to database:', user);
-
       // Return user without sensitive data
-      const { password, ...userWithoutPassword } = user.toObject();
+      const { password, ...userWithoutPassword } = user;
       res.status(201).json(userWithoutPassword);
     } catch (error) {
-      console.error('Error creating user in MongoDB:', error);
-      res.status(500).json({ message: 'Failed to create user in database' });
+      console.error('Error creating user:', error);
+      res.status(500).json({ message: 'Failed to create user' });
     }
   });
 

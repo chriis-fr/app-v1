@@ -32,42 +32,46 @@ import {
 import type { RegisterOrganization } from '@shared/schema';
 import { useState, useEffect } from 'react';
 import React from 'react';
+import { toast } from '@/components/ui/use-toast';
 
 interface LoginData {
-  username: string;
+  email: string;
   password: string;
 }
 
-type RegistrationStep = 'organization' | 'accounting' | 'modules' | 'review';
+type RegistrationStep = 'owner' | 'organization' | 'accounting' | 'modules' | 'review';
 
 export default function AuthPage() {
   const { user, loginMutation, registerMutation, logout } = useAuth();
   const [, setLocation] = useLocation();
-  const [currentStep, setCurrentStep] = useState<RegistrationStep>('organization');
+  const [currentStep, setCurrentStep] = useState<RegistrationStep>('owner');
   const [isRedirecting, setIsRedirecting] = useState(false);
-
-  // Redirect if already logged in, but only once
-  useEffect(() => {
-    if (user && !isRedirecting) {
-      setIsRedirecting(true);
-      setLocation('/dashboard');
-    }
-  }, [user, setLocation, isRedirecting]);
-
-  // If redirecting, show nothing
-  if (isRedirecting) {
-    return null;
-  }
+  const [isLoading, setIsLoading] = useState(false);
 
   const loginForm = useForm<LoginData>({
-    resolver: zodResolver(insertUserSchema.pick({ username: true, password: true })),
+    resolver: zodResolver(insertUserSchema.pick({ email: true, password: true })),
+    defaultValues: {
+      email: '',
+      password: ''
+    }
   });
 
   const registerForm = useForm<RegisterOrganization>({
     resolver: zodResolver(registerOrganizationSchema),
     defaultValues: {
-      selectedModules: [],
+      firstName: '',
+      lastName: '',
+      email: '',
+      phoneNumber: '',
+      username: '',
+      password: '',
+      name: '',
       type: 'business',
+      industry: '',
+      address: '',
+      country: '',
+      website: '',
+      selectedModules: [],
       accountingSettings: {
         fiscalYearStart: new Date().toISOString().split('T')[0],
         fiscalPeriod: 'monthly',
@@ -78,8 +82,23 @@ export default function AuthPage() {
     }
   });
 
+  // Redirect if already logged in, but only once
+  useEffect(() => {
+    if (user && !isRedirecting) {
+      setIsRedirecting(true);
+      setIsLoading(true);
+      // Add a small delay to show the loading animation
+      setTimeout(() => {
+        setLocation('/dashboard');
+      }, 2000);
+    }
+  }, [user, setLocation, isRedirecting]);
+
   const handleNext = () => {
     switch (currentStep) {
+      case 'owner':
+        setCurrentStep('organization');
+        break;
       case 'organization':
         setCurrentStep('accounting');
         break;
@@ -96,6 +115,9 @@ export default function AuthPage() {
 
   const handleBack = () => {
     switch (currentStep) {
+      case 'organization':
+        setCurrentStep('owner');
+        break;
       case 'accounting':
         setCurrentStep('organization');
         break;
@@ -112,6 +134,30 @@ export default function AuthPage() {
 
   const renderRegistrationStep = () => {
     switch (currentStep) {
+      case 'owner':
+        return (
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium">Owner Information</h3>
+            <div className="space-y-2">
+              <Label>First Name</Label>
+              <Input placeholder="First Name" {...registerForm.register('firstName')} />
+              <Label>Last Name</Label>
+              <Input placeholder="Last Name" {...registerForm.register('lastName')} />
+              <Label>Email</Label>
+              <Input type="email" placeholder="Email" {...registerForm.register('email')} />
+              <Label>Phone Number</Label>
+              <Input placeholder="Phone Number" {...registerForm.register('phoneNumber')} />
+              <Label>Username</Label>
+              <Input placeholder="Username" {...registerForm.register('username')} />
+              <Label>Password</Label>
+              <Input type="password" placeholder="Password" {...registerForm.register('password')} />
+            </div>
+            <Button onClick={handleNext} className="w-full">
+              Next <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
+        );
+
       case 'organization':
         return (
           <div className="space-y-4">
@@ -134,9 +180,14 @@ export default function AuthPage() {
               <Input placeholder="Country" {...registerForm.register('country')} />
               <Input placeholder="Website" {...registerForm.register('website')} />
             </div>
-            <Button onClick={handleNext} className="w-full">
-              Next <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
+            <div className="flex justify-between">
+              <Button variant="outline" onClick={handleBack}>
+                <ArrowLeft className="mr-2 h-4 w-4" /> Back
+              </Button>
+              <Button onClick={handleNext}>
+                Next <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
           </div>
         );
 
@@ -150,10 +201,11 @@ export default function AuthPage() {
                 type="date" 
                 {...registerForm.register('accountingSettings.fiscalYearStart')} 
               />
-              <Label>Fiscal Period</Label>
-              <Select onValueChange={value => registerForm.setValue('accountingSettings.fiscalPeriod', value as any)}>
+              <Select 
+                onValueChange={value => registerForm.setValue('accountingSettings.fiscalPeriod', value as any)}
+              >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select Fiscal Period" />
+                  <SelectValue placeholder="Fiscal Period" />
                 </SelectTrigger>
                 <SelectContent>
                   {accountingTypes.fiscalPeriods.map(period => (
@@ -161,82 +213,55 @@ export default function AuthPage() {
                   ))}
                 </SelectContent>
               </Select>
-              <Label>Default Currency</Label>
-              <Select onValueChange={value => registerForm.setValue('accountingSettings.defaultCurrency', value as any)}>
+              <Select 
+                onValueChange={value => registerForm.setValue('accountingSettings.defaultCurrency', value as any)}
+              >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select Currency" />
+                  <SelectValue placeholder="Default Currency" />
                 </SelectTrigger>
                 <SelectContent>
                   {accountingTypes.currencies.map(currency => (
-                    <SelectItem key={currency} value={currency}>{currency}</SelectItem>
+                    <SelectItem key={currency} value={currency}>{currency.toUpperCase()}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <Label>Tax Types</Label>
-              <div className="grid grid-cols-2 gap-2">
-                {accountingTypes.taxTypes.map((tax) => (
-                  <label key={tax} className="flex items-center space-x-2">
-                    <Checkbox
-                      checked={registerForm.watch('accountingSettings.taxTypes')?.includes(tax)}
-                      onCheckedChange={(checked) => {
-                        const current = registerForm.getValues('accountingSettings.taxTypes') || [];
-                        if (checked) {
-                          registerForm.setValue('accountingSettings.taxTypes', [...current, tax]);
-                        } else {
-                          registerForm.setValue(
-                            'accountingSettings.taxTypes',
-                            current.filter(t => t !== tax)
-                          );
-                        }
-                      }}
-                    />
-                    <span className="text-sm">{tax}</span>
-                  </label>
-                ))}
-              </div>
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={handleBack} className="flex-1">
-                <ArrowLeft className="mr-2 h-4 w-4" /> Back
-              </Button>
-              <Button onClick={handleNext} className="flex-1">
-                Next <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
+            <Button onClick={handleNext} className="w-full">
+              Next <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
           </div>
         );
 
       case 'modules':
         return (
           <div className="space-y-4">
-            <h3 className="text-lg font-medium">Select Additional Modules</h3>
-            <p className="text-sm text-gray-500">Choose up to 2 additional modules (Finance module is included by default)</p>
-            <div className="grid grid-cols-2 gap-2">
-              {availableModules.filter(module => module !== 'accounting').map((module) => (
-                <label key={module} className="flex items-center space-x-2">
-                  <Checkbox
-                    checked={registerForm.watch('selectedModules')?.includes(module)}
-                    onCheckedChange={(checked) => {
-                      const current = registerForm.getValues('selectedModules') || [];
-                      if (checked && current.length < 2) {
-                        registerForm.setValue('selectedModules', [...current, module]);
-                      } else if (!checked) {
-                        registerForm.setValue(
-                          'selectedModules',
-                          current.filter(m => m !== module)
-                        );
-                      }
-                    }}
-                  />
-                  <span className="text-sm">{module.replace('_', ' ').toUpperCase()}</span>
-                </label>
-              ))}
+            <h3 className="text-lg font-medium">Select Modules</h3>
+            <div className="space-y-2">
+              {availableModules
+                .filter(module => ['HR', 'Accounting', 'AI'].includes(module))
+                .map(module => (
+                  <div key={module} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={module}
+                      checked={registerForm.watch('selectedModules').includes(module)}
+                      onCheckedChange={(checked) => {
+                        const modules = registerForm.watch('selectedModules');
+                        if (checked) {
+                          registerForm.setValue('selectedModules', [...modules, module]);
+                        } else {
+                          registerForm.setValue('selectedModules', modules.filter(m => m !== module));
+                        }
+                      }}
+                    />
+                    <Label htmlFor={module}>{module}</Label>
+                  </div>
+                ))}
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={handleBack} className="flex-1">
+            <div className="flex justify-between">
+              <Button variant="outline" onClick={handleBack}>
                 <ArrowLeft className="mr-2 h-4 w-4" /> Back
               </Button>
-              <Button onClick={handleNext} className="flex-1">
+              <Button onClick={handleNext}>
                 Next <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </div>
@@ -248,6 +273,16 @@ export default function AuthPage() {
           <div className="space-y-4">
             <h3 className="text-lg font-medium">Review Your Registration</h3>
             <div className="space-y-4">
+              <div>
+                <h4 className="font-medium">Owner Information</h4>
+                <div className="mt-2 space-y-1 text-sm">
+                  <p>First Name: {registerForm.watch('firstName')}</p>
+                  <p>Last Name: {registerForm.watch('lastName')}</p>
+                  <p>Email: {registerForm.watch('email')}</p>
+                  <p>Phone: {registerForm.watch('phoneNumber')}</p>
+                  <p>Username: {registerForm.watch('username')}</p>
+                </div>
+              </div>
               <div>
                 <h4 className="font-medium">Organization Details</h4>
                 <div className="mt-2 space-y-1 text-sm">
@@ -286,14 +321,42 @@ export default function AuthPage() {
                 onClick={() => {
                   const formData = registerForm.getValues();
                   registerMutation.mutate({
-                    ...formData,
-                    organizationName: formData.name
+                    organization: {
+                      name: formData.name,
+                      type: formData.type,
+                      industry: formData.industry
+                    },
+                    owner: {
+                      username: formData.username,
+                      password: formData.password,
+                      email: formData.email,
+                      firstName: formData.firstName,
+                      lastName: formData.lastName
+                    }
+                  }, {
+                    onSuccess: () => {
+                      setLocation('/dashboard');
+                    },
+                    onError: (error) => {
+                      toast({
+                        title: "Registration Failed",
+                        description: error.message,
+                        variant: "destructive",
+                      });
+                    }
                   });
                 }} 
                 className="flex-1"
                 disabled={registerMutation.isPending}
               >
-                {registerMutation.isPending ? 'Creating Organization...' : 'Create Organization'}
+                {registerMutation.isPending ? (
+                  <>
+                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    Creating Organization...
+                  </>
+                ) : (
+                  'Create Organization'
+                )}
               </Button>
             </div>
           </div>
@@ -301,145 +364,191 @@ export default function AuthPage() {
     }
   };
 
-  return (
-    <div className="min-h-screen grid lg:grid-cols-2">
-      <div className="flex items-center justify-center p-8 bg-gradient-to-b from-background to-muted">
-        <Card className="w-full max-w-md shadow-xl border-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <CardHeader className="space-y-1">
-            <div className="flex items-center gap-2 mb-2">
-              <Box className="h-6 w-6 text-primary" />
-              <CardTitle className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-                Chains ERP
-              </CardTitle>
+  const renderContent = () => {
+    if (isLoading) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-background to-muted">
+          <div className="text-center space-y-8">
+            <div className="relative w-32 h-32 mx-auto">
+              <div className="absolute inset-0 border-4 border-primary/20 rounded-full animate-pulse" />
+              <div className="absolute inset-4 border-4 border-primary/40 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }} />
+              <div className="absolute inset-8 border-4 border-primary/60 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }} />
+              <div className="absolute inset-12 border-4 border-primary rounded-full animate-pulse" style={{ animationDelay: '0.6s' }} />
             </div>
-            <CardDescription className="text-muted-foreground">
-              Enter your credentials to access your dashboard
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Tabs defaultValue="login" className="space-y-4">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="login">Login</TabsTrigger>
-                <TabsTrigger value="register">Register Organization</TabsTrigger>
-              </TabsList>
+            <div className="space-y-4">
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+                Welcome to Chains ERP
+              </h2>
+              <p className="text-muted-foreground">
+                Loading your personalized dashboard...
+              </p>
+            </div>
+            <div className="flex justify-center space-x-2">
+              <div className="w-3 h-3 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
+              <div className="w-3 h-3 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+              <div className="w-3 h-3 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.4s' }} />
+            </div>
+          </div>
+        </div>
+      );
+    }
 
-              <TabsContent value="login">
-                <form onSubmit={loginForm.handleSubmit((data) => {
-                  loginMutation.mutate(data, {
-                    onSuccess: () => {
-                      setLocation('/dashboard');
-                    }
-                  });
-                })} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="login-username">Username</Label>
-                    <Input id="login-username" {...loginForm.register('username')} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="login-password">Password</Label>
-                    <Input id="login-password" type="password" {...loginForm.register('password')} />
-                  </div>
-                  {loginMutation.error && (
-                    <div className="text-sm text-red-500">
-                      {loginMutation.error.message}
-                    </div>
-                  )}
-                  <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
-                    {loginMutation.isPending ? 'Logging in...' : 'Login'}
+    if (isRedirecting) {
+      return null;
+    }
+
+    return (
+      <div className="min-h-screen flex flex-col lg:flex-row">
+        {/* Left side - Form */}
+        <div className="w-full lg:w-1/2 flex items-center justify-center bg-background p-4 sm:p-8">
+          <Card className="w-full max-w-sm">
+            <CardHeader>
+              <CardTitle className="text-xl sm:text-2xl">Welcome to Chains ERP</CardTitle>
+              <CardDescription>
+                {user ? 'You are already logged in' : 'Please sign in to continue'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {user ? (
+                <div className="space-y-4">
+                  <p>You are logged in as {user.email}</p>
+                  <Button onClick={logout} variant="destructive">
+                    <LogOut className="mr-2 h-4 w-4" /> Logout
                   </Button>
-                </form>
-              </TabsContent>
+                </div>
+              ) : (
+                <Tabs defaultValue="login" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="login">Login</TabsTrigger>
+                    <TabsTrigger value="register">Register</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="login">
+                    <form onSubmit={loginForm.handleSubmit((data) => loginMutation.mutate({ email: data.email, password: data.password }))} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Email</Label>
+                        <Input type="email" placeholder="Email" {...loginForm.register('email')} />
+                        <Label>Password</Label>
+                        <Input type="password" placeholder="Password" {...loginForm.register('password')} />
+                      </div>
+                      <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
+                        {loginMutation.isPending ? 'Signing in...' : 'Sign in'}
+                      </Button>
+                    </form>
+                  </TabsContent>
+                  <TabsContent value="register">
+                    {renderRegistrationStep()}
+                  </TabsContent>
+                </Tabs>
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
-              <TabsContent value="register">
-                {renderRegistrationStep()}
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
-      </div>
+        {/* Right side - Info */}
+        <div className="w-full lg:w-1/2 bg-muted p-4 sm:p-8 flex items-center">
+          <div className="w-full max-w-md space-y-6 sm:space-y-8">
+            <div className="space-y-3 sm:space-y-4">
+              <h2 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+                Streamline Your Business Operations
+              </h2>
+              <p className="text-sm sm:text-base text-muted-foreground">
+                Chains ERP provides a comprehensive suite of tools to manage your organization efficiently.
+              </p>
+            </div>
 
-      <div className="hidden lg:flex flex-col justify-center bg-muted p-8 relative overflow-hidden">
-        <div className="absolute inset-0 bg-grid-white/10" />
-        <div className="relative max-w-xl mx-auto space-y-8">
-          <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-            The Complete ERP Solution for Modern Business
-          </h1>
-
-          <div className="space-y-6">
-            <div className="flex items-start gap-4">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <ShieldCheck className="h-6 w-6 text-primary" />
+            <div className="grid gap-4 sm:gap-6">
+              <div className="flex items-start space-x-3 sm:space-x-4">
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  <LayoutGrid className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-medium">Unified Dashboard</h3>
+                  <p className="text-xs sm:text-sm text-muted-foreground">
+                    Get a complete overview of your business operations in one place.
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-semibold mb-1">Enterprise-Grade Security</h3>
-                <p className="text-muted-foreground">
-                  Advanced encryption and blockchain integration for secure transactions and data management
-                </p>
+
+              <div className="flex items-start space-x-3 sm:space-x-4">
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  <BarChart className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-medium">Advanced Analytics</h3>
+                  <p className="text-xs sm:text-sm text-muted-foreground">
+                    Make data-driven decisions with comprehensive reporting tools.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start space-x-3 sm:space-x-4">
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  <Wallet className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-medium">Financial Management</h3>
+                  <p className="text-xs sm:text-sm text-muted-foreground">
+                    Streamline your accounting and financial operations.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start space-x-3 sm:space-x-4">
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  <Database className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-medium">Inventory Control</h3>
+                  <p className="text-xs sm:text-sm text-muted-foreground">
+                    Track and manage your inventory in real-time.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start space-x-3 sm:space-x-4">
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  <Network className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-medium">Supply Chain</h3>
+                  <p className="text-xs sm:text-sm text-muted-foreground">
+                    Optimize your supply chain and logistics operations.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start space-x-3 sm:space-x-4">
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  <Workflow className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-medium">Process Automation</h3>
+                  <p className="text-xs sm:text-sm text-muted-foreground">
+                    Automate repetitive tasks and workflows.
+                  </p>
+                </div>
               </div>
             </div>
 
-            <div className="flex items-start gap-4">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <Building2 className="h-6 w-6 text-primary" />
+            <div className="pt-4 sm:pt-6 border-t">
+              <div className="flex items-center space-x-2 text-xs sm:text-sm text-muted-foreground">
+                <CheckCircle className="h-4 w-4 text-primary" />
+                <span>Secure and reliable</span>
               </div>
-              <div>
-                <h3 className="font-semibold mb-1">Comprehensive Modules</h3>
-                <p className="text-muted-foreground">
-                  From POS to HR, accounting to blockchain - everything you need in one platform
-                </p>
+              <div className="flex items-center space-x-2 text-xs sm:text-sm text-muted-foreground mt-2">
+                <Clock className="h-4 w-4 text-primary" />
+                <span>24/7 support available</span>
               </div>
-            </div>
-
-            <div className="flex items-start gap-4">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <Users className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <h3 className="font-semibold mb-1">Multi-Tenant Architecture</h3>
-                <p className="text-muted-foreground">
-                  Scalable solution perfect for businesses of all sizes and NGOs
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-4">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <LayoutGrid className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <h3 className="font-semibold mb-1">Intuitive Interface</h3>
-                <p className="text-muted-foreground">
-                  Modern, user-friendly design that makes complex operations simple
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-4">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <BarChart className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <h3 className="font-semibold mb-1">Real-time Analytics</h3>
-                <p className="text-muted-foreground">
-                  Powerful reporting and analytics tools for data-driven decision making
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-4">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <Wallet className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <h3 className="font-semibold mb-1">Blockchain Integration</h3>
-                <p className="text-muted-foreground">
-                  Secure, transparent transactions with blockchain technology
-                </p>
+              <div className="flex items-center space-x-2 text-xs sm:text-sm text-muted-foreground mt-2">
+                <AlertCircle className="h-4 w-4 text-primary" />
+                <span>Regular updates and improvements</span>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
-  );
-}
+    );
+  };
+
+  return renderContent();
+} 

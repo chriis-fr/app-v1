@@ -81,10 +81,14 @@ export default function Sidebar() {
 
   // Get active modules from organization
   const activeModules = user?.organization?.activeModules || [];
+  const userModuleAccess = user?.moduleAccess || [];
 
-  // Filter modules based on active subscriptions
+  // Filter modules based on active subscriptions and user access
   const getActiveModules = (moduleList: typeof allModules.main) => {
-    return moduleList.filter(module => activeModules.includes(module.id as any));
+    return moduleList.filter(module => 
+      activeModules.includes(module.id as any) && 
+      (user?.isOwner || userModuleAccess.includes(module.id))
+    );
   };
 
   // Get active modules for each category

@@ -19,19 +19,9 @@ import chainsnobg from '@/assets/chainsnobg.png'
 
 const features = [
   {
-    icon: ShoppingCart,
-    title: 'Point of Sale',
-    description: 'Modern POS system with real-time inventory tracking, multiple payment methods, and customer management'
-  },
-  {
     icon: Users,
     title: 'HR Management',
     description: 'Comprehensive HR solution with employee records, attendance tracking, and payroll integration'
-  },
-  {
-    icon: Package,
-    title: 'Inventory Control',
-    description: 'Advanced inventory management with stock tracking, warehouse management, and reorder alerts'
   },
   {
     icon: FileText,
@@ -44,15 +34,27 @@ const features = [
     description: 'Support for multiple businesses and NGOs with separate data isolation and management'
   },
   {
-    icon: Settings,
-    title: 'Customizable',
-    description: 'Modular architecture allowing you to choose and implement only the features you need'
-  },
-  {
     icon: BarChart2,
     title: 'Analytics',
     description: 'AI-powered business insights and comprehensive reporting tools for data-driven decisions'
   },
+  {
+    icon: ShoppingCart,
+    title: 'Point of Sale',
+    description: 'Modern POS system with real-time inventory tracking, multiple payment methods, and customer management'
+  },
+  
+  {
+    icon: Package,
+    title: 'Inventory Control',
+    description: 'Advanced inventory management with stock tracking, warehouse management, and reorder alerts'
+  },
+  {
+    icon: Settings,
+    title: 'Customizable',
+    description: 'Modular architecture allowing you to choose and implement only the features you need'
+  },
+  
   {
     icon: Shield,
     title: 'Security',

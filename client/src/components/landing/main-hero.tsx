@@ -60,16 +60,19 @@ export function MainHero() {
           </p>
 
           <div className="flex flex-col sm:flex-row justify-center gap-4 mb-12">
-            <Link href="https://forms.gle/ABRUTcqUXt93vvAF8">
-              <a className="inline-flex items-center px-6 py-3 rounded-lg bg-blue-500 text-white font-medium hover:bg-blue-600 transition-colors">
-                Get Started Free
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </a>
-            </Link>
-            <Link href="/auth">
-              <a className="inline-flex items-center px-6 py-3 rounded-lg bg-white/10 text-white font-medium hover:bg-white/20 transition-colors">
-                Request Demo
-              </a>
+          <a 
+              href="https://forms.gle/nHs8eDTv5D727yfq5"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-row inline-block px-8 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Start Your Free Trial
+            </a>
+            <Link 
+              href="/auth"
+              className="inline-flex items-center px-6 py-3 rounded-lg bg-white/10 text-white font-medium hover:bg-white/20 transition-colors"
+            >
+              Request Demo
             </Link>
           </div>
 

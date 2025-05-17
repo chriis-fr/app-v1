@@ -42,9 +42,20 @@ export default function Header() {
         </div>
         
         {user?.organization && (
-          <div className="hidden sm:block">
-            <span className="font-medium">{user.organization.name}</span>
-            <span className="text-xs text-gray-500 ml-2">{user.organization.plan || 'Enterprise'} Plan</span>
+          <div className="hidden sm:flex items-center gap-4">
+            <div className="flex flex-col">
+              <span className="font-medium text-sm">{user.organization.name}</span>
+              <span className="text-xs text-gray-500">
+                {user.organization.activeModules?.length || 0} Active Modules
+              </span>
+            </div>
+            {/* <div className="flex items-center gap-2">
+              {user.organization.activeModules?.map((module) => (
+                <span key={module} className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-full">
+                  {module}
+                </span>
+              ))}
+            </div> */}
           </div>
         )}
       </div>
@@ -106,11 +117,20 @@ export default function Header() {
               {user?.organization && (
                 <div className="mb-4">
                   <div className="font-medium">{user.organization.name}</div>
-                  <div className="text-sm text-gray-500">{user.organization.plan || 'Enterprise'} Plan</div>
+                  <div className="text-sm text-gray-500">
+                    {user.organization.activeModules?.length || 0} Active Modules
+                  </div>
+                  {/* <div className="flex flex-wrap gap-2 mt-2">
+                    {user.organization.activeModules?.map((module) => (
+                      <span key={module} className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-full">
+                        {module}
+                      </span>
+                    ))}
+                  </div> */}
                 </div>
               )}
               <div className="space-y-2">
-                <div className="text-sm font-medium">{user?.username}</div>
+                <div className="text-sm font-medium">{user?.email}</div>
                 <div className="text-xs text-gray-500">{user?.role}</div>
               </div>
             </div>

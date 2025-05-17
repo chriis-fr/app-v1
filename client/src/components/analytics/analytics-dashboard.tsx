@@ -1,40 +1,33 @@
 import { Card } from '@/components/ui/card';
-import { 
-  TrendingUp, 
-  AlertCircle, 
-  Clock, 
-  BarChart2, 
-  PieChart as PieChartIcon,
-  LineChart as LineChartIcon,
-  Calendar,
-  Filter,
-  Download,
+import {
   RefreshCw,
-  Brain,
-  Database,
-  History,
-  Target,
-  ArrowUpRight,
-  ArrowDownRight,
-  Info,
+  Download,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  Info,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
-  ResponsiveContainer, 
-  LineChart, 
-  Line, 
-  BarChart, 
-  Bar, 
-  PieChart, 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  PieChart,
   Pie,
   CartesianGrid,
   XAxis,
   YAxis,
   Tooltip,
-  Legend
+  Legend,
+  Cell,
 } from 'recharts';
 
 export type TimeRange = 'day' | 'week' | 'month' | 'quarter' | 'year';
@@ -81,6 +74,8 @@ interface AnalyticsDashboardProps {
   insights: Insight[];
 }
 
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6'];
+
 export default function AnalyticsDashboard({
   moduleId,
   moduleName,
@@ -92,7 +87,7 @@ export default function AnalyticsDashboard({
   dailyStats,
   topItems,
   distributionData,
-  insights
+  insights,
 }: AnalyticsDashboardProps) {
   return (
     <div className="space-y-6">
@@ -131,8 +126,16 @@ export default function AnalyticsDashboard({
                 <p className="text-sm text-gray-500">{metric.name}</p>
                 <p className="text-2xl font-semibold mt-1">{metric.value}</p>
               </div>
-              <div className={`flex items-center gap-1 ${metric.trend === 'up' ? 'text-green-500' : 'text-red-500'}`}>
-                {metric.trend === 'up' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />}
+              <div
+                className={`flex items-center gap-1 ${
+                  metric.trend === 'up' ? 'text-green-500' : 'text-red-500'
+                }`}
+              >
+                {metric.trend === 'up' ? (
+                  <ArrowUp className="h-4 w-4" />
+                ) : (
+                  <ArrowDown className="h-4 w-4" />
+                )}
                 <span className="text-sm">{metric.change}</span>
               </div>
             </div>
@@ -189,9 +192,12 @@ export default function AnalyticsDashboard({
                   cx="50%"
                   cy="50%"
                   outerRadius={100}
-                  fill="#3b82f6"
                   label
-                />
+                >
+                  {distributionData.map((_, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -226,4 +232,4 @@ export default function AnalyticsDashboard({
       </Card>
     </div>
   );
-} 
+}

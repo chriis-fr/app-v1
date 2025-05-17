@@ -1,4 +1,4 @@
-import express, { Request, Response, NextFunction } from "express";
+import express, { Request, Response, NextFunction, Express } from "express";
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import session from "express-session";
@@ -9,30 +9,95 @@ import { User as SelectUser } from "@shared/schema";
 import { IUserDocument, IOrganizationDocument } from "./storage";
 import { Document, Types } from "mongoose";
 import bcrypt from "bcryptjs";
+import { PrismaClient } from "@prisma/client";
+import jwt from 'jsonwebtoken';
+import { AuthenticatedUser } from './src/middleware/auth';
+
+const prisma = new PrismaClient();
+
+// Extend Express Request type
+declare global {
+  namespace Express {
+    interface User {
+      id: string;
+      email: string;
+      role: string;
+      organizationId: string;
+      isOwner: boolean;
+      moduleAccess: string[];
+      department?: string;
+      permissions: { module: string; actions: string[] }[];
+    }
+  }
+}
 
 // Middleware to check if user has access to specific module
-export function hasModuleAccess(module: string) {
-  return async (req: Request, res: Response, next: NextFunction) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ message: "Not authenticated" });
+export const hasModuleAccess = (module: string) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const user = req.user as AuthenticatedUser;
+
+    if (!user) {
+      return res.status(401).json({ message: 'Authentication required' });
     }
 
-    const user = req.user as unknown as IUserDocument;
-    if (!user.moduleAccess || !user.moduleAccess.includes(module)) {
-      return res.status(403).json({ message: "No access to this module" });
+    // Owners have full access
+    if (user.isOwner) {
+      return next();
     }
 
-    next();
+    // Check for explicit module access
+    if (user.moduleAccess.includes(module)) {
+      return next();
+    }
+
+    // Check for permissions
+    const modulePermissions = user.permissions.find(p => p.module === module);
+    if (modulePermissions && modulePermissions.actions.length > 0) {
+      return next();
+    }
+
+    // For admins, check department-based access
+    if (user.role === 'admin') {
+      const departmentModules: { [key: string]: string[] } = {
+        'Finance': ['accounting', 'payroll', 'invoicing'],
+        'HR': ['hr', 'payroll', 'recruitment'],
+        'Operations': ['inventory', 'warehouse', 'supply_chain'],
+        'Sales': ['crm', 'sales', 'marketing'],
+        'IT': ['system', 'security', 'analytics']
+      };
+
+      const userDepartment = user.department;
+      if (userDepartment && departmentModules[userDepartment]?.includes(module)) {
+        return next();
+      }
+    }
+
+    return res.status(403).json({ message: 'Access denied' });
   };
-}
+};
 
 // Middleware to check user role
-export function hasRole(roles: string[]) { 
+export const hasRole = (roles: string[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
-    // Always allow requests through without checking for role
-    next();
+    const user = req.user as AuthenticatedUser;
+
+    if (!user) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+
+    // Owners have full access
+    if (user.isOwner) {
+      return next();
+    }
+
+    // Check if user's role is in the allowed roles
+    if (roles.includes(user.role)) {
+      return next();
+    }
+
+    return res.status(403).json({ message: 'Access denied' });
   };
-}
+};
 
 // Helper function to normalize a raw IUserDocument into a SelectUser.
 function normalizeUser(user: IUserDocument): SelectUser {
@@ -60,14 +125,8 @@ function normalizeUser(user: IUserDocument): SelectUser {
     // if null, you can choose a default (e.g., current date)
     createdAt: user.createdAt ? new Date(user.createdAt).toISOString() : new Date().toISOString(),
     updatedAt: user.updatedAt ? new Date(user.updatedAt).toISOString() : new Date().toISOString(),
-    permissions: user.permissions ?? [],
+    permissions: user.permissions || [],
   };
-}
-
-declare global {
-  namespace Express {
-    interface User extends SelectUser {}
-  }
 }
 
 const scryptAsync = promisify(scrypt);
@@ -82,7 +141,7 @@ async function comparePasswords(supplied: string, stored: string) {
   return bcrypt.compare(supplied, stored);
 }
 
-export function setupAuth(app: express.Express) {
+export function setupAuth(app: Express) {
   if (!process.env.SESSION_SECRET) {
     throw new Error("SESSION_SECRET must be set");
   }
@@ -104,41 +163,96 @@ export function setupAuth(app: express.Express) {
   app.use(passport.initialize());
   app.use(passport.session());
 
-  passport.use(
-    new LocalStrategy(async (username, password, done) => {
+  passport.use(new LocalStrategy(
+    {
+      usernameField: 'email',
+      passwordField: 'password'
+    },
+    async (email, password, done) => {
       try {
-        console.log(`Attempting login for user: ${username}`);
-        const user = await storage.getUserByUsername(username);
-        if (!user || !(await comparePasswords(password, user.password))) {
-          console.log(`Login failed for user: ${username}`);
-          return done(null, false, { message: "Invalid username or password" });
-        }
-        console.log(`Login successful for user: ${username}`);
-        // Normalize user before returning
-        return done(null, normalizeUser(user));
-      } catch (err) {
-        console.error("Login error:", err);
-        return done(err);
-      }
-    }),
-  );
+        console.log('Attempting login for user:', email);
+        
+        // Find user by email
+        const user = await prisma.user.findUnique({
+          where: { email },
+          include: {
+            moduleAccess: true,
+            organization: true
+          }
+        });
 
-  passport.serializeUser((user, done) => {
+        if (!user) {
+          console.log('User not found:', email);
+          return done(null, false, { message: 'Invalid email or password' });
+        }
+
+        // Verify password
+        const isValid = await bcrypt.compare(password, user.password);
+        if (!isValid) {
+          console.log('Invalid password for user:', email);
+          return done(null, false, { message: 'Invalid email or password' });
+        }
+
+        // Update last login
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { lastLogin: new Date() }
+        });
+
+        // Transform user to match Express User interface
+        const expressUser: Express.User = {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+          organizationId: user.organizationId || '',
+          isOwner: user.isOwner || false,
+          moduleAccess: user.moduleAccess.map(ma => ma.module),
+          department: user.department || undefined,
+          permissions: user.permissions as { module: string; actions: string[] }[]
+        };
+
+        console.log('Login successful for user:', email);
+        return done(null, expressUser);
+      } catch (error) {
+        console.error('Login error:', error);
+        return done(error);
+      }
+    }
+  ));
+
+  passport.serializeUser((user: Express.User, done) => {
     done(null, user.id);
   });
 
   passport.deserializeUser(async (id: string, done) => {
     try {
-      // Changed parameter type from number to string to match what's being stored
-      const user = await storage.getUser(id);
+      const user = await prisma.user.findUnique({
+        where: { id },
+        include: {
+          moduleAccess: true,
+          organization: true
+        }
+      });
+
       if (!user) {
         return done(null, false);
       }
-      // Normalize user before returning
-      done(null, normalizeUser(user));
-    } catch (err) {
-      console.error("Session deserialization error:", err);
-      done(err);
+
+      // Transform user to match Express User interface
+      const expressUser: Express.User = {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        organizationId: user.organizationId || '',
+        isOwner: user.isOwner || false,
+        moduleAccess: user.moduleAccess.map(ma => ma.module),
+        department: user.department || undefined,
+        permissions: user.permissions as { module: string; actions: string[] }[]
+      };
+
+      done(null, expressUser);
+    } catch (error) {
+      done(error);
     }
   });
 
@@ -213,86 +327,144 @@ export function setupAuth(app: express.Express) {
   });
 
   app.post("/api/login", (req, res, next) => {
-    // Validate that username and password are provided
-    if (!req.body.username || !req.body.password) {
-      return res.status(400).json({ message: "Username and password are required" });
-    }
-    
-    console.log("Login attempt for user:", req.body.username);
-    
-    passport.authenticate(
-      "local",
-      (err: any, user: Express.User | false, info: { message: string }) => {
-        if (err) {
-          console.error("Authentication error:", err);
-          return res.status(500).json({ message: "An error occurred during authentication" });
-        }
-        if (!user) {
-          console.log("Authentication failed:", info?.message);
-          return res
-            .status(401)
-            .json({ message: info?.message || "Authentication failed" });
-        }
-        req.logIn(user, (err) => {
-          if (err) {
-            console.error("Login error:", err);
-            return res.status(500).json({ message: "Login failed. Please try again." });
-          }
-          console.log("User logged in successfully:", user.username);
-          res.json({ user, message: "Login successful" });
-        });
+    passport.authenticate('local', async (err: any, user: any, info: { message: string }) => {
+      if (err) {
+        console.error('Login error:', err);
+        return res.status(500).json({ message: 'Internal server error' });
       }
-    )(req, res, next);
+      
+      if (!user) {
+        return res.status(401).json({ message: info.message || 'Invalid email or password' });
+      }
+
+      // Fetch full user data with organization
+      const fullUser = await prisma.user.findUnique({
+        where: { id: user.id },
+        include: {
+          moduleAccess: true,
+          organization: true
+        }
+      });
+
+      if (!fullUser) {
+        return res.status(401).json({ message: 'User not found' });
+      }
+
+      req.login(user, (err) => {
+        if (err) {
+          console.error('Session error:', err);
+          return res.status(500).json({ message: 'Failed to create session' });
+        }
+
+        // Generate JWT token
+        const token = jwt.sign(
+          {
+            id: user.id,
+            email: user.email,
+            role: user.role,
+            organizationId: user.organizationId,
+            isOwner: user.isOwner
+          },
+          process.env.JWT_SECRET || 'your-secret-key',
+          { expiresIn: '24h' }
+        );
+
+        // Set the token in an HTTP-only cookie
+        res.cookie('token', token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: 24 * 60 * 60 * 1000 // 24 hours
+        });
+
+        // Also set a non-HTTP-only cookie for client-side access
+        res.cookie('auth_token', token, {
+          httpOnly: false,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: 24 * 60 * 60 * 1000
+        });
+
+        // Return user data with organization and module access
+        const { password, ...userWithoutPassword } = fullUser;
+        res.json({ 
+          user: {
+            ...userWithoutPassword,
+            moduleAccess: fullUser.moduleAccess.map(ma => ma.module),
+            organization: fullUser.organization ? {
+              id: fullUser.organization.id,
+              name: fullUser.organization.name,
+              type: fullUser.organization.type,
+              industry: fullUser.organization.industry,
+              size: fullUser.organization.size,
+              walletAddress: fullUser.organization.walletAddress,
+              activeModules: fullUser.organization.activeModules,
+              maxModules: fullUser.organization.maxModules,
+              address: fullUser.organization.address,
+              country: fullUser.organization.country,
+              taxId: fullUser.organization.taxId,
+              website: fullUser.organization.website,
+              settings: fullUser.organization.settings,
+              roles: fullUser.organization.roles
+            } : null
+          }, 
+          token 
+        });
+      });
+    })(req, res, next);
   });
 
-  app.post("/api/auth/logout", (req, res, next) => {
-    // Clear the session
-    req.session.destroy((err) => {
-      if (err) {
-        console.error("Session destruction error:", err);
-        return next(err);
-      }
-      
-      // Clear the authentication cookie
-      res.clearCookie('connect.sid');
-      
-      // Send success response
-      res.sendStatus(200);
+  app.post("/api/auth/logout", (req, res) => {
+    req.logout(() => {
+      res.clearCookie('token');
+      res.clearCookie('auth_token');
+      res.json({ message: 'Logged out successfully' });
     });
   });
 
   app.get("/api/auth/me", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ message: "Not authenticated" });
+    if (!req.user) {
+      return res.status(401).json({ message: 'Not authenticated' });
     }
-
+    
     try {
-      const user = await storage.getUser(req.user?.id || '');
-      console.log("User:", user);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      const organization = await storage.getOrganization(user.organizationId.toString());
-      console.log("Organization:", organization);
-      if (!organization) {
-        return res.status(404).json({ message: "Organization not found" });
-      }
-
-      const orgDoc = organization as unknown as Document & IOrganizationDocument & { _id: Types.ObjectId };
-
-      res.json({
-        ...normalizeUser(user),
-        organization: {
-          id: orgDoc._id.toString(),
-          name: orgDoc.name,
-          activeModules: orgDoc.activeModules,
-          maxModules: orgDoc.maxModules
+      // Fetch full user data with organization
+      const fullUser = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        include: {
+          moduleAccess: true,
+          organization: true
         }
       });
-    } catch (err) {
-      console.error("Error fetching user data:", err);
-      res.status(500).json({ message: "Error fetching user data" });
+
+      if (!fullUser) {
+        return res.status(401).json({ message: 'User not found' });
+      }
+
+      const { password, ...userWithoutPassword } = fullUser;
+      res.json({
+        ...userWithoutPassword,
+        moduleAccess: fullUser.moduleAccess.map(ma => ma.module),
+        organization: fullUser.organization ? {
+          id: fullUser.organization.id,
+          name: fullUser.organization.name,
+          type: fullUser.organization.type,
+          industry: fullUser.organization.industry,
+          size: fullUser.organization.size,
+          walletAddress: fullUser.organization.walletAddress,
+          activeModules: fullUser.organization.activeModules,
+          maxModules: fullUser.organization.maxModules,
+          address: fullUser.organization.address,
+          country: fullUser.organization.country,
+          taxId: fullUser.organization.taxId,
+          website: fullUser.organization.website,
+          settings: fullUser.organization.settings,
+          roles: fullUser.organization.roles
+        } : null
+      });
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+      res.status(500).json({ message: 'Failed to fetch user data' });
     }
   });
 

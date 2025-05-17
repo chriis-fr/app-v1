@@ -1,39 +1,63 @@
-import { Router } from 'express';
-import { hasModuleAccess, hasRole } from '../auth';
-import { Employee, Attendance, Payroll } from '../mongodb/models';
+import express, { Request, Response, NextFunction } from 'express';
+import { Employee, Attendance, Payroll } from '../mongodb/models/hr';
+import { authenticateToken } from '../middleware/auth';
+import { checkModuleAccess } from '../middleware/module-access';
 
-const router = Router();
+const router = express.Router();
 
-// Employee Routes
-router.get('/employees',
-  hasModuleAccess('hr'),
-  hasRole(['admin', 'manager']),
-  async (req, res) => {
-    try {
-      if (!req.user?.organizationId) {
-        return res.status(401).json({ message: 'Unauthorized access' });
-      }
-      const employees = await Employee.find({
-        organizationId: req.user.organizationId
-      }).sort({ lastName: 1 });
-      res.json(employees);
-    } catch (error) {
-      res.status(500).json({ message: 'Error fetching employees' });
-    }
+// Middleware to check if user is HR admin
+const isHRAdmin = (req: Request, res: Response, next: NextFunction) => {
+  if (!req.user) {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
+  if (req.user.role !== 'hr_admin') {
+    return res.status(403).json({ message: 'Access denied. HR admin privileges required.' });
+  }
+  next();
+};
+
+// Get all employees (HR admin only)
+router.get('/employees', authenticateToken, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
+  try {
+    const employees = await Employee.find()
+      .select('-password')
+      .sort({ createdAt: -1 });
+    res.json(employees);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching employees' });
+  }
 });
 
-router.post('/employees',
-  hasModuleAccess('hr'),
-  hasRole(['admin']),
-  async (req, res) => {
-    try {
-      if (!req.user?.organizationId) {
-        return res.status(401).json({ message: 'Unauthorized access' });
-      }
-      const employee = new Employee({
+// Get employee by ID (HR admin or self)
+router.get('/employees/:id', authenticateToken, checkModuleAccess('hr'), async (req: Request, res: Response) => {
+  try {
+    // Allow HR admins to view any employee, or users to view their own profile
+    if (!req.user || (req.user.role !== 'hr_admin' && req.user.id !== req.params.id)) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const employee = await Employee.findById(req.params.id)
+      .select('-password');
+    
+    if (!employee) {
+      return res.status(404).json({ message: 'Employee not found' });
+    }
+
+    res.json(employee);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching employee' });
+  }
+});
+
+// Create new employee (HR admin only)
+router.post('/employees', authenticateToken, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
+  try {
+    const employee = new Employee({
         ...req.body,
-        organizationId: req.user.organizationId
+      role: 'Employee',
+      status: 'Active'
       });
+
       await employee.save();
       res.status(201).json(employee);
     } catch (error) {
@@ -41,87 +65,99 @@ router.post('/employees',
     }
 });
 
-// Attendance Routes
-router.post('/attendance/check-in',
-  hasModuleAccess('hr'),
-  async (req, res) => {
+// Update employee (HR admin only)
+router.put('/employees/:id', authenticateToken, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
     try {
-      if (!req.user?.organizationId) {
-        return res.status(401).json({ message: 'Unauthorized access' });
-      }
-      const attendance = new Attendance({
-        employeeId: req.body.employeeId,
-        organizationId: req.user.organizationId,
-        date: new Date(),
-        checkIn: new Date(),
-        status: 'present'
-      });
-      await attendance.save();
-      res.status(201).json(attendance);
+    const employee = await Employee.findByIdAndUpdate(
+      req.params.id,
+      { $set: req.body },
+      { new: true }
+    ).select('-password');
+
+    if (!employee) {
+      return res.status(404).json({ message: 'Employee not found' });
+    }
+
+    res.json(employee);
     } catch (error) {
-      res.status(500).json({ message: 'Error recording check-in' });
+    res.status(500).json({ message: 'Error updating employee' });
     }
 });
 
-router.patch('/attendance/check-out/:id',
-  hasModuleAccess('hr'),
-  async (req, res) => {
+// Delete employee (HR admin only)
+router.delete('/employees/:id', authenticateToken, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
     try {
-      if (!req.user?.organizationId) {
-        return res.status(401).json({ message: 'Unauthorized access' });
-      }
-      const attendance = await Attendance.findOneAndUpdate(
-        {
-          _id: req.params.id,
-          organizationId: req.user.organizationId,
-          checkOut: { $exists: false }
-        },
-        {
-          checkOut: new Date()
-        },
-        { new: true }
-      );
-      if (!attendance) {
-        return res.status(404).json({ message: 'Attendance record not found' });
-      }
+    const employee = await Employee.findByIdAndDelete(req.params.id);
+    
+    if (!employee) {
+      return res.status(404).json({ message: 'Employee not found' });
+    }
+
+    res.json({ message: 'Employee deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error deleting employee' });
+  }
+});
+
+// Get employee attendance
+router.get('/employees/:id/attendance', authenticateToken, checkModuleAccess('hr'), async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'User not authenticated' });
+    }
+    const attendance = await Attendance.find({
+      employeeId: req.params.id,
+      organizationId: req.user.organizationId
+    });
       res.json(attendance);
     } catch (error) {
-      res.status(500).json({ message: 'Error recording check-out' });
+    res.status(500).json({ message: 'Error fetching attendance' });
     }
 });
 
-// Payroll Routes
-router.get('/payroll',
-  hasModuleAccess('hr'),
-  hasRole(['admin', 'manager']),
-  async (req, res) => {
+// Record attendance
+router.post('/attendance', authenticateToken, checkModuleAccess('hr'), async (req: Request, res: Response) => {
     try {
-      if (!req.user?.organizationId) {
-        return res.status(401).json({ message: 'Unauthorized access' });
+    if (!req.user) {
+      return res.status(401).json({ message: 'User not authenticated' });
       }
-      const payrolls = await Payroll.find({
+    const attendance = new Attendance({
+      ...req.body,
         organizationId: req.user.organizationId
-      })
-      .populate('employeeId', 'firstName lastName employeeId')
-      .sort({ 'period.startDate': -1 });
-      res.json(payrolls);
+    });
+    await attendance.save();
+    res.status(201).json(attendance);
     } catch (error) {
-      res.status(500).json({ message: 'Error fetching payroll records' });
+    res.status(500).json({ message: 'Error recording attendance' });
+  }
+});
+
+// Get employee payroll
+router.get('/employees/:id/payroll', authenticateToken, checkModuleAccess('hr'), async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'User not authenticated' });
+    }
+    const payroll = await Payroll.find({
+      employeeId: req.params.id,
+      organizationId: req.user.organizationId
+    });
+    res.json(payroll);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching payroll' });
     }
 });
 
-router.post('/payroll',
-  hasModuleAccess('hr'),
-  hasRole(['admin']),
-  async (req, res) => {
+// Create payroll record
+router.post('/payroll', authenticateToken, checkModuleAccess('hr'), async (req: Request, res: Response) => {
     try {
-      if (!req.user?.organizationId) {
-        return res.status(401).json({ message: 'Unauthorized access' });
+    if (!req.user) {
+      return res.status(401).json({ message: 'User not authenticated' });
       }
       const payroll = new Payroll({
         ...req.body,
         organizationId: req.user.organizationId,
-        status: 'draft'
+      createdAt: new Date()
       });
       await payroll.save();
       res.status(201).json(payroll);
@@ -130,32 +166,437 @@ router.post('/payroll',
     }
 });
 
-router.patch('/payroll/:id/approve',
-  hasModuleAccess('hr'),
-  hasRole(['admin']),
-  async (req, res) => {
+// Add disciplinary record (HR admin only)
+router.post('/employees/:id/disciplinary', authenticateToken, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
+  try {
+    const employee = await Employee.findOneAndUpdate(
+      { _id: req.params.id, organizationId: req.user?.organizationId },
+      {
+        $push: {
+          disciplinaryRecords: {
+            ...req.body,
+            reportedBy: req.user?.id,
+            status: 'Pending'
+          }
+        }
+      },
+      { new: true }
+    ).select('-password');
+
+    if (!employee) {
+      return res.status(404).json({ message: 'Employee not found' });
+    }
+
+    res.json(employee);
+  } catch (error) {
+    res.status(500).json({ message: 'Error adding disciplinary record' });
+  }
+});
+
+// Update disciplinary record status (HR admin only)
+router.put('/employees/:id/disciplinary/:recordId', authenticateToken, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
+  try {
+    const employee = await Employee.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        organizationId: req.user?.organizationId,
+        'disciplinaryRecords._id': req.params.recordId
+      },
+      {
+        $set: {
+          'disciplinaryRecords.$.status': req.body.status,
+          'disciplinaryRecords.$.approvedBy': req.user?.id
+        }
+      },
+      { new: true }
+    ).select('-password');
+
+    if (!employee) {
+      return res.status(404).json({ message: 'Employee or record not found' });
+    }
+
+    res.json(employee);
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating disciplinary record' });
+  }
+});
+
+// Upload document (HR admin or self)
+router.post('/employees/:id/documents', authenticateToken, checkModuleAccess('hr'), async (req: Request, res: Response) => {
+  try {
+    // Check if user is HR admin or uploading their own document
+    if (req.user?.role !== 'hr_admin' && req.user?.id !== req.params.id) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const employee = await Employee.findOneAndUpdate(
+      { _id: req.params.id, organizationId: req.user?.organizationId },
+      {
+        $push: {
+          documents: {
+            ...req.body,
+            uploadedBy: req.user?.id,
+            uploadedAt: new Date(),
+            status: 'Pending'
+          }
+        }
+      },
+      { new: true }
+    ).select('-password');
+
+    if (!employee) {
+      return res.status(404).json({ message: 'Employee not found' });
+    }
+
+    res.json(employee);
+  } catch (error) {
+    res.status(500).json({ message: 'Error uploading document' });
+  }
+});
+
+// Approve document (HR admin only)
+router.put('/employees/:id/documents/:docId', authenticateToken, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
     try {
-      if (!req.user?.organizationId) {
-        return res.status(401).json({ message: 'Unauthorized access' });
+    const employee = await Employee.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        organizationId: req.user?.organizationId,
+        'documents._id': req.params.docId
+      },
+      {
+        $set: {
+          'documents.$.status': req.body.status,
+          'documents.$.approvedBy': req.user?.id,
+          'documents.$.approvedAt': new Date()
+        }
+      },
+      { new: true }
+    ).select('-password');
+
+    if (!employee) {
+      return res.status(404).json({ message: 'Employee or document not found' });
+    }
+
+    res.json(employee);
+  } catch (error) {
+    res.status(500).json({ message: 'Error approving document' });
+  }
+});
+
+// Get employee competencies (HR admin or self)
+router.get('/employees/:id/competencies', authenticateToken, checkModuleAccess('hr'), async (req: Request, res: Response) => {
+  try {
+    const employee = await Employee.findOne({
+      _id: req.params.id,
+      organizationId: req.user?.organizationId
+    }).select('competencies');
+
+    if (!employee) {
+      return res.status(404).json({ message: 'Employee not found' });
+    }
+
+    // Allow access if user is HR admin or viewing their own competencies
+    if (req.user?.role !== 'hr_admin' && req.user?.id !== req.params.id) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    res.json(employee.competencies || []);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching competencies' });
+  }
+});
+
+// Update employee competencies (HR admin only)
+router.put('/employees/:id/competencies', authenticateToken, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
+  try {
+    const employee = await Employee.findOneAndUpdate(
+      { _id: req.params.id, organizationId: req.user?.organizationId },
+      { $set: { competencies: req.body } },
+      { new: true }
+    ).select('-password');
+
+    if (!employee) {
+      return res.status(404).json({ message: 'Employee not found' });
+    }
+
+    res.json(employee);
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating competencies' });
       }
-      const payroll = await Payroll.findOneAndUpdate(
+});
+
+// Match competencies to job requirements (HR admin only)
+router.post('/employees/match-competencies', authenticateToken, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
+  try {
+    const { jobRequirements } = req.body;
+    const employees: any[] = await Employee.find({
+      organizationId: req.user?.organizationId,
+      'competencies.name': { $in: jobRequirements.skills }
+    }).select('firstName lastName competencies');
+
+    const matches: { employee: any; score: number }[] = employees.map((employee: any) => ({
+      employee,
+      score: calculateMatchScore(employee.competencies, jobRequirements.skills)
+    }));
+
+    matches.sort((a: { score: number }, b: { score: number }) => b.score - a.score);
+
+    res.json(matches);
+  } catch (error) {
+    res.status(500).json({ message: 'Error matching competencies' });
+  }
+});
+
+// Helper function to calculate match score
+function calculateMatchScore(competencies: any[] | undefined, requirements: string[]): number {
+  if (!competencies) return 0;
+  
+  const requiredSkills = new Set(requirements);
+  let score = 0;
+  
+  competencies.forEach((comp: any) => {
+    if (requiredSkills.has(comp.name)) {
+      // Convert string level to numeric score
+      score += 1;
+    }
+  });
+  
+  return score;
+}
+
+// Get employee dependents (HR admin or self)
+router.get('/employees/:id/dependents', authenticateToken, checkModuleAccess('hr'), async (req: Request, res: Response) => {
+  try {
+    // Allow HR admins to view any employee's dependents, or users to view their own
+    if (!req.user || (req.user.role !== 'hr_admin' && req.user.id !== req.params.id)) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const employee = await Employee.findById(req.params.id)
+      .select('children');
+
+    if (!employee) {
+      return res.status(404).json({ message: 'Employee not found' });
+    }
+
+    res.json({
+      dependents: employee.children || [],
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching dependents' });
+  }
+});
+
+// Add dependent (HR admin only)
+router.post('/employees/:id/dependents', authenticateToken, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
+  try {
+    const employee = await Employee.findById(req.params.id);
+    if (!employee) {
+      return res.status(404).json({ message: 'Employee not found' });
+    }
+
+    // Check if adding dependent exceeds the limit
+    const maxDependents = 5; // Default value since dependentPolicy does not exist
+    if ((employee.children?.length || 0) >= maxDependents) {
+      return res.status(400).json({ message: 'Maximum number of dependents reached' });
+    }
+
+    // Validate dependent age for children
+    if (req.body.relationship === 'Child') {
+      const maxChildAge = employee.dependentPolicy?.maxChildAge || 18;
+      const age = new Date().getFullYear() - new Date(req.body.dateOfBirth).getFullYear();
+      if (age > maxChildAge) {
+        return res.status(400).json({ message: 'Child exceeds maximum age limit' });
+      }
+    }
+
+    const updatedEmployee = await Employee.findByIdAndUpdate(
+      req.params.id,
+      {
+        $push: {
+          children: {
+            ...req.body,
+            status: 'Active',
+            lastVerifiedAt: new Date(),
+            verifiedBy: req.user?.id
+          }
+        }
+      },
+      { new: true }
+    ).select('-password');
+
+    res.json(updatedEmployee);
+  } catch (error) {
+    res.status(500).json({ message: 'Error adding dependent' });
+  }
+});
+
+// Update dependent (HR admin only)
+router.put('/employees/:id/dependents/:dependentId', authenticateToken, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
+  try {
+    const employee = await Employee.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        'children._id': req.params.dependentId
+      },
+      {
+        $set: {
+          'children.$': {
+            ...req.body,
+            lastVerifiedAt: new Date(),
+            verifiedBy: req.user?.id
+          }
+        }
+      },
+      { new: true }
+    ).select('-password');
+
+    if (!employee) {
+      return res.status(404).json({ message: 'Employee or dependent not found' });
+    }
+
+    res.json(employee);
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating dependent' });
+  }
+});
+
+// Delete dependent (HR admin only)
+router.delete('/employees/:id/dependents/:dependentId', authenticateToken, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
+  try {
+    const employee = await Employee.findByIdAndUpdate(
+      req.params.id,
+      {
+        $pull: {
+          children: { _id: req.params.dependentId }
+        }
+      },
+      { new: true }
+    ).select('-password');
+
+    if (!employee) {
+      return res.status(404).json({ message: 'Employee not found' });
+    }
+
+    res.json({ message: 'Dependent removed successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error removing dependent' });
+  }
+});
+
+// Upload dependent document (HR admin only)
+router.post('/employees/:id/dependents/:dependentId/documents', authenticateToken, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
+  try {
+    const employee = await Employee.findOneAndUpdate(
         {
           _id: req.params.id,
-          organizationId: req.user.organizationId,
-          status: 'draft'
-        },
-        {
-          status: 'approved',
-          updatedAt: new Date()
+        'children._id': req.params.dependentId
+      },
+      {
+        $push: {
+          'children.$.documents': {
+            ...req.body,
+            uploadedAt: new Date(),
+            uploadedBy: req.user?.id,
+            status: 'Approved',
+            approvedBy: req.user?.id,
+            approvedAt: new Date()
+          }
+        }
+      },
+      { new: true }
+    ).select('-password');
+
+    if (!employee) {
+      return res.status(404).json({ message: 'Employee or dependent not found' });
+    }
+
+    res.json(employee);
+  } catch (error) {
+    res.status(500).json({ message: 'Error uploading document' });
+  }
+});
+
+// Update dependent entitlements (HR admin only)
+router.put('/employees/:id/dependent-entitlements', authenticateToken, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
+  try {
+    const employee = await Employee.findByIdAndUpdate(
+      req.params.id,
+      {
+        $set: {
+          dependentEntitlements: {
+            ...req.body,
+            lastUpdated: new Date(),
+            updatedBy: req.user?.id
+          }
+        }
+      },
+      { new: true }
+    ).select('-password');
+
+    if (!employee) {
+      return res.status(404).json({ message: 'Employee not found' });
+    }
+
+    res.json(employee);
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating entitlements' });
+  }
+});
+
+// Update dependent policy (HR admin only)
+router.put('/employees/:id/dependent-policy', authenticateToken, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
+  try {
+    const employee = await Employee.findByIdAndUpdate(
+      req.params.id,
+      {
+        $set: {
+          dependentPolicy: {
+            ...req.body,
+            lastUpdated: new Date(),
+            updatedBy: req.user?.id
+          }
+        }
         },
         { new: true }
-      );
-      if (!payroll) {
-        return res.status(404).json({ message: 'Payroll record not found' });
+    ).select('-password');
+
+    if (!employee) {
+      return res.status(404).json({ message: 'Employee not found' });
       }
-      res.json(payroll);
+
+    res.json(employee);
     } catch (error) {
-      res.status(500).json({ message: 'Error approving payroll' });
+    res.status(500).json({ message: 'Error updating policy' });
+  }
+});
+
+// Verify dependent eligibility (HR admin only)
+router.post('/employees/:id/dependents/:dependentId/verify', authenticateToken, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
+  try {
+    const employee = await Employee.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        'children._id': req.params.dependentId
+      },
+      {
+        $set: {
+          'children.$.status': 'Active',
+          'children.$.lastVerifiedAt': new Date(),
+          'children.$.verifiedBy': req.user?.id,
+          'children.$.notes': req.body.notes
+        }
+      },
+      { new: true }
+    ).select('-password');
+
+    if (!employee) {
+      return res.status(404).json({ message: 'Employee or dependent not found' });
+    }
+
+    res.json(employee);
+  } catch (error) {
+    res.status(500).json({ message: 'Error verifying dependent' });
     }
 });
 

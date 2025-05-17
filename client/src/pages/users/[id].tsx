@@ -28,6 +28,8 @@ import {
   Key
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
+import { CredentialVerification } from '@/components/hr/CredentialVerification';
+import { SkillMatching } from '@/components/hr/SkillMatching';
 
 interface User {
   id: string;
@@ -134,6 +136,15 @@ interface User {
   };
   createdAt: Date;
   updatedAt: Date;
+  credentials?: Array<{
+    id: string;
+    type: 'education' | 'certification' | 'experience';
+    title: string;
+    issuer: string;
+    date: string;
+    verified: boolean;
+    blockchainHash?: string;
+  }>;
 }
 
 // Define module display names and descriptions
@@ -222,7 +233,8 @@ export default function EditUserPage() {
         // Add any missing fields from Prisma schema
         wallet: data.wallet || { balance: 0, currency: 'USD', bankAccounts: [] },
         legalDetails: data.legalDetails || { taxId: '', businessType: '', registrationNumber: '', incorporationDate: '' },
-        address: data.address || { street: '', city: '', state: '', country: '', postalCode: '', isBillingAddress: false, isShippingAddress: false }
+        address: data.address || { street: '', city: '', state: '', country: '', postalCode: '', isBillingAddress: false, isShippingAddress: false },
+        credentials: data.credentials || []
       };
       
       console.log('Processed user data:', userWithDefaults);
@@ -279,7 +291,8 @@ export default function EditUserPage() {
         moduleAccess: Array.isArray(user.moduleAccess) ? user.moduleAccess : [],
         wallet: user.wallet,
         legalDetails: user.legalDetails,
-        address: user.address
+        address: user.address,
+        credentials: user.credentials
       };
 
       // Add password if it's been changed
@@ -746,12 +759,12 @@ export default function EditUserPage() {
                   });
                   return (
                     <div key={moduleId} className="flex items-center space-x-2">
-                      <Checkbox
+                    <Checkbox
                         id={moduleId}
                         checked={isChecked}
-                        onCheckedChange={(checked) => {
+                      onCheckedChange={(checked) => {
                           const currentModules = Array.isArray(user.moduleAccess) ? user.moduleAccess : [];
-                          const newModuleAccess = checked
+                        const newModuleAccess = checked
                             ? [...currentModules, moduleId]
                             : currentModules.filter(ma => ma !== moduleId);
                           console.log('Module access changed:', {
@@ -760,19 +773,60 @@ export default function EditUserPage() {
                             currentModules,
                             newModuleAccess
                           });
-                          setUser({ ...user, moduleAccess: newModuleAccess });
-                        }}
-                      />
+                        setUser({ ...user, moduleAccess: newModuleAccess });
+                      }}
+                    />
                       <Label htmlFor={moduleId} className="flex flex-col">
                         <span>{moduleDisplayInfo[moduleId].name}</span>
                         <span className="text-sm text-muted-foreground">{moduleDisplayInfo[moduleId].description}</span>
-                      </Label>
-                    </div>
+                    </Label>
+                  </div>
                   );
                 })}
               </div>
             </CardContent>
           </Card>
+
+          {/* Blockchain-Verified Credentials */}
+          <CredentialVerification
+            credentials={user.credentials || []}
+            onVerify={async (credentialId) => {
+              try {
+                const response = await fetch('/api/hr/verify-credential', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    credentialId,
+                    userId: user.id
+                  }),
+                });
+                const data = await response.json();
+                if (data.success) {
+                  // Update the local state with the verified credential
+                  setUser({
+                    ...user,
+                    credentials: user.credentials?.map(cred => 
+                      cred.id === credentialId 
+                        ? { ...cred, verified: true, blockchainHash: data.blockchainHash }
+                        : cred
+                    )
+                  });
+                }
+              } catch (error) {
+                console.error('Error verifying credential:', error);
+              }
+            }}
+          />
+
+          {/* AI Skill Matching */}
+          <SkillMatching
+            projectRequirements={{
+              skills: ['javascript', 'typescript', 'react', 'node.js'],
+              experience: 3
+            }}
+          />
 
           {/* Status */}
           <Card>
