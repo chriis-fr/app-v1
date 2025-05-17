@@ -44,6 +44,7 @@ import FinanceModulePage from '@/pages/finance/module';
 import SupportPage from '@/pages/support-page';
 import HRPage from '@/pages/hr';
 import HRInfoPage from '@/pages/modules/hr-info';
+import { HRReports } from './components/hr/HRReports';
 
 function App() {
   return (
@@ -74,6 +75,7 @@ function App() {
             <ProtectedRoute path="/hr" component={HRPage} requiredModule="hr" />
             <ProtectedRoute path="/dashboard/hr" component={HRPage} requiredModule="hr" />
             <ProtectedRoute path="/dashboard/hr/info" component={HRInfoPage} requiredModule="hr" />
+            <ProtectedRoute path="/dashboard/hr/reports" component={HRReports} requiredModule="hr" />
             
             {/* Inventory Routes */}
             <ProtectedRoute path="/inventory" component={InventoryPage} />

@@ -267,6 +267,63 @@ export function useEmployee() {
     }
   }, [toast]);
 
+  const searchEmployees = useCallback(async (query: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await api.get(`/hr/employees/search?q=${encodeURIComponent(query)}`);
+      return response.data;
+    } catch (err) {
+      setError('Failed to search employees');
+      toast({
+        title: 'Error',
+        description: 'Failed to search employees',
+        variant: 'destructive',
+      });
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
+  const getEmployeesByDepartment = useCallback(async (department: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await api.get(`/hr/employees?department=${encodeURIComponent(department)}`);
+      return response.data;
+    } catch (err) {
+      setError('Failed to fetch employees by department');
+      toast({
+        title: 'Error',
+        description: 'Failed to fetch employees by department',
+        variant: 'destructive',
+      });
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
+  const getEmployeesByStatus = useCallback(async (status: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await api.get(`/hr/employees?status=${encodeURIComponent(status)}`);
+      return response.data;
+    } catch (err) {
+      setError('Failed to fetch employees by status');
+      toast({
+        title: 'Error',
+        description: 'Failed to fetch employees by status',
+        variant: 'destructive',
+      });
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
   return {
     loading,
     error,
@@ -282,5 +339,9 @@ export function useEmployee() {
     // Payroll
     getEmployeePayroll,
     createPayrollRecord,
+    // New methods
+    searchEmployees,
+    getEmployeesByDepartment,
+    getEmployeesByStatus,
   };
 } 

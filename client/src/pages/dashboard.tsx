@@ -101,60 +101,60 @@ export default function Dashboard() {
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               {modules.includes('pos') && (
                 <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20 hover:shadow-lg transition-all duration-300">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium text-black">Total Revenue</CardTitle>
-                  </CardHeader>
-                  <CardContent>
+                </CardHeader>
+                <CardContent>
                     <div className="text-2xl font-bold text-black">${businessMetrics.revenue.toLocaleString()}</div>
                     <p className="text-xs text-primary/70">
-                      +{businessMetrics.growthRate}% from last month
-                    </p>
-                  </CardContent>
-                </Card>
+                    +{businessMetrics.growthRate}% from last month
+                  </p>
+                </CardContent>
+              </Card>
               )}
               {modules.includes('accounting') && (
                 <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 border-emerald-200 hover:shadow-lg transition-all duration-300">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium text-black">Net Profit</CardTitle>
-                  </CardHeader>
-                  <CardContent>
+                </CardHeader>
+                <CardContent>
                     <div className="text-2xl font-bold text-black">${businessMetrics.profit.toLocaleString()}</div>
                     <p className="text-xs text-emerald-600/70">
-                      {((businessMetrics.profit / businessMetrics.revenue) * 100).toFixed(1)}% margin
-                    </p>
-                  </CardContent>
-                </Card>
+                    {((businessMetrics.profit / businessMetrics.revenue) * 100).toFixed(1)}% margin
+                  </p>
+                </CardContent>
+              </Card>
               )}
               {modules.includes('accounting') && (
                 <Card className="bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-200 hover:shadow-lg transition-all duration-300">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium text-black">Cash Flow</CardTitle>
-                  </CardHeader>
-                  <CardContent>
+                </CardHeader>
+                <CardContent>
                     <div className="text-2xl font-bold text-black">${businessMetrics.cashFlow.toLocaleString()}</div>
                     <p className="text-xs text-blue-600/70">
-                      Current month
-                    </p>
-                  </CardContent>
-                </Card>
+                    Current month
+                  </p>
+                </CardContent>
+              </Card>
               )}
               {modules.includes('accounting') && (
                 <Card className="bg-gradient-to-br from-purple-50 to-purple-100/50 border-purple-200 hover:shadow-lg transition-all duration-300">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium text-black">Total Assets</CardTitle>
-                  </CardHeader>
-                  <CardContent>
+                </CardHeader>
+                <CardContent>
                     <div className="text-2xl font-bold text-black">${businessMetrics.assetsValue.toLocaleString()}</div>
                     <p className="text-xs text-purple-600/70">
-                      ${businessMetrics.equity.toLocaleString()} equity
-                    </p>
-                  </CardContent>
-                </Card>
+                    ${businessMetrics.equity.toLocaleString()} equity
+                  </p>
+                </CardContent>
+              </Card>
               )}
             </div>
 
             <div className="transform transition-all duration-300 hover:scale-[1.01]">
-              <AIInsights />
+            <AIInsights />
             </div>
 
             <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
@@ -168,25 +168,25 @@ export default function Dashboard() {
                       <div className="flex justify-between items-center p-2 rounded-lg hover:bg-primary/5 transition-colors">
                         <span className="font-medium">POS</span>
                         <span className="text-primary font-semibold">${staticData.pos.analytics.dailySales.toLocaleString()} daily sales</span>
-                      </div>
+                    </div>
                     )}
                     {modules.includes('hr') && (
                       <div className="flex justify-between items-center p-2 rounded-lg hover:bg-primary/5 transition-colors">
                         <span className="font-medium">HR</span>
                         <span className="text-primary font-semibold">{staticData.hr.analytics.headcount} employees</span>
-                      </div>
+                    </div>
                     )}
                     {modules.includes('accounting') && (
                       <div className="flex justify-between items-center p-2 rounded-lg hover:bg-primary/5 transition-colors">
                         <span className="font-medium">Accounting</span>
                         <span className="text-primary font-semibold">{staticData.accounting.analytics.profitMargin}% margin</span>
-                      </div>
+                    </div>
                     )}
                     {modules.includes('blockchain') && (
                       <div className="flex justify-between items-center p-2 rounded-lg hover:bg-primary/5 transition-colors">
                         <span className="font-medium">Blockchain</span>
                         <span className="text-primary font-semibold">{staticData.blockchain.analytics.totalTransactions} transactions</span>
-                      </div>
+                    </div>
                     )}
                   </div>
                 </CardContent>

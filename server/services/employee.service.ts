@@ -1,16 +1,17 @@
+import { Express } from 'express';
+import User from '../models/User';
 import { Employee } from '../mongodb/models/hr';
-import { User } from '../types';
 
 export class EmployeeService {
   static async getAllEmployees(organizationId: string) {
     return Employee.find({ organizationId }).sort({ lastName: 1 });
   }
 
-  static async getEmployeeById(id: string, organizationId: string) {
-    return Employee.findOne({ _id: id, organizationId });
+  static async getEmployeeById(id: string) {
+    return User.findById(id).select('-password');
   }
 
-  static async createEmployee(data: any, user: User) {
+  static async createEmployee(data: any, user: Express.User) {
     const employee = new Employee({
       ...data,
       organizationId: user.organizationId,
@@ -19,7 +20,7 @@ export class EmployeeService {
     return employee.save();
   }
 
-  static async updateEmployee(id: string, data: any, user: User) {
+  static async updateEmployee(id: string, data: any, user: Express.User) {
     return Employee.findOneAndUpdate(
       { _id: id, organizationId: user.organizationId },
       {
@@ -78,5 +79,9 @@ export class EmployeeService {
         $lte: endDate
       }
     });
+  }
+
+  static async getEmployeesByOrganization(organizationId: string) {
+    return User.find({ organizationId }).select('-password');
   }
 } 

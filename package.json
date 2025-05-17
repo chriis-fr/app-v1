@@ -57,6 +57,8 @@
     "@types/bcryptjs": "^3.0.0",
     "@types/jsonwebtoken": "^9.0.9",
     "@types/multer": "^1.4.12",
+    "@types/nodemailer": "^6.4.17",
+    "@types/pdfkit": "^0.13.9",
     "@types/uuid": "^10.0.0",
     "axios": "^1.9.0",
     "bcryptjs": "^3.0.2",
@@ -81,9 +83,11 @@
     "mongodb": "^6.13.1",
     "mongoose": "^8.10.1",
     "multer": "^1.4.5-lts.2",
+    "nodemailer": "^7.0.3",
     "nodemon": "^3.1.9",
     "passport": "^0.7.0",
     "passport-local": "^1.0.0",
+    "pdfkit": "^0.17.1",
     "react": "^18.2.0",
     "react-calendly": "^4.3.1",
     "react-day-picker": "^8.10.1",
@@ -122,7 +126,7 @@
     "@vitejs/plugin-react": "^4.3.2",
     "autoprefixer": "^10.4.20",
     "drizzle-kit": "^0.30.4",
-    "prisma": "^6.7.0"
+    "prisma": "^6.8.2"
   },
   "optionalDependencies": {
     "bufferutil": "^4.0.8"

@@ -1,18 +1,8 @@
+// This file is intentionally empty as we're using Express.User type
+// and extending Express.Request directly in express.d.ts 
+
 import { Request } from 'express';
 
-export interface User {
-  id: string;
-  organizationId: string;
-  role: string;
-  email: string;
-  isOwner: boolean;
-  moduleAccess: string[];
-  permissions: {
-    module: string;
-    actions: string[];
-  }[];
-}
-
 export interface AuthRequest extends Request {
-  user?: User;
+  user?: Express.User;
 } 

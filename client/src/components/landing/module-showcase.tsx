@@ -28,6 +28,7 @@ import {
   PieChart,
   Wrench
 } from 'lucide-react'
+import { Link } from 'wouter'
 
 const modules = [
   {
@@ -360,9 +361,14 @@ export function ModuleShowcase() {
             <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
               Our modular ERP system adapts to your business needs today while preparing you for global expansion tomorrow.
             </p>
-            <button className="px-8 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors">
+            <a 
+              href="https://forms.gle/nHs8eDTv5D727yfq5"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block px-8 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+            >
               Start Your Free Trial
-            </button>
+            </a>
           </motion.div>
         </div>
       </div>

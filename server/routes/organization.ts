@@ -1,5 +1,5 @@
 import express from 'express';
-import { authenticateToken } from '../middleware/auth';
+import { isAuthenticated } from '../middleware/auth';
 import { checkModuleAccess } from '../middleware/module-access';
 import { AuthRequest } from '../types';
 import OrganizationStructure, { OrganizationStructureDocument } from '../models/OrganizationStructure';
@@ -23,7 +23,7 @@ interface HierarchicalStructure extends Omit<OrganizationStructureDocument, 'toO
 }
 
 // Get organization structure
-router.get('/structure', authenticateToken, checkModuleAccess('hr'), async (req: AuthRequest, res) => {
+router.get('/structure', isAuthenticated, checkModuleAccess('hr'), async (req: AuthRequest, res) => {
   try {
     const { type, category, isExecutive, isForecasted, effectiveDate } = req.query;
     
@@ -46,7 +46,7 @@ router.get('/structure', authenticateToken, checkModuleAccess('hr'), async (req:
 });
 
 // Get organization structure by ID
-router.get('/structure/:id', authenticateToken, checkModuleAccess('hr'), async (req: AuthRequest, res) => {
+router.get('/structure/:id', isAuthenticated, checkModuleAccess('hr'), async (req: AuthRequest, res) => {
   try {
     const structure = await OrganizationStructure.findById(req.params.id)
       .populate('parentId', 'name code')
@@ -63,7 +63,7 @@ router.get('/structure/:id', authenticateToken, checkModuleAccess('hr'), async (
 });
 
 // Create organization structure
-router.post('/structure', authenticateToken, checkModuleAccess('hr'), isAdmin, async (req: AuthRequest, res) => {
+router.post('/structure', isAuthenticated, checkModuleAccess('hr'), isAdmin, async (req: AuthRequest, res) => {
   try {
     const structure = new OrganizationStructure({
       ...req.body,
@@ -79,7 +79,7 @@ router.post('/structure', authenticateToken, checkModuleAccess('hr'), isAdmin, a
 });
 
 // Update organization structure
-router.put('/structure/:id', authenticateToken, checkModuleAccess('hr'), isAdmin, async (req: AuthRequest, res) => {
+router.put('/structure/:id', isAuthenticated, checkModuleAccess('hr'), isAdmin, async (req: AuthRequest, res) => {
   try {
     const structure = await OrganizationStructure.findByIdAndUpdate(
       req.params.id,
@@ -101,7 +101,7 @@ router.put('/structure/:id', authenticateToken, checkModuleAccess('hr'), isAdmin
 });
 
 // Delete organization structure
-router.delete('/structure/:id', authenticateToken, checkModuleAccess('hr'), isAdmin, async (req: AuthRequest, res) => {
+router.delete('/structure/:id', isAuthenticated, checkModuleAccess('hr'), isAdmin, async (req: AuthRequest, res) => {
   try {
     const structure = await OrganizationStructure.findByIdAndDelete(req.params.id);
 
@@ -116,7 +116,7 @@ router.delete('/structure/:id', authenticateToken, checkModuleAccess('hr'), isAd
 });
 
 // Assign employee to position
-router.put('/structure/:id/assign', authenticateToken, checkModuleAccess('hr'), isAdmin, async (req: AuthRequest, res) => {
+router.put('/structure/:id/assign', isAuthenticated, checkModuleAccess('hr'), isAdmin, async (req: AuthRequest, res) => {
   try {
     const { employeeId } = req.body;
     
@@ -147,7 +147,7 @@ router.put('/structure/:id/assign', authenticateToken, checkModuleAccess('hr'), 
 });
 
 // Upload job specification document
-router.post('/structure/:id/specification/upload', authenticateToken, checkModuleAccess('hr'), isAdmin, async (req: AuthRequest, res) => {
+router.post('/structure/:id/specification/upload', isAuthenticated, checkModuleAccess('hr'), isAdmin, async (req: AuthRequest, res) => {
   try {
     const structure = await OrganizationStructure.findByIdAndUpdate(
       req.params.id,
@@ -175,7 +175,7 @@ router.post('/structure/:id/specification/upload', authenticateToken, checkModul
 });
 
 // Get organization chart
-router.get('/chart', authenticateToken, checkModuleAccess('hr'), async (req: AuthRequest, res) => {
+router.get('/chart', isAuthenticated, checkModuleAccess('hr'), async (req: AuthRequest, res) => {
   try {
     const { effectiveDate, isForecasted } = req.query;
     
@@ -213,7 +213,7 @@ router.get('/chart', authenticateToken, checkModuleAccess('hr'), async (req: Aut
 });
 
 // Get vacant positions
-router.get('/vacant-positions', authenticateToken, checkModuleAccess('hr'), async (req: AuthRequest, res) => {
+router.get('/vacant-positions', isAuthenticated, checkModuleAccess('hr'), async (req: AuthRequest, res) => {
   try {
     const vacantPositions = await OrganizationStructure.find({
       status: 'Vacant',
@@ -229,7 +229,7 @@ router.get('/vacant-positions', authenticateToken, checkModuleAccess('hr'), asyn
 });
 
 // Get position history
-router.get('/structure/:id/history', authenticateToken, checkModuleAccess('hr'), async (req: AuthRequest, res) => {
+router.get('/structure/:id/history', isAuthenticated, checkModuleAccess('hr'), async (req: AuthRequest, res) => {
   try {
     const structure = await OrganizationStructure.findById(req.params.id)
       .select('positionHistory');
@@ -245,7 +245,7 @@ router.get('/structure/:id/history', authenticateToken, checkModuleAccess('hr'),
 });
 
 // Get positions by category
-router.get('/positions/category/:category', authenticateToken, checkModuleAccess('hr'), async (req: AuthRequest, res) => {
+router.get('/positions/category/:category', isAuthenticated, checkModuleAccess('hr'), async (req: AuthRequest, res) => {
   try {
     const positions = await OrganizationStructure.find({
       type: 'Position',
@@ -262,7 +262,7 @@ router.get('/positions/category/:category', authenticateToken, checkModuleAccess
 });
 
 // Add new routes for managing multiple employees and additional features
-router.post('/structure/:id/assign-employee', authenticateToken, checkModuleAccess('hr'), isAdmin, async (req: AuthRequest, res) => {
+router.post('/structure/:id/assign-employee', isAuthenticated, checkModuleAccess('hr'), isAdmin, async (req: AuthRequest, res) => {
   try {
     const { employeeId, assignmentType, startDate, endDate, isException, exceptionReason } = req.body;
     
@@ -310,7 +310,7 @@ router.post('/structure/:id/assign-employee', authenticateToken, checkModuleAcce
 });
 
 // Update employee assignment
-router.put('/structure/:id/assignments/:assignmentId', authenticateToken, checkModuleAccess('hr'), isAdmin, async (req: AuthRequest, res) => {
+router.put('/structure/:id/assignments/:assignmentId', isAuthenticated, checkModuleAccess('hr'), isAdmin, async (req: AuthRequest, res) => {
   try {
     const { status, endDate } = req.body;
     
@@ -339,7 +339,7 @@ router.put('/structure/:id/assignments/:assignmentId', authenticateToken, checkM
 });
 
 // Update grading scale
-router.put('/structure/:id/grading-scale', authenticateToken, checkModuleAccess('hr'), isAdmin, async (req: AuthRequest, res) => {
+router.put('/structure/:id/grading-scale', isAuthenticated, checkModuleAccess('hr'), isAdmin, async (req: AuthRequest, res) => {
   try {
     const { scale, minRate, maxRate, currency, effectiveDate, endDate } = req.body;
     
@@ -370,7 +370,7 @@ router.put('/structure/:id/grading-scale', authenticateToken, checkModuleAccess(
 });
 
 // Update benefits
-router.put('/structure/:id/benefits', authenticateToken, checkModuleAccess('hr'), isAdmin, async (req: AuthRequest, res) => {
+router.put('/structure/:id/benefits', isAuthenticated, checkModuleAccess('hr'), isAdmin, async (req: AuthRequest, res) => {
   try {
     const structure = await OrganizationStructure.findByIdAndUpdate(
       req.params.id,
@@ -392,7 +392,7 @@ router.put('/structure/:id/benefits', authenticateToken, checkModuleAccess('hr')
 });
 
 // Update competencies
-router.put('/structure/:id/competencies', authenticateToken, checkModuleAccess('hr'), isAdmin, async (req: AuthRequest, res) => {
+router.put('/structure/:id/competencies', isAuthenticated, checkModuleAccess('hr'), isAdmin, async (req: AuthRequest, res) => {
   try {
     const structure = await OrganizationStructure.findByIdAndUpdate(
       req.params.id,
@@ -414,7 +414,7 @@ router.put('/structure/:id/competencies', authenticateToken, checkModuleAccess('
 });
 
 // Update translations
-router.put('/structure/:id/translations', authenticateToken, checkModuleAccess('hr'), isAdmin, async (req: AuthRequest, res) => {
+router.put('/structure/:id/translations', isAuthenticated, checkModuleAccess('hr'), isAdmin, async (req: AuthRequest, res) => {
   try {
     const structure = await OrganizationStructure.findByIdAndUpdate(
       req.params.id,
@@ -436,7 +436,7 @@ router.put('/structure/:id/translations', authenticateToken, checkModuleAccess('
 });
 
 // Get position by title
-router.get('/positions/title/:title', authenticateToken, checkModuleAccess('hr'), async (req: AuthRequest, res) => {
+router.get('/positions/title/:title', isAuthenticated, checkModuleAccess('hr'), async (req: AuthRequest, res) => {
   try {
     const positions = await OrganizationStructure.find({
       type: 'Position',
@@ -453,7 +453,7 @@ router.get('/positions/title/:title', authenticateToken, checkModuleAccess('hr')
 });
 
 // Get positions by department
-router.get('/positions/department/:department', authenticateToken, checkModuleAccess('hr'), async (req: AuthRequest, res) => {
+router.get('/positions/department/:department', isAuthenticated, checkModuleAccess('hr'), async (req: AuthRequest, res) => {
   try {
     const positions = await OrganizationStructure.find({
       type: 'Position',
@@ -470,7 +470,7 @@ router.get('/positions/department/:department', authenticateToken, checkModuleAc
 });
 
 // Get positions with multiple employees
-router.get('/positions/multiple-employees', authenticateToken, checkModuleAccess('hr'), async (req: AuthRequest, res) => {
+router.get('/positions/multiple-employees', isAuthenticated, checkModuleAccess('hr'), async (req: AuthRequest, res) => {
   try {
     const positions = await OrganizationStructure.find({
       type: 'Position',
@@ -487,7 +487,7 @@ router.get('/positions/multiple-employees', authenticateToken, checkModuleAccess
 });
 
 // Get positions by evaluation score range
-router.get('/positions/evaluation-score', authenticateToken, checkModuleAccess('hr'), async (req: AuthRequest, res) => {
+router.get('/positions/evaluation-score', isAuthenticated, checkModuleAccess('hr'), async (req: AuthRequest, res) => {
   try {
     const { minScore, maxScore } = req.query;
     

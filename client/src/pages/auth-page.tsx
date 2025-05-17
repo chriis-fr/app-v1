@@ -235,31 +235,36 @@ export default function AuthPage() {
       case 'modules':
         return (
           <div className="space-y-4">
-            <h3 className="text-lg font-medium">Select Additional Modules</h3>
-            <p className="text-sm text-muted-foreground">
-              Choose up to 2 additional modules. Accounting is included by default.
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {availableModules.filter(module => module !== 'accounting').map(module => (
-                <div key={module} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={module}
-                    checked={registerForm.watch('selectedModules')?.includes(module)}
-                    onCheckedChange={(checked) => {
-                      const currentModules = registerForm.watch('selectedModules') || [];
-                      const newModules = checked
-                        ? [...currentModules, module].slice(0, 2)
-                        : currentModules.filter(m => m !== module);
-                      registerForm.setValue('selectedModules', newModules);
-                    }}
-                  />
-                  <Label htmlFor={module}>{module.replace('_', ' ').toUpperCase()}</Label>
-                </div>
-              ))}
+            <h3 className="text-lg font-medium">Select Modules</h3>
+            <div className="space-y-2">
+              {availableModules
+                .filter(module => ['HR', 'Accounting', 'AI'].includes(module))
+                .map(module => (
+                  <div key={module} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={module}
+                      checked={registerForm.watch('selectedModules').includes(module)}
+                      onCheckedChange={(checked) => {
+                        const modules = registerForm.watch('selectedModules');
+                        if (checked) {
+                          registerForm.setValue('selectedModules', [...modules, module]);
+                        } else {
+                          registerForm.setValue('selectedModules', modules.filter(m => m !== module));
+                        }
+                      }}
+                    />
+                    <Label htmlFor={module}>{module}</Label>
+                  </div>
+                ))}
             </div>
-            <Button onClick={handleNext} className="w-full">
-              Next <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
+            <div className="flex justify-between">
+              <Button variant="outline" onClick={handleBack}>
+                <ArrowLeft className="mr-2 h-4 w-4" /> Back
+              </Button>
+              <Button onClick={handleNext}>
+                Next <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
           </div>
         );
 

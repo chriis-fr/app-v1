@@ -3,11 +3,19 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { connectDB, disconnectDB } from "./db";
 import dotenv from "dotenv"
+import cors from 'cors';
+import mongoose from 'mongoose';
+import reportsRouter from './routes/reports';
+
 dotenv.config()
 
 const app = express();
+app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// Routes
+app.use('/api/reports', reportsRouter);
 
 // Request logging middleware
 app.use((req, res, next) => {
