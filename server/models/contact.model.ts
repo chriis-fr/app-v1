@@ -47,7 +47,6 @@ const contactSchema = new Schema<IContact>(
 );
 
 // Indexes for better query performance
-contactSchema.index({ email: 1 });
 contactSchema.index({ status: 1 });
 contactSchema.index({ assignedTo: 1 });
 contactSchema.index({ tags: 1 });
