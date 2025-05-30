@@ -169,7 +169,7 @@ export default function AccountingPage() {
       );
     }
 
-    if (!user?.moduleAccess?.includes('accounting')) {
+    if (!(user?.isOwner || user?.role === 'owner' || user?.moduleAccess?.includes('accounting'))) {
       return (
         <div className="flex flex-col items-center justify-center min-h-[60vh]">
           <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
