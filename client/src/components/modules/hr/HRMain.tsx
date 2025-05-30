@@ -1,16 +1,68 @@
-import { useState } from 'react';
-import { staticData } from '@/data/static';
+import { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DataTable } from '@/components/ui/data-table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { UserPlus, DollarSign, Clock } from 'lucide-react';
+import { UserPlus, DollarSign, Clock, Loader2 } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
+import { Employee } from '@/pages/hr/columns';
+
+interface PayrollData {
+  employeeId: string;
+  amount: number;
+  currency: string;
+  status: string;
+}
+
+interface AttendanceData {
+  employeeId: string;
+  checkInTime: Date;
+  checkOutTime?: Date;
+}
 
 export default function HRMain() {
-  const employees = staticData.hr.employees;
-  const payroll = staticData.hr.payroll;
-  const attendance = staticData.hr.attendance;
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [payroll, setPayroll] = useState<PayrollData[]>([]);
+  const [attendance, setAttendance] = useState<AttendanceData[]>([]);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      // Fetch employees
+      const employeesResponse = await fetch('/api/mongodb/users');
+      if (!employeesResponse.ok) throw new Error('Failed to fetch employees');
+      const employeesData = await employeesResponse.json();
+      setEmployees(employeesData);
+
+      // Fetch payroll data
+      const payrollResponse = await fetch('/api/hr/payroll');
+      if (!payrollResponse.ok) throw new Error('Failed to fetch payroll data');
+      const payrollData = await payrollResponse.json();
+      setPayroll(payrollData);
+
+      // Fetch attendance data
+      const attendanceResponse = await fetch('/api/hr/attendance');
+      if (!attendanceResponse.ok) throw new Error('Failed to fetch attendance data');
+      const attendanceData = await attendanceResponse.json();
+      setAttendance(attendanceData);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to fetch HR data',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const employeeColumns = [
     { accessorKey: 'firstName', header: 'First Name' },
@@ -39,6 +91,13 @@ export default function HRMain() {
     },
   ];
 
+  const renderLoadingState = () => (
+    <div className="flex items-center justify-center p-4">
+      <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      <span className="ml-2 text-muted-foreground">Loading data...</span>
+    </div>
+  );
+
   return (
     <DashboardLayout>
       <div className="space-y-4">
@@ -56,7 +115,11 @@ export default function HRMain() {
               <CardTitle>Total Employees</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{employees.length}</div>
+              {loading ? (
+                renderLoadingState()
+              ) : (
+                <div className="text-2xl font-bold">{employees.length}</div>
+              )}
             </CardContent>
           </Card>
 
@@ -65,9 +128,13 @@ export default function HRMain() {
               <CardTitle>Monthly Payroll</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                ${payroll.reduce((acc, p) => acc + p.amount, 0).toFixed(2)}
-              </div>
+              {loading ? (
+                renderLoadingState()
+              ) : (
+                <div className="text-2xl font-bold">
+                  ${payroll.reduce((acc, p) => acc + p.amount, 0).toFixed(2)}
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -76,9 +143,13 @@ export default function HRMain() {
               <CardTitle>Active Now</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {attendance.filter(a => !a.checkOutTime).length}
-              </div>
+              {loading ? (
+                renderLoadingState()
+              ) : (
+                <div className="text-2xl font-bold">
+                  {attendance.filter(a => !a.checkOutTime).length}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -91,45 +162,36 @@ export default function HRMain() {
           </TabsList>
 
           <TabsContent value="employees">
-            <Card>
-              <CardHeader>
-                <CardTitle>Employee Directory</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <DataTable 
-                  columns={employeeColumns}
-                  data={employees}
-                />
-              </CardContent>
-            </Card>
+            {loading ? (
+              renderLoadingState()
+            ) : (
+              <DataTable
+                columns={employeeColumns}
+                data={employees}
+              />
+            )}
           </TabsContent>
 
           <TabsContent value="payroll">
-            <Card>
-              <CardHeader>
-                <CardTitle>Payroll Records</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <DataTable 
-                  columns={payrollColumns}
-                  data={payroll}
-                />
-              </CardContent>
-            </Card>
+            {loading ? (
+              renderLoadingState()
+            ) : (
+              <DataTable
+                columns={payrollColumns}
+                data={payroll}
+              />
+            )}
           </TabsContent>
 
           <TabsContent value="attendance">
-            <Card>
-              <CardHeader>
-                <CardTitle>Attendance Log</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <DataTable 
-                  columns={attendanceColumns}
-                  data={attendance}
-                />
-              </CardContent>
-            </Card>
+            {loading ? (
+              renderLoadingState()
+            ) : (
+              <DataTable
+                columns={attendanceColumns}
+                data={attendance}
+              />
+            )}
           </TabsContent>
         </Tabs>
       </div>

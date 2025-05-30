@@ -1,4 +1,5 @@
 import mongoose, { Document } from 'mongoose';
+import { OrganizationSettings } from '../types';
 
 export interface OrganizationStructureDocument extends Document {
   _id: mongoose.Types.ObjectId;
@@ -9,6 +10,8 @@ export interface OrganizationStructureDocument extends Document {
   jobTitle: string;
   postType: 'Primary' | 'Secondary' | 'Acting' | 'Temporary';
   department: string;
+  country: string;
+  settings: OrganizationSettings;
   salaryGrade?: string;
   jobType?: 'Full-time' | 'Part-time' | 'Contract' | 'Temporary';
   jobLocation?: string;
@@ -112,6 +115,30 @@ const organizationStructureSchema = new mongoose.Schema({
     default: 'Primary'
   },
   department: { type: String, required: true },
+  country: { type: String, required: true },
+  settings: {
+    workingDays: [String],
+    workingHours: {
+      start: String,
+      end: String
+    },
+    holidays: [{
+      name: String,
+      date: String
+    }],
+    customSettings: mongoose.Schema.Types.Mixed,
+    accounting: {
+      fiscalYearStart: String,
+      fiscalYearEnd: String,
+      taxYearStart: String,
+      taxYearEnd: String,
+      currency: String,
+      taxRates: {
+        type: Map,
+        of: Number
+      }
+    }
+  },
   salaryGrade: String,
   jobType: {
     type: String,

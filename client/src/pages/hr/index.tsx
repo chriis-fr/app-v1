@@ -35,7 +35,7 @@ export default function HRPage() {
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    if (!user || !user.moduleAccess?.includes('hr')) {
+    if (!user || !(user.role === 'owner' || user.isOwner || user.moduleAccess?.includes('hr'))) {
       setLocation('/dashboard');
       return;
     }

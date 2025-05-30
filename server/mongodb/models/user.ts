@@ -5,7 +5,7 @@ export interface IUser extends Document {
   password: string;
   firstName: string;
   lastName: string;
-  role: 'admin' | 'hr' | 'employee' | 'manager';
+  role: 'owner' | 'admin' | 'manager' | 'employee' | 'contractor';
   organizationId: mongoose.Types.ObjectId;
   department: string;
   position: string;
@@ -15,7 +15,7 @@ export interface IUser extends Document {
   updatedAt: Date;
   isOwner: boolean;
   moduleAccess: string[];
-  permissions: string[];
+  permissions: { module: string; actions: string[] }[];
   modulePermissions: Record<string, string[]>;
 }
 
@@ -43,7 +43,7 @@ const userSchema = new Schema<IUser>({
   },
   role: {
     type: String,
-    enum: ['admin', 'hr', 'employee', 'manager'],
+    enum: ['owner', 'admin', 'manager', 'employee', 'contractor'],
     default: 'employee'
   },
   organizationId: {
@@ -75,7 +75,8 @@ const userSchema = new Schema<IUser>({
     type: String
   }],
   permissions: [{
-    type: String
+    module: { type: String, required: true },
+    actions: [{ type: String }]
   }],
   modulePermissions: {
     type: Map,
@@ -87,7 +88,6 @@ const userSchema = new Schema<IUser>({
 });
 
 // Add index for faster queries
-userSchema.index({ email: 1 });
 userSchema.index({ organizationId: 1 });
 userSchema.index({ role: 1 });
 

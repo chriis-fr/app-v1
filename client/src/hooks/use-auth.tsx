@@ -77,7 +77,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const checkAuth = async () => {
     try {
-      const response = await fetch('/api/auth/me');
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/auth/me', {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : ''
+        }
+      });
       if (response.ok) {
         const data = await response.json();
         setUser(data);
@@ -112,6 +117,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Set the user state with the complete user data including organization
       setUser({
         ...userData,
+        isOwner: userData.role === 'owner',
         organization: userData.organization,
         moduleAccess: userData.moduleAccess || [],
         permissions: userData.permissions || []
@@ -122,7 +128,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await new Promise(resolve => setTimeout(resolve, 100));
 
       // Verify the session is active and get fresh data
-      const meResponse = await fetch('/api/auth/me');
+      const meResponse = await fetch('/api/auth/me', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       if (!meResponse.ok) {
         throw new Error('Failed to fetch user data after login');
       }
@@ -130,6 +140,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const fullUserData = await meResponse.json();
       setUser({
         ...fullUserData,
+        isOwner: fullUserData.role === 'owner',
         organization: fullUserData.organization,
         moduleAccess: fullUserData.moduleAccess || [],
         permissions: fullUserData.permissions || []
@@ -160,6 +171,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Set the user state with organization data
       setUser({
         ...owner,
+        isOwner: owner.role === 'owner',
         organization,
         moduleAccess: [],
         permissions: []
@@ -170,7 +182,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await new Promise(resolve => setTimeout(resolve, 100));
 
       // Verify the session is active
-      const meResponse = await fetch('/api/auth/me');
+      const meResponse = await fetch('/api/auth/me', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       if (!meResponse.ok) {
         throw new Error('Failed to verify session after registration');
       }

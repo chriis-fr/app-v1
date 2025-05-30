@@ -16,8 +16,18 @@ import {
   Settings,
   BarChart,
   UserPlus,
-  Clock
+  Clock,
+  Network,
+  Layers,
+  Target,
+  PersonStanding,
+  UserX,
+  DollarSign
 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CredentialVerification } from '@/components/hr/CredentialVerification';
 import { SkillMatching } from '@/components/hr/SkillMatching';
 import { DataTable } from '@/components/ui/data-table';
@@ -61,8 +71,21 @@ export default function HRInfoPage() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [timeRange, setTimeRange] = useState('week');
-  const [employees, setEmployees] = useState<Employee[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [moduleSettings, setModuleSettings] = useState({
+    enableAutomation: true,
+    enableNotifications: true,
+    enableAnalytics: true,
+    enableDocumentManagement: true,
+    enableWorkflowApprovals: true,
+    defaultLanguage: 'en',
+    timeZone: 'UTC',
+    dateFormat: 'MM/DD/YYYY',
+    enableAuditLogging: true,
+    enableDataExport: true,
+    enableIntegration: true
+  });
 
   useEffect(() => {
     if (!user) {
@@ -165,6 +188,13 @@ export default function HRInfoPage() {
     console.log('Refreshing HR data...');
   };
 
+  const handleSettingChange = (setting: string, value: any) => {
+    setModuleSettings(prev => ({
+      ...prev,
+      [setting]: value
+    }));
+  };
+
   return (
     <div className="flex h-screen">
       <CompactSidebar />
@@ -172,10 +202,16 @@ export default function HRInfoPage() {
         <div className="container mx-auto py-6">
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-2xl font-bold">HR Module Management</h1>
+            <div className="space-x-2">
             <Button onClick={() => setLocation('/hr')}>
               <Users className="mr-2 h-4 w-4" />
               View HR Dashboard
             </Button>
+              <Button onClick={() => setLocation('/dashboard/hr/reports')}>
+                <FileText className="mr-2 h-4 w-4" />
+                View Reports
+              </Button>
+            </div>
           </div>
 
           <Tabs defaultValue="overview" className="space-y-4">
@@ -196,46 +232,64 @@ export default function HRInfoPage() {
                 <Briefcase className="mr-2 h-4 w-4" />
                 Workflows
               </TabsTrigger>
-              <TabsTrigger value="reports">
-                <FileText className="mr-2 h-4 w-4" />
-                Reports
+              <TabsTrigger value="integrations">
+                <Network className="mr-2 h-4 w-4" />
+                Integrations
               </TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview">
-              <Card>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                {hrData.metrics.map((metric, index) => (
+                  <Card key={index}>
                 <CardHeader>
-                  <CardTitle>Module Overview</CardTitle>
+                      <CardTitle className="text-sm font-medium">
+                        {metric.name}
+                      </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-lg">Total Employees</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-2xl font-bold">0</p>
+                      <div className="text-2xl font-bold">{metric.value}</div>
+                      <p className={`text-xs ${metric.trend === 'up' ? 'text-green-500' : 'text-red-500'}`}>
+                        {metric.change}
+                      </p>
                       </CardContent>
                     </Card>
+                ))}
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2 mt-4">
                     <Card>
                       <CardHeader>
-                        <CardTitle className="text-lg">Active Departments</CardTitle>
+                    <CardTitle>Department Distribution</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <p className="text-2xl font-bold">0</p>
+                    <div className="space-y-4">
+                      {hrData.topDepartments.map((dept, index) => (
+                        <div key={index} className="flex items-center justify-between">
+                          <span>{dept.name}</span>
+                          <span className="font-medium">{dept.value} employees</span>
+                        </div>
+                      ))}
+                    </div>
                       </CardContent>
                     </Card>
+
                     <Card>
                       <CardHeader>
-                        <CardTitle className="text-lg">Pending Approvals</CardTitle>
+                    <CardTitle>Employee Status</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <p className="text-2xl font-bold">0</p>
+                    <div className="space-y-4">
+                      {hrData.employeeStatus.map((status, index) => (
+                        <div key={index} className="flex items-center justify-between">
+                          <span>{status.name}</span>
+                          <span className="font-medium">{status.value}%</span>
+                        </div>
+                      ))}
+                    </div>
                       </CardContent>
                     </Card>
                   </div>
-                </CardContent>
-              </Card>
             </TabsContent>
 
             <TabsContent value="settings">
@@ -244,24 +298,113 @@ export default function HRInfoPage() {
                   <CardTitle>Module Settings</CardTitle>
                 </CardHeader>
                 <CardContent>
+                  <div className="space-y-6">
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-medium">General Settings</h3>
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <Label htmlFor="enableAutomation">Enable Automation</Label>
+                            <Switch
+                              id="enableAutomation"
+                              checked={moduleSettings.enableAutomation}
+                              onCheckedChange={(checked) => handleSettingChange('enableAutomation', checked)}
+                            />
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <Label htmlFor="enableNotifications">Enable Notifications</Label>
+                            <Switch
+                              id="enableNotifications"
+                              checked={moduleSettings.enableNotifications}
+                              onCheckedChange={(checked) => handleSettingChange('enableNotifications', checked)}
+                            />
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <Label htmlFor="enableAnalytics">Enable Analytics</Label>
+                            <Switch
+                              id="enableAnalytics"
+                              checked={moduleSettings.enableAnalytics}
+                              onCheckedChange={(checked) => handleSettingChange('enableAnalytics', checked)}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-medium">Display Settings</h3>
                   <div className="space-y-4">
-                    <div>
-                      <h3 className="text-lg font-medium mb-2">General Settings</h3>
-                      <p className="text-muted-foreground">
-                        Configure general HR module settings and preferences
-                      </p>
+                          <div className="space-y-2">
+                            <Label htmlFor="defaultLanguage">Default Language</Label>
+                            <Select
+                              value={moduleSettings.defaultLanguage}
+                              onValueChange={(value) => handleSettingChange('defaultLanguage', value)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select language" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="en">English</SelectItem>
+                                <SelectItem value="es">Spanish</SelectItem>
+                                <SelectItem value="fr">French</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="timeZone">Time Zone</Label>
+                            <Select
+                              value={moduleSettings.timeZone}
+                              onValueChange={(value) => handleSettingChange('timeZone', value)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select timezone" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="UTC">UTC</SelectItem>
+                                <SelectItem value="EST">EST</SelectItem>
+                                <SelectItem value="PST">PST</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="dateFormat">Date Format</Label>
+                            <Select
+                              value={moduleSettings.dateFormat}
+                              onValueChange={(value) => handleSettingChange('dateFormat', value)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select date format" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="MM/DD/YYYY">MM/DD/YYYY</SelectItem>
+                                <SelectItem value="DD/MM/YYYY">DD/MM/YYYY</SelectItem>
+                                <SelectItem value="YYYY-MM-DD">YYYY-MM-DD</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="text-lg font-medium mb-2">Integration Settings</h3>
-                      <p className="text-muted-foreground">
-                        Manage integrations with other modules and external services
-                      </p>
+
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-medium">Security Settings</h3>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="enableAuditLogging">Enable Audit Logging</Label>
+                          <Switch
+                            id="enableAuditLogging"
+                            checked={moduleSettings.enableAuditLogging}
+                            onCheckedChange={(checked) => handleSettingChange('enableAuditLogging', checked)}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="enableDataExport">Enable Data Export</Label>
+                          <Switch
+                            id="enableDataExport"
+                            checked={moduleSettings.enableDataExport}
+                            onCheckedChange={(checked) => handleSettingChange('enableDataExport', checked)}
+                          />
+                        </div>
                     </div>
-                    <div>
-                      <h3 className="text-lg font-medium mb-2">Notification Settings</h3>
-                      <p className="text-muted-foreground">
-                        Configure notification preferences for HR-related events
-                      </p>
                     </div>
                   </div>
                 </CardContent>
@@ -274,18 +417,75 @@ export default function HRInfoPage() {
                   <CardTitle>Roles & Permissions</CardTitle>
                 </CardHeader>
                 <CardContent>
+                  <div className="space-y-6">
                   <div className="space-y-4">
-                    <div>
-                      <h3 className="text-lg font-medium mb-2">HR Roles</h3>
-                      <p className="text-muted-foreground">
-                        Manage HR-specific roles and their permissions
-                      </p>
+                      <h3 className="text-lg font-medium">HR Roles</h3>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label>HR Admin</Label>
+                          <p className="text-sm text-muted-foreground">
+                            Full access to all HR functions and settings
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>HR Manager</Label>
+                          <p className="text-sm text-muted-foreground">
+                            Access to employee management and reporting
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>HR Assistant</Label>
+                          <p className="text-sm text-muted-foreground">
+                            Basic access to employee records and attendance
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Payroll Manager</Label>
+                          <p className="text-sm text-muted-foreground">
+                            Access to payroll and compensation management
+                          </p>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="text-lg font-medium mb-2">Access Control</h3>
-                      <p className="text-muted-foreground">
-                        Configure access levels for different HR functions
-                      </p>
+
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-medium">Access Control</h3>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label>Employee Records</Label>
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm">View Records</span>
+                              <Switch defaultChecked />
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm">Edit Records</span>
+                              <Switch />
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm">Delete Records</span>
+                              <Switch />
+                            </div>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Payroll Management</Label>
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm">View Payroll</span>
+                              <Switch defaultChecked />
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm">Process Payroll</span>
+                              <Switch />
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm">Approve Payments</span>
+                              <Switch />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
@@ -298,42 +498,158 @@ export default function HRInfoPage() {
                   <CardTitle>HR Workflows</CardTitle>
                 </CardHeader>
                 <CardContent>
+                  <div className="space-y-6">
                   <div className="space-y-4">
-                    <div>
-                      <h3 className="text-lg font-medium mb-2">Approval Workflows</h3>
-                      <p className="text-muted-foreground">
-                        Configure approval processes for HR operations
-                      </p>
+                      <h3 className="text-lg font-medium">Approval Workflows</h3>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label>Leave Requests</Label>
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm">Manager Approval</span>
+                              <Switch defaultChecked />
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm">HR Approval</span>
+                              <Switch defaultChecked />
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm">Auto-approve for short leaves</span>
+                              <Switch />
+                            </div>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Expense Claims</Label>
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm">Manager Approval</span>
+                              <Switch defaultChecked />
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm">Finance Approval</span>
+                              <Switch defaultChecked />
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm">Auto-approve small amounts</span>
+                              <Switch />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="text-lg font-medium mb-2">Automation Rules</h3>
-                      <p className="text-muted-foreground">
-                        Set up automated HR processes and notifications
-                      </p>
+
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-medium">Automation Rules</h3>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label>Employee Onboarding</Label>
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm">Auto-assign equipment</span>
+                              <Switch defaultChecked />
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm">Schedule orientation</span>
+                              <Switch defaultChecked />
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm">Send welcome emails</span>
+                              <Switch defaultChecked />
+                            </div>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Offboarding</Label>
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm">Collect equipment</span>
+                              <Switch defaultChecked />
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm">Schedule exit interview</span>
+                              <Switch defaultChecked />
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm">Send farewell emails</span>
+                              <Switch defaultChecked />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
               </Card>
             </TabsContent>
 
-            <TabsContent value="reports">
+            <TabsContent value="integrations">
               <Card>
                 <CardHeader>
-                  <CardTitle>HR Reports</CardTitle>
+                  <CardTitle>Module Integrations</CardTitle>
                 </CardHeader>
                 <CardContent>
+                  <div className="space-y-6">
                   <div className="space-y-4">
-                    <div>
-                      <h3 className="text-lg font-medium mb-2">Standard Reports</h3>
-                      <p className="text-muted-foreground">
-                        Access and configure standard HR reports
-                      </p>
+                      <h3 className="text-lg font-medium">Available Integrations</h3>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label>Payroll Systems</Label>
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm">ADP</span>
+                              <Switch />
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm">Paychex</span>
+                              <Switch />
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm">Gusto</span>
+                              <Switch />
+                            </div>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Time Tracking</Label>
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm">Toggl</span>
+                              <Switch />
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm">Time Doctor</span>
+                              <Switch />
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm">Clockify</span>
+                              <Switch />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="text-lg font-medium mb-2">Custom Reports</h3>
-                      <p className="text-muted-foreground">
-                        Create and manage custom HR reports
-                      </p>
+
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-medium">API Configuration</h3>
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="apiKey">API Key</Label>
+                          <Input id="apiKey" type="password" placeholder="Enter API key" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="apiSecret">API Secret</Label>
+                          <Input id="apiSecret" type="password" placeholder="Enter API secret" />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="enableIntegration">Enable API Integration</Label>
+                          <Switch
+                            id="enableIntegration"
+                            checked={moduleSettings.enableIntegration}
+                            onCheckedChange={(checked) => handleSettingChange('enableIntegration', checked)}
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </CardContent>

@@ -2,6 +2,15 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { UserModel } from '../../models/user.model';
 import { hashPassword } from '../../auth';
+import { isAuthenticated } from '../../middleware/auth';
+import { checkModuleAccess } from '../../middleware/module-access';
+import { Request, Response } from 'express';
+import { AuthenticatedUser } from '../../src/middleware/auth';
+
+// Extend Express Request type to include user
+interface AuthenticatedRequest extends Request {
+  user: NonNullable<Express.User>;
+}
 
 const router = Router();
 
@@ -12,7 +21,7 @@ const createUserSchema = z.object({
   lastName: z.string().min(1),
   email: z.string().email(),
   password: z.string().min(6),
-  role: z.string(),
+  role: z.enum(['owner', 'admin', 'manager', 'employee', 'contractor']),
   department: z.string(),
   position: z.string(),
   status: z.enum(['active', 'inactive']),
@@ -84,46 +93,77 @@ router.get('/', async (req, res) => {
 });
 
 // Create user
-router.post('/', async (req, res) => {
+router.post('/', isAuthenticated, checkModuleAccess('users'), async (req: Request, res: Response) => {
   try {
-    const validatedData = createUserSchema.parse(req.body);
-    const { password, ...userData } = validatedData;
+    const userData = createUserSchema.parse(req.body);
+    const currentUser = req.user as AuthenticatedUser;
 
-    // Check if user already exists
-    const existingUser = await UserModel.findOne({ 
-      $or: [
-        { username: userData.username },
-        { email: userData.email }
-      ]
-    });
-
-    if (existingUser) {
-      return res.status(400).json({ 
-        message: 'User already exists',
-        field: existingUser.username === userData.username ? 'username' : 'email'
-      });
+    if (!currentUser) {
+      return res.status(401).json({ message: 'User not authenticated' });
     }
 
-    // Create new user
+    // Check if current user has permission to create users in the target department
+    if (!currentUser.isOwner) {
+      if (currentUser.role === 'admin' && currentUser.department !== userData.department) {
+        return res.status(403).json({ message: 'You can only create users in your department' });
+      }
+      if (currentUser.role === 'manager' && userData.department !== 'HR') {
+        return res.status(403).json({ message: 'Managers can only create users in the HR department' });
+      }
+    }
+
+    // Set default module access based on role and department
+    const defaultModuleAccess = {
+      'owner': ['*'],
+      'admin': ['dashboard', 'users', 'documents', 'analytics'],
+      'manager': ['hr', 'payroll', 'attendance'],
+      'employee': ['dashboard', 'profile'],
+      'contractor': ['dashboard', 'profile'],
+    };
+
+    // Set module access based on role and department
+    userData.moduleAccess = defaultModuleAccess[userData.role] || [];
+
+    // Add department-specific modules
+    if (userData.department) {
+      const departmentModules = {
+        'HR': ['hr', 'payroll', 'attendance'],
+        'Finance': ['finance', 'accounting', 'payroll'],
+        'IT': ['it', 'system', 'security'],
+        'Operations': ['inventory', 'warehouse', 'supply_chain'],
+        'Sales': ['crm', 'sales', 'marketing'],
+      };
+      const deptModules = departmentModules[userData.department as keyof typeof departmentModules] || [];
+      // Use Array.from to convert Set to array
+      userData.moduleAccess = Array.from(new Set([...userData.moduleAccess, ...deptModules]));
+    }
+
+    // Hash password
+    const hashedPassword = await hashPassword(userData.password);
+
+    // Create user
     const user = new UserModel({
       ...userData,
-      password: await hashPassword(password),
-      moduleAccess: userData.moduleAccess || [],
-      createdAt: new Date(),
-      updatedAt: new Date()
+      password: hashedPassword,
+      createdBy: currentUser.id,
+      updatedBy: currentUser.id,
     });
 
-    // Save to database
     await user.save();
     
-    // Return user without password
-    const { password: _, ...userWithoutPassword } = user.toObject();
-    res.status(201).json(userWithoutPassword);
+    res.status(201).json({
+      message: 'User created successfully',
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        department: user.department,
+        moduleAccess: user.moduleAccess,
+      },
+    });
   } catch (error) {
     console.error('Error creating user:', error);
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({ message: 'Validation error', errors: error.errors });
-    }
     res.status(500).json({ message: 'Error creating user' });
   }
 });

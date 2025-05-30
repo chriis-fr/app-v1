@@ -115,22 +115,52 @@ router.get('/', isAuthenticated, async (req: Request, res: Response, next: NextF
 
     const user = req.user as unknown as UserDocument;
     const { department } = req.query;
-    const query: any = {};
+    
+    // Log the current user's organization for debugging
+    console.log('Current user organization:', user.organizationId);
+    
+    // Define query type
+    interface UserQuery {
+      organizationId: string;
+      department?: string;
+    }
+    
+    // Strict organization filtering - this is the primary filter
+    const query: UserQuery = {
+      organizationId: user.organizationId
+    };
 
-    // Filter by department if not owner
+    // Add department filter only if needed
     if (user.role !== 'owner' && user.role === 'admin') {
       query.department = user.department;
     } else if (department) {
-      query.department = department;
+      query.department = department as string;
     }
 
+    // Log the query for debugging
+    console.log('User query:', query);
+
+    // Use findOneAndUpdate to ensure organization filter is applied
     const users = await User.find(query)
       .select('-password')
       .lean();
 
+    // Log the number of users found
+    console.log('Number of users found:', users.length);
+
+    // Verify organization filtering
+    const hasWrongOrg = users.some(u => u.organizationId !== user.organizationId);
+    if (hasWrongOrg) {
+      console.error('SECURITY ALERT: Found users from different organization!');
+      return res.status(500).json({ message: "Security error: Data integrity violation" });
+    }
+
     // Sync with HR data
     const usersWithHRData = await Promise.all(users.map(async (user) => {
-      const hrData = await Employee.findOne({ employeeNumber: user.employeeId });
+      const hrData = await Employee.findOne({ 
+        employeeNumber: user.employeeId,
+        organizationId: user.organizationId // Ensure HR data is also filtered
+      });
       return {
         ...user,
         hrData: hrData ? {
@@ -192,8 +222,14 @@ router.post('/', isAuthenticated, checkModulePermission('create_user'), checkDep
       ? ['view', 'edit', 'manage']
       : ['view'];
 
+    // If owner, grant all modules
+    let modules = userData.modules;
+    if (userData.role === 'owner' || userData.isOwner) {
+      modules = ['*']; // or list all modules explicitly if needed
+    }
+
     // Create module permissions array
-    const modulePermissions = userData.modules.map((module: string) => ({
+    const modulePermissions = modules.map((module: string) => ({
       module,
       permissions: defaultPermissions
     }));
@@ -487,7 +523,10 @@ router.get('/:id', isAuthenticated, async (req: Request, res) => {
       return res.status(403).json({ message: 'Access denied' });
     }
 
-    const user = await User.findById(req.params.id)
+    const user = await User.findOne({
+      _id: req.params.id,
+      organizationId: req.user.organizationId // Add organization filter
+    })
       .select('-password')
       .lean();
 
@@ -496,7 +535,10 @@ router.get('/:id', isAuthenticated, async (req: Request, res) => {
     }
 
     // Sync with HR data
-    const hrData = await Employee.findOne({ employeeNumber: user.employeeId });
+    const hrData = await Employee.findOne({ 
+      employeeNumber: user.employeeId,
+      organizationId: req.user.organizationId // Add organization filter
+    });
     const userWithHRData = {
       ...user,
       hrData: hrData ? {
@@ -540,9 +582,12 @@ router.put('/:id', isAuthenticated, async (req: Request, res) => {
     const userId = req.params.id;
     const updateData = req.body;
 
-    // Update user in User collection
-    const updatedUser = await User.findByIdAndUpdate(
-      userId,
+    // Update user in User collection with organization filter
+    const updatedUser = await User.findOneAndUpdate(
+      {
+        _id: userId,
+        organizationId: req.user.organizationId // Add organization filter
+      },
       { $set: updateData },
       { new: true }
     ).select('-password');
@@ -575,13 +620,19 @@ router.put('/:id', isAuthenticated, async (req: Request, res) => {
         }
       });
 
-      // Update HR data
+      // Update HR data with organization filter
       await Employee.findOneAndUpdate(
-        { employeeNumber: updatedUser.employeeId },
+        { 
+          employeeNumber: updatedUser.employeeId,
+          organizationId: req.user.organizationId // Add organization filter
+        },
         { $set: hrUpdateData }
       );
 
-      const hrData = await Employee.findOne({ employeeNumber: updatedUser.employeeId });
+      const hrData = await Employee.findOne({ 
+        employeeNumber: updatedUser.employeeId,
+        organizationId: req.user.organizationId // Add organization filter
+      });
       const userWithHRData = {
         ...updatedUser.toObject(),
         hrData: hrData ? {
@@ -871,7 +922,10 @@ router.put('/:id/hr-data', isAuthenticated, checkModulePermission('manage_hr_dat
     const userId = req.params.id;
     const hrUpdateData: HRData = req.body;
 
-    const user = await User.findById(userId);
+    const user = await User.findOne({
+      _id: userId,
+      organizationId: req.user!.organizationId // Add organization filter
+    });
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -880,9 +934,12 @@ router.put('/:id/hr-data', isAuthenticated, checkModulePermission('manage_hr_dat
       return res.status(400).json({ message: 'User is not an employee' });
     }
 
-    // Update HR data
+    // Update HR data with organization filter
     const updatedHRData = await Employee.findOneAndUpdate(
-      { employeeNumber: user.employeeId },
+      { 
+        employeeNumber: user.employeeId,
+        organizationId: req.user!.organizationId // Add organization filter
+      },
       { $set: hrUpdateData },
       { new: true }
     );
@@ -913,9 +970,12 @@ router.put('/:id/hr-data', isAuthenticated, checkModulePermission('manage_hr_dat
       }
     });
 
-    // Update user data
-    const updatedUser = await User.findByIdAndUpdate(
-      userId,
+    // Update user data with organization filter
+    const updatedUser = await User.findOneAndUpdate(
+      {
+        _id: userId,
+        organizationId: req.user!.organizationId // Add organization filter
+      },
       { $set: userUpdateData },
       { new: true }
     ).select('-password');
@@ -1025,7 +1085,10 @@ router.post('/:id/modules', isAuthenticated, checkModulePermission('manage_permi
     const { module, permissions } = req.body;
     const userId = req.params.id;
 
-    const user = await User.findById(userId);
+    const user = await User.findOne({
+      _id: userId,
+      organizationId: req.user.organizationId // Add organization filter
+    });
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }

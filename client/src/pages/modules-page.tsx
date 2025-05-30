@@ -162,7 +162,7 @@ const allModules: ModuleInfo[] = [
     category: 'finance'
   },
   {
-    id: 'analytics',
+    id: 'ai_analytics',
     name: 'AI Analytics',
     description: 'Harness the power of AI for business intelligence',
     icon: BarChart,
@@ -448,7 +448,7 @@ export default function ModulesPage() {
   const [, setLocation] = useLocation();
   
   // Check if user is admin
-  const isAdmin = user?.role === 'admin' || user?.role === 'owner';
+  const isAdmin = user?.role === 'admin' || user?.role === 'owner' || user?.isOwner;
   
   if (!isAdmin) {
     return (
@@ -465,7 +465,9 @@ export default function ModulesPage() {
     );
   }
   
-  const activeModules = user?.organization?.activeModules || [];
+  const activeModules = (user?.role === 'owner' || user?.isOwner)
+    ? allModules.map(m => m.id)
+    : user?.organization?.activeModules || [];
   
   const subscribedModules = allModules.filter(module => 
     activeModules.includes(module.id as any)

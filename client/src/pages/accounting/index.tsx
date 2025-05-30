@@ -12,15 +12,16 @@ import {
   Settings,
   ArrowRight,
   BookOpen,
-  DollarSign,
   FileText,
   PieChart,
   Users,
   Building2,
-  CreditCard,
-  Wallet,
   ChevronRight,
-  Home
+  Home,
+  ClipboardList,
+  Scale,
+  FileCheck,
+  DollarSign
 } from 'lucide-react';
 
 const accountingModules = [
@@ -30,58 +31,40 @@ const accountingModules = [
     description: 'Record and manage journal entries, accounts, and financial periods',
     icon: BookOpen,
     features: [
-      'Journal Entries',
-      'Chart of Accounts',
-      'Financial Periods',
-      'Reports'
+      'Double-entry bookkeeping',
+      'Chart of accounts',
+      'Journal entries',
+      'Financial periods',
+      'IFRS/GAAP compliance',
+      'Multi-currency support'
     ]
   },
   {
     id: 'accounts-payable',
     name: 'Accounts Payable',
-    description: 'Manage vendor bills, payments, and outstanding balances',
-    icon: CreditCard,
+    description: 'Manage vendor invoices, payments, and credit terms',
+    icon: Receipt,
     features: [
-      'Vendor Management',
-      'Bill Entry',
-      'Payment Processing',
-      'Aging Reports'
+      'Vendor management',
+      'Invoice processing',
+      'Payment scheduling',
+      'Credit management',
+      'Automated approvals',
+      'Vendor statements'
     ]
   },
   {
     id: 'accounts-receivable',
     name: 'Accounts Receivable',
-    description: 'Track customer invoices, payments, and outstanding balances',
-    icon: Wallet,
+    description: 'Track customer invoices, payments, and credit management',
+    icon: FileText,
     features: [
-      'Customer Management',
-      'Invoice Generation',
-      'Payment Tracking',
-      'Aging Reports'
-    ]
-  },
-  {
-    id: 'banking',
-    name: 'Banking',
-    description: 'Manage bank accounts, transactions, and reconciliations',
-    icon: DollarSign,
-    features: [
-      'Bank Accounts',
-      'Transactions',
-      'Reconciliations',
-      'Bank Statements'
-    ]
-  },
-  {
-    id: 'payroll-accounting',
-    name: 'Payroll Accounting',
-    description: 'Handle payroll processing and related accounting entries',
-    icon: Users,
-    features: [
-      'Payroll Processing',
-      'Tax Calculations',
-      'Benefits Management',
-      'Payroll Reports'
+      'Customer invoicing',
+      'Payment tracking',
+      'Credit management',
+      'Collection management',
+      'Aging reports',
+      'Customer statements'
     ]
   },
   {
@@ -90,59 +73,65 @@ const accountingModules = [
     description: 'Track and manage company assets and depreciation',
     icon: Building2,
     features: [
-      'Asset Management',
-      'Depreciation',
-      'Asset Disposal',
-      'Asset Reports'
+      'Asset tracking',
+      'Depreciation calculation',
+      'Asset disposal',
+      'Maintenance records',
+      'Asset valuation',
+      'Capital budgeting'
     ]
   },
   {
-    id: 'tax-management',
-    name: 'Tax Management',
+    id: 'taxation',
+    name: 'Taxation',
     description: 'Handle tax calculations, filings, and compliance',
-    icon: FileText,
+    icon: Scale,
     features: [
-      'Tax Calculations',
-      'Tax Returns',
-      'Compliance',
-      'Tax Reports'
+      'Multi-jurisdiction tax',
+      'VAT/GST management',
+      'Tax reporting',
+      'Compliance tracking',
+      'Tax planning',
+      'Audit support'
     ]
   },
   {
-    id: 'financial-reporting',
-    name: 'Financial Reporting',
-    description: 'Generate and analyze financial statements and reports',
+    id: 'budgeting',
+    name: 'Budgeting',
+    description: 'Create and manage budgets, forecasts, and variance analysis',
     icon: PieChart,
     features: [
-      'Balance Sheet',
-      'Income Statement',
-      'Cash Flow',
-      'Custom Reports'
+      'Budget creation',
+      'Forecasting',
+      'Variance analysis',
+      'Cost centers',
+      'Budget approvals',
+      'Performance tracking'
     ]
   }
 ];
 
 const quickActions = [
   {
-    id: 'new-transaction',
-    name: 'New Transaction',
-    description: 'Record a new financial transaction',
+    id: 'new-journal-entry',
+    name: 'New Journal Entry',
+    description: 'Record a new journal entry',
     icon: Receipt,
-    href: '/dashboard/accounting/transactions/new'
+    href: '/dashboard/accounting/journal-entries/new'
   },
   {
     id: 'new-invoice',
     name: 'New Invoice',
-    description: 'Create a new invoice for customers',
+    description: 'Create a new customer invoice',
     icon: FileText,
     href: '/dashboard/accounting/invoices/new'
   },
   {
-    id: 'reconcile',
-    name: 'Reconcile Accounts',
-    description: 'Match transactions with bank statements',
-    icon: Calculator,
-    href: '/dashboard/accounting/reconcile'
+    id: 'new-bill',
+    name: 'New Bill',
+    description: 'Record a new vendor bill',
+    icon: Receipt,
+    href: '/dashboard/accounting/bills/new'
   }
 ];
 
@@ -206,26 +195,19 @@ export default function AccountingPage() {
           <Button variant="ghost" size="sm" onClick={() => setLocation('/dashboard')}>
             <Home className="h-4 w-4" />
           </Button>
-          {breadcrumbs.map((crumb, index) => (
-            <div key={crumb.href} className="flex items-center">
-              <ChevronRight className="h-4 w-4" />
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setLocation(crumb.href)}
-                className={index === breadcrumbs.length - 1 ? 'font-medium' : ''}
-              >
-                {crumb.label}
-              </Button>
-            </div>
-          ))}
+          <div className="flex items-center">
+            <ChevronRight className="h-4 w-4" />
+            <Button variant="ghost" size="sm" onClick={() => setLocation('/dashboard/accounting')}>
+              Accounting
+            </Button>
+          </div>
         </div>
 
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-3xl font-bold">Accounting</h1>
             <p className="text-muted-foreground mt-2">
-              Manage your organization's financial records and transactions
+              Manage your organization's internal financial operations and compliance
             </p>
           </div>
           <div className="flex gap-4">
@@ -248,70 +230,36 @@ export default function AccountingPage() {
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview" className="space-y-6">
-            {/* Quick Actions */}
-            <div>
-              <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
-              <div className="grid gap-4 md:grid-cols-3">
-                {quickActions.map((action) => (
-                  <Card
-                    key={action.id}
-                    className="cursor-pointer hover:bg-accent/50 transition-colors"
-                    onClick={() => setLocation(action.href)}
-                  >
-                    <CardHeader>
-                      <div className="flex items-center gap-2">
-                        <action.icon className="h-5 w-5" />
-                        <CardTitle>{action.name}</CardTitle>
-                      </div>
-                      <CardDescription>{action.description}</CardDescription>
-                    </CardHeader>
-                  </Card>
-                ))}
-              </div>
+          <TabsContent value="overview" className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {quickActions.map((action) => (
+                <Card 
+                  key={action.id}
+                  className="cursor-pointer hover:bg-accent/50 transition-colors"
+                  onClick={() => setLocation(action.href)}
+                >
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      <action.icon className="h-5 w-5" />
+                      <CardTitle>{action.name}</CardTitle>
+                    </div>
+                    <CardDescription>{action.description}</CardDescription>
+                  </CardHeader>
+                </Card>
+              ))}
             </div>
 
-            {/* Recent Activity */}
-            <div>
-              <h2 className="text-xl font-semibold mb-4">Recent Activity</h2>
-              <Card>
-                <CardContent className="p-6">
-                  <div className="space-y-4">
-                    {/* Placeholder for recent activity */}
-                    <p className="text-muted-foreground">No recent activity to display</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Featured Modules */}
-            <div>
-              <h2 className="text-xl font-semibold mb-4">Featured Modules</h2>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {accountingModules.slice(0, 3).map((module) => (
-                  <Card 
-                    key={module.id}
-                    className="cursor-pointer hover:bg-accent/50 transition-colors"
-                    onClick={() => handleModuleClick(module.id)}
-                  >
-                    <CardHeader>
-                      <div className="flex items-center gap-2">
-                        <module.icon className="h-5 w-5" />
-                        <CardTitle>{module.name}</CardTitle>
-                      </div>
-                      <CardDescription>{module.description}</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-                        {module.features.map((feature, index) => (
-                          <li key={index}>{feature}</li>
-                        ))}
-                      </ul>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent Activity</CardTitle>
+                <CardDescription>Latest accounting activities and updates</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {/* Add recent activity list here */}
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="modules" className="space-y-4">
@@ -320,7 +268,7 @@ export default function AccountingPage() {
                 <Card 
                   key={module.id}
                   className="cursor-pointer hover:bg-accent/50 transition-colors"
-                  onClick={() => handleModuleClick(module.id)}
+                  onClick={() => setLocation(`/dashboard/accounting/${module.id}`)}
                 >
                   <CardHeader>
                     <div className="flex items-center gap-2">
@@ -352,19 +300,19 @@ export default function AccountingPage() {
                   {[
                     {
                       title: "Balance Sheet",
-                      description: "View your organization\"s assets, liabilities, and equity",
+                      description: "View your organization's assets, liabilities, and equity",
                       icon: PieChart,
                       href: "/dashboard/accounting/reports/balance-sheet"
                     },
                     {
                       title: "Income Statement",
-                      description: "View your organization\"s revenue, expenses, and profit",
+                      description: "View your organization's revenue, expenses, and profit",
                       icon: BarChart3,
                       href: "/dashboard/accounting/reports/income-statement"
                     },
                     {
                       title: "Cash Flow Statement",
-                      description: "Track your organization\"s cash inflows and outflows",
+                      description: "Track your organization's cash inflows and outflows",
                       icon: DollarSign,
                       href: "/dashboard/accounting/reports/cash-flow"
                     },
@@ -376,7 +324,7 @@ export default function AccountingPage() {
                     }
                   ].map((report) => (
                     <Card 
-                      key={report.title} 
+                      key={report.href}
                       className="cursor-pointer hover:bg-accent/50 transition-colors"
                       onClick={() => setLocation(report.href)}
                     >
@@ -387,11 +335,6 @@ export default function AccountingPage() {
                         </div>
                         <CardDescription>{report.description}</CardDescription>
                       </CardHeader>
-                      <CardContent>
-                        <Button variant="outline" className="w-full">
-                          Generate Report
-                        </Button>
-                      </CardContent>
                     </Card>
                   ))}
                 </div>
@@ -403,79 +346,11 @@ export default function AccountingPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Accounting Settings</CardTitle>
-                <CardDescription>Configure your accounting preferences</CardDescription>
+                <CardDescription>Configure accounting preferences and defaults</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div>
-                    <h3 className="font-medium mb-2">General Settings</h3>
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div>
-                        <label className="text-sm font-medium">Default Currency</label>
-                        <select className="w-full mt-1 rounded-md border border-input bg-background px-3 py-2">
-                          <option value="USD">USD - US Dollar</option>
-                          <option value="EUR">EUR - Euro</option>
-                          <option value="GBP">GBP - British Pound</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium">Fiscal Year Start</label>
-                        <select className="w-full mt-1 rounded-md border border-input bg-background px-3 py-2">
-                          <option value="1">January</option>
-                          <option value="4">April</option>
-                          <option value="7">July</option>
-                          <option value="10">October</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="font-medium mb-2">Number Format</h3>
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div>
-                        <label className="text-sm font-medium">Decimal Places</label>
-                        <select className="w-full mt-1 rounded-md border border-input bg-background px-3 py-2">
-                          <option value="2">2</option>
-                          <option value="3">3</option>
-                          <option value="4">4</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium">Thousands Separator</label>
-                        <select className="w-full mt-1 rounded-md border border-input bg-background px-3 py-2">
-                          <option value=",">Comma (,)</option>
-                          <option value=".">Period (.)</option>
-                          <option value=" ">Space ( )</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="font-medium mb-2">Tax Settings</h3>
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div>
-                        <label className="text-sm font-medium">Default Tax Rate</label>
-                        <input
-                          type="number"
-                          className="w-full mt-1 rounded-md border border-input bg-background px-3 py-2"
-                          placeholder="0.00"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium">Tax Calculation Method</label>
-                        <select className="w-full mt-1 rounded-md border border-input bg-background px-3 py-2">
-                          <option value="inclusive">Tax Inclusive</option>
-                          <option value="exclusive">Tax Exclusive</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end">
-                    <Button>Save Settings</Button>
-                  </div>
+                  {/* Add settings form here */}
                 </div>
               </CardContent>
             </Card>
@@ -483,15 +358,6 @@ export default function AccountingPage() {
         </Tabs>
       </div>
     );
-  };
-
-  const breadcrumbs = [
-    { label: 'Dashboard', href: '/dashboard' },
-    { label: 'Accounting', href: '/dashboard/accounting' }
-  ];
-
-  const handleModuleClick = (moduleId: string) => {
-    setLocation(`/dashboard/accounting/${moduleId}`);
   };
 
   return (

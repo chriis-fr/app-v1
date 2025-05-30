@@ -31,7 +31,7 @@ const leadSchema = z.object({
 });
 
 // Get all leads with pagination and filters
-router.get('/', hasRole(['admin', 'sales']), async (req: AuthenticatedRequest, res: Response) => {
+router.get('/', hasRole(['admin', 'sales']), async (req: Request, res: Response) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
@@ -79,7 +79,7 @@ router.get('/', hasRole(['admin', 'sales']), async (req: AuthenticatedRequest, r
 });
 
 // Get a single lead
-router.get('/:id', hasRole(['admin', 'sales']), async (req: AuthenticatedRequest, res: Response) => {
+router.get('/:id', hasRole(['admin', 'sales']), async (req: Request, res: Response) => {
   try {
     const lead = await Lead.findById(req.params.id)
       .populate('contact')
@@ -94,7 +94,7 @@ router.get('/:id', hasRole(['admin', 'sales']), async (req: AuthenticatedRequest
 });
 
 // Create a new lead
-router.post('/', hasRole(['admin', 'sales']), validateRequest(leadSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/', hasRole(['admin', 'sales']), validateRequest(leadSchema), async (req: Request, res: Response) => {
   try {
     const contact = await Contact.findById(req.body.contact);
     if (!contact) {
@@ -113,7 +113,7 @@ router.post('/', hasRole(['admin', 'sales']), validateRequest(leadSchema), async
 });
 
 // Update a lead
-router.put('/:id', hasRole(['admin', 'sales']), validateRequest(leadSchema.partial()), async (req: AuthenticatedRequest, res: Response) => {
+router.put('/:id', hasRole(['admin', 'sales']), validateRequest(leadSchema.partial()), async (req: Request, res: Response) => {
   try {
     if (req.body.contact) {
       const contact = await Contact.findById(req.body.contact);
@@ -141,7 +141,7 @@ router.put('/:id', hasRole(['admin', 'sales']), validateRequest(leadSchema.parti
 });
 
 // Delete a lead
-router.delete('/:id', hasRole(['admin']), async (req: AuthenticatedRequest, res: Response) => {
+router.delete('/:id', hasRole(['admin']), async (req: Request, res: Response) => {
   try {
     const lead = await Lead.findByIdAndDelete(req.params.id);
     if (!lead) {
@@ -154,7 +154,7 @@ router.delete('/:id', hasRole(['admin']), async (req: AuthenticatedRequest, res:
 });
 
 // Add interaction to a lead
-router.post('/:id/interactions', hasRole(['admin', 'sales']), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:id/interactions', hasRole(['admin', 'sales']), async (req: Request, res: Response) => {
   try {
     const { type, notes } = req.body;
     if (!type || !notes) {
@@ -186,7 +186,7 @@ router.post('/:id/interactions', hasRole(['admin', 'sales']), async (req: Authen
 });
 
 // Update lead status
-router.patch('/:id/status', hasRole(['admin', 'sales']), async (req: AuthenticatedRequest, res: Response) => {
+router.patch('/:id/status', hasRole(['admin', 'sales']), async (req: Request, res: Response) => {
   try {
     const { status } = req.body;
     if (!status) {

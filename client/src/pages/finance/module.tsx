@@ -7,13 +7,13 @@ export default function FinanceModulePage() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
 
-  // Check if user is an owner
-  if (!user?.role?.includes('owner')) {
+  // Check if user has access to finance module
+  if (!user || !(user.role === 'owner' || user.isOwner || user.role === 'admin' || user.moduleAccess?.includes('finance') || (user.permissions && user.permissions.some((p: any) => p.module === 'finance' && p.actions.length > 0)))) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh]">
         <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
         <p className="text-muted-foreground mb-4">
-          This page is only accessible to organization owners.
+          You don't have access to the finance module.
         </p>
         <Button onClick={() => setLocation('/dashboard')}>
           Return to Dashboard

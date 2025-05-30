@@ -1,6 +1,6 @@
 import express, { Request, Response, NextFunction } from 'express';
 import { Employee, Attendance, Payroll } from '../mongodb/models/hr';
-import { authenticateToken } from '../middleware/auth';
+import { isAuthenticated } from '../middleware/auth';
 import { checkModuleAccess } from '../middleware/module-access';
 
 const router = express.Router();
@@ -17,7 +17,7 @@ const isHRAdmin = (req: Request, res: Response, next: NextFunction) => {
 };
 
 // Get all employees (HR admin only)
-router.get('/employees', authenticateToken, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
+router.get('/employees', isAuthenticated, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
   try {
     const employees = await Employee.find()
       .select('-password')
@@ -29,7 +29,7 @@ router.get('/employees', authenticateToken, checkModuleAccess('hr'), isHRAdmin, 
 });
 
 // Get employee by ID (HR admin or self)
-router.get('/employees/:id', authenticateToken, checkModuleAccess('hr'), async (req: Request, res: Response) => {
+router.get('/employees/:id', isAuthenticated, checkModuleAccess('hr'), async (req: Request, res: Response) => {
   try {
     // Allow HR admins to view any employee, or users to view their own profile
     if (!req.user || (req.user.role !== 'hr_admin' && req.user.id !== req.params.id)) {
@@ -50,7 +50,7 @@ router.get('/employees/:id', authenticateToken, checkModuleAccess('hr'), async (
 });
 
 // Create new employee (HR admin only)
-router.post('/employees', authenticateToken, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
+router.post('/employees', isAuthenticated, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
   try {
     const employee = new Employee({
         ...req.body,
@@ -66,7 +66,7 @@ router.post('/employees', authenticateToken, checkModuleAccess('hr'), isHRAdmin,
 });
 
 // Update employee (HR admin only)
-router.put('/employees/:id', authenticateToken, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
+router.put('/employees/:id', isAuthenticated, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
     try {
     const employee = await Employee.findByIdAndUpdate(
       req.params.id,
@@ -85,7 +85,7 @@ router.put('/employees/:id', authenticateToken, checkModuleAccess('hr'), isHRAdm
 });
 
 // Delete employee (HR admin only)
-router.delete('/employees/:id', authenticateToken, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
+router.delete('/employees/:id', isAuthenticated, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
     try {
     const employee = await Employee.findByIdAndDelete(req.params.id);
     
@@ -100,7 +100,7 @@ router.delete('/employees/:id', authenticateToken, checkModuleAccess('hr'), isHR
 });
 
 // Get employee attendance
-router.get('/employees/:id/attendance', authenticateToken, checkModuleAccess('hr'), async (req: Request, res: Response) => {
+router.get('/employees/:id/attendance', isAuthenticated, checkModuleAccess('hr'), async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ message: 'User not authenticated' });
@@ -116,7 +116,7 @@ router.get('/employees/:id/attendance', authenticateToken, checkModuleAccess('hr
 });
 
 // Record attendance
-router.post('/attendance', authenticateToken, checkModuleAccess('hr'), async (req: Request, res: Response) => {
+router.post('/attendance', isAuthenticated, checkModuleAccess('hr'), async (req: Request, res: Response) => {
     try {
     if (!req.user) {
       return res.status(401).json({ message: 'User not authenticated' });
@@ -133,7 +133,7 @@ router.post('/attendance', authenticateToken, checkModuleAccess('hr'), async (re
 });
 
 // Get employee payroll
-router.get('/employees/:id/payroll', authenticateToken, checkModuleAccess('hr'), async (req: Request, res: Response) => {
+router.get('/employees/:id/payroll', isAuthenticated, checkModuleAccess('hr'), async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ message: 'User not authenticated' });
@@ -149,7 +149,7 @@ router.get('/employees/:id/payroll', authenticateToken, checkModuleAccess('hr'),
 });
 
 // Create payroll record
-router.post('/payroll', authenticateToken, checkModuleAccess('hr'), async (req: Request, res: Response) => {
+router.post('/payroll', isAuthenticated, checkModuleAccess('hr'), async (req: Request, res: Response) => {
     try {
     if (!req.user) {
       return res.status(401).json({ message: 'User not authenticated' });
@@ -167,7 +167,7 @@ router.post('/payroll', authenticateToken, checkModuleAccess('hr'), async (req: 
 });
 
 // Add disciplinary record (HR admin only)
-router.post('/employees/:id/disciplinary', authenticateToken, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
+router.post('/employees/:id/disciplinary', isAuthenticated, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
   try {
     const employee = await Employee.findOneAndUpdate(
       { _id: req.params.id, organizationId: req.user?.organizationId },
@@ -194,7 +194,7 @@ router.post('/employees/:id/disciplinary', authenticateToken, checkModuleAccess(
 });
 
 // Update disciplinary record status (HR admin only)
-router.put('/employees/:id/disciplinary/:recordId', authenticateToken, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
+router.put('/employees/:id/disciplinary/:recordId', isAuthenticated, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
   try {
     const employee = await Employee.findOneAndUpdate(
       {
@@ -222,7 +222,7 @@ router.put('/employees/:id/disciplinary/:recordId', authenticateToken, checkModu
 });
 
 // Upload document (HR admin or self)
-router.post('/employees/:id/documents', authenticateToken, checkModuleAccess('hr'), async (req: Request, res: Response) => {
+router.post('/employees/:id/documents', isAuthenticated, checkModuleAccess('hr'), async (req: Request, res: Response) => {
   try {
     // Check if user is HR admin or uploading their own document
     if (req.user?.role !== 'hr_admin' && req.user?.id !== req.params.id) {
@@ -255,7 +255,7 @@ router.post('/employees/:id/documents', authenticateToken, checkModuleAccess('hr
 });
 
 // Approve document (HR admin only)
-router.put('/employees/:id/documents/:docId', authenticateToken, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
+router.put('/employees/:id/documents/:docId', isAuthenticated, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
     try {
     const employee = await Employee.findOneAndUpdate(
       {
@@ -284,7 +284,7 @@ router.put('/employees/:id/documents/:docId', authenticateToken, checkModuleAcce
 });
 
 // Get employee competencies (HR admin or self)
-router.get('/employees/:id/competencies', authenticateToken, checkModuleAccess('hr'), async (req: Request, res: Response) => {
+router.get('/employees/:id/competencies', isAuthenticated, checkModuleAccess('hr'), async (req: Request, res: Response) => {
   try {
     const employee = await Employee.findOne({
       _id: req.params.id,
@@ -307,7 +307,7 @@ router.get('/employees/:id/competencies', authenticateToken, checkModuleAccess('
 });
 
 // Update employee competencies (HR admin only)
-router.put('/employees/:id/competencies', authenticateToken, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
+router.put('/employees/:id/competencies', isAuthenticated, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
   try {
     const employee = await Employee.findOneAndUpdate(
       { _id: req.params.id, organizationId: req.user?.organizationId },
@@ -326,7 +326,7 @@ router.put('/employees/:id/competencies', authenticateToken, checkModuleAccess('
 });
 
 // Match competencies to job requirements (HR admin only)
-router.post('/employees/match-competencies', authenticateToken, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
+router.post('/employees/match-competencies', isAuthenticated, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
   try {
     const { jobRequirements } = req.body;
     const employees: any[] = await Employee.find({
@@ -365,7 +365,7 @@ function calculateMatchScore(competencies: any[] | undefined, requirements: stri
 }
 
 // Get employee dependents (HR admin or self)
-router.get('/employees/:id/dependents', authenticateToken, checkModuleAccess('hr'), async (req: Request, res: Response) => {
+router.get('/employees/:id/dependents', isAuthenticated, checkModuleAccess('hr'), async (req: Request, res: Response) => {
   try {
     // Allow HR admins to view any employee's dependents, or users to view their own
     if (!req.user || (req.user.role !== 'hr_admin' && req.user.id !== req.params.id)) {
@@ -388,7 +388,7 @@ router.get('/employees/:id/dependents', authenticateToken, checkModuleAccess('hr
 });
 
 // Add dependent (HR admin only)
-router.post('/employees/:id/dependents', authenticateToken, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
+router.post('/employees/:id/dependents', isAuthenticated, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
   try {
     const employee = await Employee.findById(req.params.id);
     if (!employee) {
@@ -432,7 +432,7 @@ router.post('/employees/:id/dependents', authenticateToken, checkModuleAccess('h
 });
 
 // Update dependent (HR admin only)
-router.put('/employees/:id/dependents/:dependentId', authenticateToken, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
+router.put('/employees/:id/dependents/:dependentId', isAuthenticated, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
   try {
     const employee = await Employee.findOneAndUpdate(
       {
@@ -462,7 +462,7 @@ router.put('/employees/:id/dependents/:dependentId', authenticateToken, checkMod
 });
 
 // Delete dependent (HR admin only)
-router.delete('/employees/:id/dependents/:dependentId', authenticateToken, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
+router.delete('/employees/:id/dependents/:dependentId', isAuthenticated, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
   try {
     const employee = await Employee.findByIdAndUpdate(
       req.params.id,
@@ -485,7 +485,7 @@ router.delete('/employees/:id/dependents/:dependentId', authenticateToken, check
 });
 
 // Upload dependent document (HR admin only)
-router.post('/employees/:id/dependents/:dependentId/documents', authenticateToken, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
+router.post('/employees/:id/dependents/:dependentId/documents', isAuthenticated, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
   try {
     const employee = await Employee.findOneAndUpdate(
         {
@@ -518,7 +518,7 @@ router.post('/employees/:id/dependents/:dependentId/documents', authenticateToke
 });
 
 // Update dependent entitlements (HR admin only)
-router.put('/employees/:id/dependent-entitlements', authenticateToken, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
+router.put('/employees/:id/dependent-entitlements', isAuthenticated, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
   try {
     const employee = await Employee.findByIdAndUpdate(
       req.params.id,
@@ -545,7 +545,7 @@ router.put('/employees/:id/dependent-entitlements', authenticateToken, checkModu
 });
 
 // Update dependent policy (HR admin only)
-router.put('/employees/:id/dependent-policy', authenticateToken, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
+router.put('/employees/:id/dependent-policy', isAuthenticated, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
   try {
     const employee = await Employee.findByIdAndUpdate(
       req.params.id,
@@ -572,7 +572,7 @@ router.put('/employees/:id/dependent-policy', authenticateToken, checkModuleAcce
 });
 
 // Verify dependent eligibility (HR admin only)
-router.post('/employees/:id/dependents/:dependentId/verify', authenticateToken, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
+router.post('/employees/:id/dependents/:dependentId/verify', isAuthenticated, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
   try {
     const employee = await Employee.findOneAndUpdate(
       {

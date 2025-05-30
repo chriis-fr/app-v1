@@ -1,8 +1,6 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
 }
 
 datasource db {
@@ -10,136 +8,600 @@ datasource db {
   url      = env("MONGODB_URI")
 }
 
-// Accounting Models
+type OrganizationsRoles {
+  description  String
+  isSystem     Boolean
+  moduleAccess OrganizationsRolesModuleAccess[]
+  name         String
+  permissions  String[]
+}
+
+type OrganizationsRolesModuleAccess {
+  access String
+  module String
+}
+
+type OrganizationsSettings {
+  backup             OrganizationsSettingsBackup
+  branding           OrganizationsSettingsBranding
+  integrations       OrganizationsSettingsIntegrations
+  legalCompliance    OrganizationsSettingsLegalCompliance
+  modules            OrganizationsSettingsModules
+  notifications      OrganizationsSettingsNotifications
+  primaryModule      String
+  recommendedModules String[]
+  security           OrganizationsSettingsSecurity
+  theme              OrganizationsSettingsTheme
+}
+
+type OrganizationsSettingsBackup {
+  autoBackup     Boolean
+  backupLocation String
+  frequency      String
+  /// Could not determine type: the field only had null or empty values in the sample set.
+  lastBackup     Json?
+  nextBackup     String
+  retention      Int
+}
+
+type OrganizationsSettingsBranding {
+  address     String
+  companyName String
+  email       String
+  /// Could not determine type: the field only had null or empty values in the sample set.
+  favicon     Json?
+  /// Could not determine type: the field only had null or empty values in the sample set.
+  logo        Json?
+  phone       String
+  socialMedia OrganizationsSettingsBrandingSocialMedia
+  tagline     String
+  website     String
+}
+
+type OrganizationsSettingsBrandingSocialMedia {
+  facebook  String
+  instagram String
+  linkedin  String
+  twitter   String
+}
+
+type OrganizationsSettingsIntegrations {
+  emailService    OrganizationsSettingsIntegrationsEmailService
+  /// Could not determine type: the field only had null or empty values in the sample set.
+  paymentGateways Json?
+  smsService      OrganizationsSettingsIntegrationsSmsService
+  storage         OrganizationsSettingsIntegrationsStorage
+}
+
+type OrganizationsSettingsIntegrationsEmailService {
+  apiKey    String
+  fromEmail String
+  provider  String
+}
+
+type OrganizationsSettingsIntegrationsSmsService {
+  apiKey     String
+  fromNumber String
+  provider   String
+}
+
+type OrganizationsSettingsIntegrationsStorage {
+  accessKey String
+  bucket    String
+  provider  String
+  region    String
+  secretKey String
+}
+
+type OrganizationsSettingsLegalCompliance {
+  businessType        String
+  /// Could not determine type: the field only had null or empty values in the sample set.
+  complianceDocuments Json?
+  currency            String
+  dataProtection      OrganizationsSettingsLegalComplianceDataProtection
+  fiscalYearStart     String
+  incorporationDate   String
+  registrationNumber  String
+  taxId               String
+  vatNumber           String
+}
+
+type OrganizationsSettingsLegalComplianceDataProtection {
+  dataRetentionPeriod Int
+  gdprCompliant       Boolean
+  privacyPolicyUrl    String
+  termsOfServiceUrl   String
+}
+
+type OrganizationsSettingsModules {
+  defaultModule  String
+  enabled        String[]
+  moduleSettings OrganizationsSettingsModulesModuleSettings
+}
+
+type OrganizationsSettingsModulesModuleSettings {
+  accounting OrganizationsSettingsModulesModuleSettingsAccounting
+  hr         OrganizationsSettingsModulesModuleSettingsHr
+  inventory  OrganizationsSettingsModulesModuleSettingsInventory
+}
+
+type OrganizationsSettingsModulesModuleSettingsAccounting {
+  currency        String
+  fiscalYearStart String
+  invoicePrefix   String
+  paymentTerms    String
+  taxRate         Int
+}
+
+type OrganizationsSettingsModulesModuleSettingsHr {
+  enableLeaveManagement    Boolean
+  enablePayroll            Boolean
+  enablePerformanceReviews Boolean
+  enableTimeTracking       Boolean
+}
+
+type OrganizationsSettingsModulesModuleSettingsInventory {
+  enableBarcode       Boolean
+  enableSerialNumbers Boolean
+  lowStockThreshold   Int
+  reorderPoint        Int
+}
+
+type OrganizationsSettingsNotifications {
+  email OrganizationsSettingsNotificationsEmail
+  push  OrganizationsSettingsNotificationsPush
+  sms   OrganizationsSettingsNotificationsSms
+}
+
+type OrganizationsSettingsNotificationsEmail {
+  enabled      Boolean
+  fromEmail    String
+  smtpPassword String
+  smtpPort     Int
+  smtpServer   String
+  smtpUsername String
+}
+
+type OrganizationsSettingsNotificationsPush {
+  enabled         Boolean
+  vapidPrivateKey String
+  vapidPublicKey  String
+}
+
+type OrganizationsSettingsNotificationsSms {
+  apiKey     String
+  enabled    Boolean
+  fromNumber String
+  provider   String
+}
+
+type OrganizationsSettingsSecurity {
+  /// Could not determine type: the field only had null or empty values in the sample set.
+  allowedDomains Json?
+  /// Could not determine type: the field only had null or empty values in the sample set.
+  ipWhitelist    Json?
+  passwordPolicy OrganizationsSettingsSecurityPasswordPolicy
+  sessionTimeout Int
+  twoFactorAuth  Boolean
+}
+
+type OrganizationsSettingsSecurityPasswordPolicy {
+  maxAge              Int
+  minLength           Int
+  requireLowercase    Boolean
+  requireNumbers      Boolean
+  requireSpecialChars Boolean
+  requireUppercase    Boolean
+}
+
+type OrganizationsSettingsTheme {
+  borderRadius   String
+  darkMode       Boolean
+  fontFamily     String
+  primaryColor   String
+  secondaryColor String
+  spacing        String
+}
+
+model AbsencePolicy {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+}
+
+model AbsenceRecord {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+}
+
+model AbsenceType {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+}
+
 model Account {
-  id              String         @id @default(auto()) @map("_id") @db.ObjectId
-  code            String
-  name            String
-  type            String
-  description     String?
-  isActive        Boolean        @default(true)
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  organizationId  String         @db.ObjectId
-  organization    Organization   @relation(fields: [organizationId], references: [id])
-  journalLines    JournalLine[]
+  id             String        @id @default(auto()) @map("_id") @db.ObjectId
+  code           String
+  name           String
+  type           String
+  description    String?
+  parentId       String?
+  organizationId String        @db.ObjectId
+  journalLines   JournalLine[]
 }
 
-model JournalEntry {
-  id              String         @id @default(auto()) @map("_id") @db.ObjectId
-  date            DateTime
-  reference       String
-  description     String?
-  status          String         @default("draft")
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  organizationId  String         @db.ObjectId
-  organization    Organization   @relation(fields: [organizationId], references: [id])
-  createdById     String         @db.ObjectId
-  createdBy       User           @relation(fields: [createdById], references: [id])
-  lines           JournalLine[]
+model Attendance {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
 }
 
-model JournalLine {
-  id              String         @id @default(auto()) @map("_id") @db.ObjectId
-  journalEntryId  String         @db.ObjectId
-  journalEntry    JournalEntry   @relation(fields: [journalEntryId], references: [id])
-  accountId       String         @db.ObjectId
-  account         Account        @relation(fields: [accountId], references: [id])
-  debit           Float
-  credit          Float
-  description     String?
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+model BlockchainTransaction {
+  id   String @id @default(auto()) @map("_id") @db.ObjectId
+  /// Field referred in an index, but found no data to define the type.
+  hash Json?  @unique
+}
+
+model BusinessPartner {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+}
+
+model Category {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+}
+
+model Employee {
+  id         String @id @default(auto()) @map("_id") @db.ObjectId
+  /// Field referred in an index, but found no data to define the type.
+  employeeId Json?  @unique
+  /// Field referred in an index, but found no data to define the type.
+  userId     Json?  @unique
 }
 
 model FinancialPeriod {
-  id              String         @id @default(auto()) @map("_id") @db.ObjectId
-  name            String
-  startDate       DateTime
-  endDate         DateTime
-  isClosed        Boolean        @default(false)
-  organizationId  String         @db.ObjectId
-  organization    Organization   @relation(fields: [organizationId], references: [id])
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  startDate      DateTime
+  endDate        DateTime
+  name           String
+  organizationId String   @db.ObjectId
 }
 
-// Update Organization model to include accounting relations
-model Organization {
-  id              String           @id @default(auto()) @map("_id") @db.ObjectId
-  name            String
-  type            String
-  industry        String
-  size            String?
-  walletAddress   String?         @unique
-  activeModules   String[]
-  maxModules      Int             @default(2)
-  address         String?
-  country         String?
-  taxId           String?
-  website         String?
-  settings        Json?
-  roles           Json?
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  users           User[]
-  accounts        Account[]
-  journalEntries  JournalEntry[]
-  financialPeriods FinancialPeriod[]
+model JournalEntry {
+  id             String        @id @default(auto()) @map("_id") @db.ObjectId
+  date           DateTime
+  reference      String
+  description    String
+  organizationId String        @db.ObjectId
+  createdById    String        @db.ObjectId
+  lines          JournalLine[]
 }
 
-// Update User model to include all fields from MongoDB schema
-model User {
-  id              String           @id @default(auto()) @map("_id") @db.ObjectId
-  username        String           @unique
-  password        String
-  role            String           // 'owner' | 'admin' | 'manager' | 'employee' | 'contractor'
-  department      String?          // 'Executive' | 'Engineering' | 'Sales' | 'Marketing' | 'Finance' | 'HR' | 'Operations' | 'IT' | 'Customer Support' | 'Product' | 'Design'
-  firstName       String
-  lastName        String
-  email           String           @unique
-  phoneNumber     String?
-  organizationId  String           @db.ObjectId
-  organization    Organization     @relation(fields: [organizationId], references: [id])
-  isOwner         Boolean          @default(false)
-  moduleAccess    ModuleAccess[]
-  permissions     Json?            // Array of { module: string, actions: string[] }
-  position        String?
-  status          String           @default("active") // 'active' | 'inactive'
-  lastLogin       DateTime?
-  employeeId      String?
-  hireDate        String?
-  managerId       String?
-  team            String?
-  location        Json?            // { office?: string, floor?: string, deskNumber?: string }
-  workSchedule    Json?            // { startTime?: string, endTime?: string, timezone?: string }
-  emergencyContact Json?           // { name?: string, relationship?: string, phone?: string }
-  skills          String[]
-  certifications  String[]
-  education       Json?            // Array of { degree?: string, institution?: string, graduationYear?: string }
-  performance     Json?            // { lastReviewDate?: string, nextReviewDate?: string, rating?: number }
-  compensation    Json?            // { baseSalary?: number, bonus?: number, stockOptions?: number, currency?: string }
-  benefits        Json?            // { healthInsurance?: boolean, dentalInsurance?: boolean, visionInsurance?: boolean, retirementPlan?: boolean, lifeInsurance?: boolean }
-  equipment       Json?            // { laptop?: string, monitor?: string, phone?: string, accessories?: string[] }
-  accessLevels    Json?            // { systems?: string[], buildings?: string[], rooms?: string[] }
-  documents       Json?            // Array of { id?: string, type?: string, url?: string, expiryDate?: string }
-  wallet          Json?            // { balance: number, currency: string, bankAccounts: Array<{ id: string, bankName: string, accountNumber: string, accountType: string, isDefault: boolean }> }
-  legalDetails    Json?            // { taxId: string, businessType: string, registrationNumber: string, incorporationDate: string }
-  address         Json?            // { street?: string, city?: string, state?: string, country?: string, postalCode?: string, isBillingAddress?: boolean, isShippingAddress?: boolean }
-  avatarUrl       String?
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  journalEntries  JournalEntry[]
+model JournalLine {
+  id          String        @id @default(auto()) @map("_id") @db.ObjectId
+  accountId   String        @db.ObjectId
+  description String
+  debit       Float
+  credit      Float
+  entryId     String        @db.ObjectId
+  account     Account       @relation(fields: [accountId], references: [id])
+  entry       JournalEntry  @relation(fields: [entryId], references: [id])
+}
 
-  @@index([organizationId])
+model LeaveEntitlement {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
 }
 
 model ModuleAccess {
-  id              String           @id @default(auto()) @map("_id") @db.ObjectId
-  module          String
-  userId          String           @db.ObjectId
-  user            User             @relation(fields: [userId], references: [id])
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-} 
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  module    String
+  access    String   @default("read_write")
+  userId    String   @db.ObjectId
+  user      User     @relation("UserModuleAccess", fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("moduleAccess")
+}
+
+model Organization {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  name          String
+  type          String // Organization type: e.g., business, SME, NGO, large, etc.
+  industry      String
+  size          String?
+  walletAddress String?  @unique
+  activeModules String[]
+  maxModules    Int      @default(3)
+  address       String?
+  country       String?
+  taxId         String?
+  website       String?
+  settings      Json?
+  roles         Json?
+  accountingSettings Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  users         User[]   @relation("OrgUsers")
+
+  @@map("organizations")
+}
+
+model POS {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+}
+
+model Payroll {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+}
+
+model Product {
+  id  String @id @default(auto()) @map("_id") @db.ObjectId
+  /// Field referred in an index, but found no data to define the type.
+  sku Json?  @unique
+}
+
+model Role {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+}
+
+model Tax {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+}
+
+model Transaction {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+}
+
+model Unit {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+}
+
+model User {
+  id               String        @id @default(auto()) @map("_id") @db.ObjectId
+  username         String        @unique
+  email            String        @unique
+  password         String
+  role             String
+  department       String?
+  firstName        String?
+  lastName         String?
+  phoneNumber      String?
+  organizationId   String        @db.ObjectId
+  organization     Organization? @relation("OrgUsers", fields: [organizationId], references: [id])
+  isOwner          Boolean?      @default(false)
+  moduleAccess     ModuleAccess[] @relation("UserModuleAccess")
+  permissions      Json?
+  position         String?
+  status           String?       @default("active")
+  lastLogin        DateTime?
+  employeeId       String?
+  hireDate         String?
+  managerId        String?
+  team             String?
+  location         Json?
+  workSchedule     Json?
+  emergencyContact Json?
+  skills           String[]
+  certifications   String[]
+  education        Json?
+  performance      Json?
+  compensation     Json?
+  benefits         Json?
+  equipment        Json?
+  accessLevels     Json?
+  documents        Json?
+  wallet           Json?
+  legalDetails     Json?
+  address          Json?
+  avatarUrl        String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@map("users")
+}
+
+model absencepolicies {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+}
+
+model absencepolicy {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+}
+
+model absencerecord {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+}
+
+model absencerecords {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+}
+
+model absencetype {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+}
+
+model absencetypes {
+  id   String @id @default(auto()) @map("_id") @db.ObjectId
+  /// Field referred in an index, but found no data to define the type.
+  code Json?  @unique(map: "code_1")
+}
+
+model attendance {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+}
+
+model attendanceentries {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+}
+
+model attendances {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+}
+
+model benefits {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+}
+
+model blockchaintransaction {
+  id   String @id @default(auto()) @map("_id") @db.ObjectId
+  /// Field referred in an index, but found no data to define the type.
+  hash Json?  @unique
+}
+
+model blockchaintransactions {
+  id     String @id @default(auto()) @map("_id") @db.ObjectId
+  /// Field referred in an index, but found no data to define the type.
+  hash   Json?  @unique
+  /// Field referred in an index, but found no data to define the type.
+  txHash Json?  @unique(map: "txHash_1")
+}
+
+model businesspartner {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+}
+
+model businesspartners {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+}
+
+model categories {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+}
+
+model category {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+}
+
+model customers {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+}
+
+model employee {
+  id         String @id @default(auto()) @map("_id") @db.ObjectId
+  /// Field referred in an index, but found no data to define the type.
+  employeeId Json?  @unique
+  /// Field referred in an index, but found no data to define the type.
+  userId     Json?  @unique
+}
+
+model employees {
+  id         String @id @default(auto()) @map("_id") @db.ObjectId
+  /// Field referred in an index, but found no data to define the type.
+  employeeId Json?  @unique
+  /// Field referred in an index, but found no data to define the type.
+  userId     Json?  @unique
+}
+
+model exitinterviews {
+  id             String @id @default(auto()) @map("_id") @db.ObjectId
+  /// Field referred in an index, but found no data to define the type.
+  employeeId     Json?
+  /// Field referred in an index, but found no data to define the type.
+  organizationId Json?
+  /// Field referred in an index, but found no data to define the type.
+  terminationId  Json?
+
+  @@index([employeeId, organizationId], map: "employeeId_1_organizationId_1")
+  @@index([terminationId], map: "terminationId_1")
+}
+
+model invoices {
+  id            String @id @default(auto()) @map("_id") @db.ObjectId
+  /// Field referred in an index, but found no data to define the type.
+  invoiceNumber Json?  @unique(map: "invoiceNumber_1")
+}
+
+model payroll {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+}
+
+model payrollentries {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+}
+
+model payrolls {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+}
+
+model performancereviews {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+}
+
+model pos {
+  id      String @id @default(auto()) @map("_id") @db.ObjectId
+  /// Field referred in an index, but found no data to define the type.
+  orderId Json?  @unique(map: "orderId_1")
+}
+
+model product {
+  id  String @id @default(auto()) @map("_id") @db.ObjectId
+  /// Field referred in an index, but found no data to define the type.
+  sku Json?  @unique
+}
+
+model products {
+  id  String @id @default(auto()) @map("_id") @db.ObjectId
+  /// Field referred in an index, but found no data to define the type.
+  sku Json?  @unique
+}
+
+model role {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+}
+
+model roles {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+}
+
+model sessions {
+  id      String   @id @map("_id")
+  expires DateTime @db.Date
+  session String
+
+  @@index([expires], map: "expires_1")
+}
+
+model sicknesstypes {
+  id   String @id @default(auto()) @map("_id") @db.ObjectId
+  /// Field referred in an index, but found no data to define the type.
+  code Json?  @unique(map: "code_1")
+}
+
+model tax {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+}
+
+model taxes {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+}
+
+model terminations {
+  id             String @id @default(auto()) @map("_id") @db.ObjectId
+  /// Field referred in an index, but found no data to define the type.
+  employeeId     Json?
+  /// Field referred in an index, but found no data to define the type.
+  organizationId Json?
+  /// Field referred in an index, but found no data to define the type.
+  status         Json?
+
+  @@index([employeeId, organizationId], map: "employeeId_1_organizationId_1")
+  @@index([status], map: "status_1")
+}
+
+model trainingprograms {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+}
+
+model transaction {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+}
+
+model transactions {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+}
+
+model unit {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+}
+
+model units {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+}
+
+model verifications {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+}

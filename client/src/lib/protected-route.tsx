@@ -16,6 +16,11 @@ export function ProtectedRoute({ component: Component, requiredModule, ...rest }
     return null;
   }
 
+  // Always allow owners
+  if (user?.isOwner) {
+    return <Route {...rest} component={Component} />;
+  }
+
   if (requiredModule && !user?.moduleAccess?.includes(requiredModule)) {
     setLocation('/dashboard');
     return null;

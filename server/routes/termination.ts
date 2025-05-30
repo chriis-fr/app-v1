@@ -1,12 +1,12 @@
 import express, { Request, Response } from 'express';
-import { authenticateToken } from '../middleware/auth';
+import { isAuthenticated } from '../middleware/auth';
 import { checkModuleAccess } from '../middleware/module-access';
 import { TerminationService } from '../services/termination.service';
 
 const router = express.Router();
 
 // Initiate termination process
-router.post('/', authenticateToken, checkModuleAccess('hr'), async (req: Request, res: Response) => {
+router.post('/', isAuthenticated, checkModuleAccess('hr'), async (req: Request, res: Response) => {
   try {
     if (!req.user?.id || !req.user?.organizationId) {
       return res.status(401).json({ message: 'User not authenticated' });
@@ -23,7 +23,7 @@ router.post('/', authenticateToken, checkModuleAccess('hr'), async (req: Request
 });
 
 // Approve termination
-router.put('/:id/approve', authenticateToken, checkModuleAccess('hr'), async (req: Request, res: Response) => {
+router.put('/:id/approve', isAuthenticated, checkModuleAccess('hr'), async (req: Request, res: Response) => {
   try {
     if (!req.user?.id) {
       return res.status(401).json({ message: 'User not authenticated' });
@@ -39,7 +39,7 @@ router.put('/:id/approve', authenticateToken, checkModuleAccess('hr'), async (re
 });
 
 // Complete termination process
-router.put('/:id/complete', authenticateToken, checkModuleAccess('hr'), async (req: Request, res: Response) => {
+router.put('/:id/complete', isAuthenticated, checkModuleAccess('hr'), async (req: Request, res: Response) => {
   try {
     if (!req.user?.id) {
       return res.status(401).json({ message: 'User not authenticated' });
@@ -55,7 +55,7 @@ router.put('/:id/complete', authenticateToken, checkModuleAccess('hr'), async (r
 });
 
 // Rescind termination
-router.put('/:id/rescind', authenticateToken, checkModuleAccess('hr'), async (req: Request, res: Response) => {
+router.put('/:id/rescind', isAuthenticated, checkModuleAccess('hr'), async (req: Request, res: Response) => {
   try {
     if (!req.user?.id) {
       return res.status(401).json({ message: 'User not authenticated' });
@@ -71,7 +71,7 @@ router.put('/:id/rescind', authenticateToken, checkModuleAccess('hr'), async (re
 });
 
 // Conduct exit interview
-router.post('/:id/exit-interview', authenticateToken, checkModuleAccess('hr'), async (req: Request, res: Response) => {
+router.post('/:id/exit-interview', isAuthenticated, checkModuleAccess('hr'), async (req: Request, res: Response) => {
   try {
     if (!req.user?.id) {
       return res.status(401).json({ message: 'User not authenticated' });
@@ -88,7 +88,7 @@ router.post('/:id/exit-interview', authenticateToken, checkModuleAccess('hr'), a
 });
 
 // Get termination history for an employee
-router.get('/employee/:employeeId', authenticateToken, checkModuleAccess('hr'), async (req: Request, res: Response) => {
+router.get('/employee/:employeeId', isAuthenticated, checkModuleAccess('hr'), async (req: Request, res: Response) => {
   try {
     const history = await TerminationService.getTerminationHistory(req.params.employeeId);
     res.json(history);
@@ -98,7 +98,7 @@ router.get('/employee/:employeeId', authenticateToken, checkModuleAccess('hr'), 
 });
 
 // Get pending terminations
-router.get('/pending', authenticateToken, checkModuleAccess('hr'), async (req: Request, res: Response) => {
+router.get('/pending', isAuthenticated, checkModuleAccess('hr'), async (req: Request, res: Response) => {
   try {
     if (!req.user?.organizationId) {
       return res.status(401).json({ message: 'User not authenticated' });
@@ -111,7 +111,7 @@ router.get('/pending', authenticateToken, checkModuleAccess('hr'), async (req: R
 });
 
 // Get termination analytics
-router.get('/analytics', authenticateToken, checkModuleAccess('hr'), async (req: Request, res: Response) => {
+router.get('/analytics', isAuthenticated, checkModuleAccess('hr'), async (req: Request, res: Response) => {
   try {
     if (!req.user?.organizationId) {
       return res.status(401).json({ message: 'User not authenticated' });

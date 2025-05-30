@@ -9,7 +9,7 @@ export default function AccountingModulePage() {
   const [, setLocation] = useLocation();
 
   // Check if user has access to accounting module
-  if (!user?.moduleAccess?.includes('accounting')) {
+  if (!user || !(user.role === 'owner' || user.isOwner || user.role === 'admin' || user.moduleAccess?.includes('accounting') || (user.permissions && user.permissions.some((p: any) => p.module === 'accounting' && p.actions.length > 0)))) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh]">
         <h1 className="text-2xl font-bold mb-4">Access Denied</h1>

@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { insertUserSchema, registerOrganizationSchema, availableModules, organizationTypes, accountingTypes } from '@shared/schema';
+import { getAvailableCountries } from '@/config/countries';
 import { 
   ShieldCheck, 
   Building2, 
@@ -177,7 +178,21 @@ export default function AuthPage() {
               </Select>
               <Input placeholder="Industry" {...registerForm.register('industry')} />
               <Input placeholder="Address" {...registerForm.register('address')} />
-              <Input placeholder="Country" {...registerForm.register('country')} />
+              <div className="space-y-2">
+                <Label>Country</Label>
+                <Select onValueChange={value => registerForm.setValue('country', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Country" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {getAvailableCountries().map(country => (
+                      <SelectItem key={country.code} value={country.code}>
+                        {country.name} ({country.currency})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <Input placeholder="Website" {...registerForm.register('website')} />
             </div>
             <div className="flex justify-between">

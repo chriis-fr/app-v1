@@ -1,10 +1,11 @@
 import express from 'express';
 import { isAuthenticated } from '../middleware/auth';
 import { checkModuleAccess } from '../middleware/module-access';
-import { AuthRequest } from '../types';
+import { AuthRequest, CountryConfig } from '../types';
 import OrganizationStructure, { OrganizationStructureDocument } from '../models/OrganizationStructure';
 import User from '../models/User';
 import mongoose from 'mongoose';
+import { getCountryConfig } from '../config/countries';
 
 const router = express.Router();
 
@@ -65,8 +66,16 @@ router.get('/structure/:id', isAuthenticated, checkModuleAccess('hr'), async (re
 // Create organization structure
 router.post('/structure', isAuthenticated, checkModuleAccess('hr'), isAdmin, async (req: AuthRequest, res) => {
   try {
+    const { country, ...rest } = req.body;
+    
+    // Get country configuration
+    const countryConfig = getCountryConfig(country);
+    
+    // Create structure with country-specific settings
     const structure = new OrganizationStructure({
-      ...req.body,
+      ...rest,
+      country,
+      settings: countryConfig.defaultSettings,
       createdBy: req.user?.id,
       updatedBy: req.user?.id
     });
@@ -74,6 +83,9 @@ router.post('/structure', isAuthenticated, checkModuleAccess('hr'), isAdmin, asy
     await structure.save();
     res.status(201).json(structure);
   } catch (error) {
+    if (error instanceof Error && error.message.includes('Configuration not found')) {
+      return res.status(400).json({ message: error.message });
+    }
     res.status(500).json({ message: 'Error creating organization structure' });
   }
 });
@@ -507,6 +519,46 @@ router.get('/positions/evaluation-score', isAuthenticated, checkModuleAccess('hr
     res.json(positions);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching positions by evaluation score' });
+  }
+});
+
+// Update organization settings
+router.put('/settings', isAuthenticated, async (req: AuthRequest, res) => {
+  try {
+    const { settings } = req.body;
+    const organization = await OrganizationStructure.findById(req.user?.organizationId);
+
+    if (!organization) {
+      return res.status(404).json({ message: 'Organization not found' });
+    }
+
+    // If country is being changed, update accounting settings
+    if (settings.country && settings.country !== organization.country) {
+      const countryConfig = getCountryConfig(settings.country);
+      settings.accounting = {
+        ...organization.settings?.accounting,
+        fiscalYearStart: countryConfig.defaultSettings.accounting?.fiscalYearStart,
+        fiscalYearEnd: countryConfig.defaultSettings.accounting?.fiscalYearEnd,
+        taxYearStart: countryConfig.defaultSettings.accounting?.taxYearStart,
+        taxYearEnd: countryConfig.defaultSettings.accounting?.taxYearEnd,
+        currency: countryConfig.currency,
+        taxRates: countryConfig.taxSystem?.rates || {},
+        chartOfAccounts: organization.settings?.accounting?.chartOfAccounts || countryConfig.defaultSettings.accounting?.chartOfAccounts || []
+      };
+    }
+
+    // Update organization settings
+    organization.settings = {
+      ...organization.settings,
+      ...settings
+    };
+
+    await organization.save();
+
+    res.json(organization);
+  } catch (error) {
+    console.error('Error updating organization settings:', error);
+    res.status(500).json({ message: 'Error updating organization settings' });
   }
 });
 

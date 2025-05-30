@@ -4,13 +4,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { organizationSettingsSchema, OrganizationSettings } from '../../../shared/schema';
+import { getAvailableCountries } from '@/config/countries';
 import { Camera, Upload, X } from 'lucide-react';
 import { useState } from 'react';
 import { BackButton } from '@/components/ui/back-button';
 import CompactSidebar from '@/components/layout/CompactSidebar';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
 
 interface OrganizationFormData {
   name: string;
@@ -88,6 +93,36 @@ export default function OrganizationSettingsPage() {
         retention: user?.organization?.settings?.backup?.retention || 30,
         autoBackup: user?.organization?.settings?.backup?.autoBackup ?? true,
       },
+      workingDays: user?.organization?.settings?.workingDays || [],
+      workingHours: {
+        start: user?.organization?.settings?.workingHours?.start || '09:00',
+        end: user?.organization?.settings?.workingHours?.end || '17:00',
+      },
+      holidays: user?.organization?.settings?.holidays || [],
+      customSettings: user?.organization?.settings?.customSettings || {},
+      accounting: user?.organization?.settings?.accounting ? {
+        fiscalYearStart: user.organization.settings.accounting.fiscalYearStart,
+        fiscalYearEnd: user.organization.settings.accounting.fiscalYearEnd,
+        taxYearStart: user.organization.settings.accounting.taxYearStart,
+        taxYearEnd: user.organization.settings.accounting.taxYearEnd,
+        currency: user.organization.settings.accounting.currency,
+        taxRates: user.organization.settings.accounting.taxRates,
+        chartOfAccounts: user.organization.settings.accounting.chartOfAccounts,
+        reportingPeriods: user.organization.settings.accounting.reportingPeriods,
+        taxJurisdictions: user.organization.settings.accounting.taxJurisdictions,
+        compliance: user.organization.settings.accounting.compliance,
+      } : undefined,
+      payroll: user?.organization?.settings?.payroll ? {
+        paymentFrequency: user.organization.settings.payroll.paymentFrequency,
+        paymentDay: user.organization.settings.payroll.paymentDay,
+        overtimeRate: user.organization.settings.payroll.overtimeRate,
+        bonusStructure: user.organization.settings.payroll.bonusStructure,
+        deductions: user.organization.settings.payroll.deductions,
+      } : undefined,
+      benefits: user?.organization?.settings?.benefits ? {
+        mandatory: user.organization.settings.benefits.mandatory,
+        optional: user.organization.settings.benefits.optional,
+      } : undefined,
     },
   });
 
@@ -215,7 +250,7 @@ export default function OrganizationSettingsPage() {
               <CardDescription>Update your organization's basic information</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="flex flex-col sm:flex-row items-center gap-6">
+              <div className="flex items-center space-x-4 mb-6">
                 <div className="relative">
                   <div className="w-24 h-24 rounded-lg bg-primary/10 flex items-center justify-center overflow-hidden">
                     {organizationLogo ? (
@@ -292,7 +327,21 @@ export default function OrganizationSettingsPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="country">Country</Label>
-                    <Input id="country" {...form.register('country')} />
+                    <Select
+                      value={form.watch('country')}
+                      onValueChange={(value) => form.setValue('country', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Country" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {getAvailableCountries().map(country => (
+                          <SelectItem key={country.code} value={country.code}>
+                            {country.name} ({country.currency})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="taxId">Tax ID</Label>
@@ -318,6 +367,16 @@ export default function OrganizationSettingsPage() {
               <CardDescription>Configure your organization's settings and preferences</CardDescription>
             </CardHeader>
             <CardContent>
+              <Tabs defaultValue="general" className="space-y-4">
+                <TabsList>
+                  <TabsTrigger value="general">General</TabsTrigger>
+                  <TabsTrigger value="accounting">Accounting</TabsTrigger>
+                  <TabsTrigger value="payroll">Payroll</TabsTrigger>
+                  <TabsTrigger value="benefits">Benefits</TabsTrigger>
+                  <TabsTrigger value="compliance">Compliance</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="general">
               <form onSubmit={settingsForm.handleSubmit(onSettingsSubmit)} className="space-y-6">
                 <div className="space-y-4">
                   <h3 className="text-lg font-medium">Theme</h3>
@@ -333,7 +392,11 @@ export default function OrganizationSettingsPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="darkMode">Dark Mode</Label>
-                    <Input id="darkMode" type="checkbox" {...settingsForm.register('theme.darkMode')} />
+                        <Switch
+                          id="darkMode"
+                          checked={settingsForm.watch('theme.darkMode')}
+                          onCheckedChange={(checked) => settingsForm.setValue('theme.darkMode', checked)}
+                        />
                   </div>
                 </div>
 
@@ -353,7 +416,11 @@ export default function OrganizationSettingsPage() {
                   <h3 className="text-lg font-medium">Security</h3>
                   <div className="space-y-2">
                     <Label htmlFor="twoFactorAuth">Two-Factor Authentication</Label>
-                    <Input id="twoFactorAuth" type="checkbox" {...settingsForm.register('security.twoFactorAuth')} />
+                        <Switch
+                          id="twoFactorAuth"
+                          checked={settingsForm.watch('security.twoFactorAuth')}
+                          onCheckedChange={(checked) => settingsForm.setValue('security.twoFactorAuth', checked)}
+                        />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="sessionTimeout">Session Timeout (minutes)</Label>
@@ -365,15 +432,27 @@ export default function OrganizationSettingsPage() {
                   <h3 className="text-lg font-medium">Notifications</h3>
                   <div className="space-y-2">
                     <Label htmlFor="emailNotifications">Email Notifications</Label>
-                    <Input id="emailNotifications" type="checkbox" {...settingsForm.register('notifications.email')} />
+                        <Switch
+                          id="emailNotifications"
+                          checked={settingsForm.watch('notifications.email')}
+                          onCheckedChange={(checked) => settingsForm.setValue('notifications.email', checked)}
+                        />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="pushNotifications">Push Notifications</Label>
-                    <Input id="pushNotifications" type="checkbox" {...settingsForm.register('notifications.push')} />
+                        <Switch
+                          id="pushNotifications"
+                          checked={settingsForm.watch('notifications.push')}
+                          onCheckedChange={(checked) => settingsForm.setValue('notifications.push', checked)}
+                        />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="smsNotifications">SMS Notifications</Label>
-                    <Input id="smsNotifications" type="checkbox" {...settingsForm.register('notifications.sms')} />
+                        <Switch
+                          id="smsNotifications"
+                          checked={settingsForm.watch('notifications.sms')}
+                          onCheckedChange={(checked) => settingsForm.setValue('notifications.sms', checked)}
+                        />
                   </div>
                 </div>
 
@@ -381,6 +460,664 @@ export default function OrganizationSettingsPage() {
                   Save Settings
                 </Button>
               </form>
+                </TabsContent>
+
+                <TabsContent value="accounting">
+                  <form onSubmit={settingsForm.handleSubmit(onSettingsSubmit)} className="space-y-6">
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-medium">Fiscal Year</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="fiscalYearStart">Fiscal Year Start</Label>
+                          <Input 
+                            id="fiscalYearStart" 
+                            type="date" 
+                            {...settingsForm.register('accounting.fiscalYearStart')} 
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="fiscalYearEnd">Fiscal Year End</Label>
+                          <Input 
+                            id="fiscalYearEnd" 
+                            type="date" 
+                            {...settingsForm.register('accounting.fiscalYearEnd')} 
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-medium">Tax Settings</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="taxYearStart">Tax Year Start</Label>
+                          <Input 
+                            id="taxYearStart" 
+                            type="date" 
+                            {...settingsForm.register('accounting.taxYearStart')} 
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="taxYearEnd">Tax Year End</Label>
+                          <Input 
+                            id="taxYearEnd" 
+                            type="date" 
+                            {...settingsForm.register('accounting.taxYearEnd')} 
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-medium">Reporting Periods</h3>
+                      <div className="space-y-2">
+                        <Label>Select Reporting Periods</Label>
+                        <div className="space-y-2">
+                          {['monthly', 'quarterly', 'annually'].map((period) => (
+                            <div key={period} className="flex items-center space-x-2">
+                              <Switch
+                                id={`reporting-${period}`}
+                                checked={settingsForm.watch('accounting.reportingPeriods')?.includes(period)}
+                                onCheckedChange={(checked) => {
+                                  const current = settingsForm.watch('accounting.reportingPeriods') || [];
+                                  settingsForm.setValue(
+                                    'accounting.reportingPeriods',
+                                    checked
+                                      ? [...current, period]
+                                      : current.filter((p) => p !== period)
+                                  );
+                                }}
+                              />
+                              <Label htmlFor={`reporting-${period}`}>{period.charAt(0).toUpperCase() + period.slice(1)}</Label>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-medium">Tax Jurisdictions</h3>
+                      <div className="space-y-4">
+                        {settingsForm.watch('accounting.taxJurisdictions')?.map((jurisdiction, index) => (
+                          <div key={index} className="p-4 border rounded-lg space-y-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label>Name</Label>
+                                <Input
+                                  value={jurisdiction.name}
+                                  onChange={(e) => {
+                                    const jurisdictions = [...(settingsForm.watch('accounting.taxJurisdictions') || [])];
+                                    jurisdictions[index] = { ...jurisdiction, name: e.target.value };
+                                    settingsForm.setValue('accounting.taxJurisdictions', jurisdictions);
+                                  }}
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Type</Label>
+                                <Input
+                                  value={jurisdiction.type}
+                                  onChange={(e) => {
+                                    const jurisdictions = [...(settingsForm.watch('accounting.taxJurisdictions') || [])];
+                                    jurisdictions[index] = { ...jurisdiction, type: e.target.value };
+                                    settingsForm.setValue('accounting.taxJurisdictions', jurisdictions);
+                                  }}
+                                />
+                              </div>
+                            </div>
+                            <Button
+                              variant="destructive"
+                              onClick={() => {
+                                const jurisdictions = settingsForm.watch('accounting.taxJurisdictions') || [];
+                                settingsForm.setValue(
+                                  'accounting.taxJurisdictions',
+                                  jurisdictions.filter((_, i) => i !== index)
+                                );
+                              }}
+                            >
+                              Remove Jurisdiction
+                            </Button>
+                          </div>
+                        ))}
+                        <Button
+                          onClick={() => {
+                            const jurisdictions = settingsForm.watch('accounting.taxJurisdictions') || [];
+                            settingsForm.setValue('accounting.taxJurisdictions', [
+                              ...jurisdictions,
+                              { name: '', type: '', rates: {}, filingDeadlines: [] }
+                            ]);
+                          }}
+                        >
+                          Add Tax Jurisdiction
+                        </Button>
+                      </div>
+                    </div>
+
+                    <Button type="submit" className="w-full">
+                      Save Accounting Settings
+                    </Button>
+                  </form>
+                </TabsContent>
+
+                <TabsContent value="payroll">
+                  <form onSubmit={settingsForm.handleSubmit(onSettingsSubmit)} className="space-y-6">
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-medium">Payment Settings</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="paymentFrequency">Payment Frequency</Label>
+                          <Select
+                            value={settingsForm.watch('payroll.paymentFrequency')}
+                            onValueChange={(value: 'weekly' | 'biweekly' | 'monthly') => {
+                              settingsForm.setValue('payroll.paymentFrequency', value);
+                            }}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select frequency" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="weekly">Weekly</SelectItem>
+                              <SelectItem value="biweekly">Bi-weekly</SelectItem>
+                              <SelectItem value="monthly">Monthly</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="paymentDay">Payment Day</Label>
+                          <Input
+                            id="paymentDay"
+                            type="number"
+                            min={1}
+                            max={31}
+                            {...settingsForm.register('payroll.paymentDay')}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-medium">Overtime & Bonuses</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="overtimeRate">Overtime Rate</Label>
+                          <Input
+                            id="overtimeRate"
+                            type="number"
+                            step="0.01"
+                            {...settingsForm.register('payroll.overtimeRate')}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-medium">Deductions</h3>
+                      <div className="space-y-2">
+                        {settingsForm.watch('payroll.deductions')?.map((deduction, index) => (
+                          <div key={index} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div className="space-y-2">
+                              <Label>Type</Label>
+                              <Input
+                                value={deduction.type}
+                                onChange={(e) => {
+                                  const deductions = [...(settingsForm.watch('payroll.deductions') || [])];
+                                  deductions[index] = { ...deductions[index], type: e.target.value };
+                                  settingsForm.setValue('payroll.deductions', deductions);
+                                }}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Rate</Label>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={deduction.rate}
+                                onChange={(e) => {
+                                  const deductions = [...(settingsForm.watch('payroll.deductions') || [])];
+                                  deductions[index] = { ...deductions[index], rate: parseFloat(e.target.value) };
+                                  settingsForm.setValue('payroll.deductions', deductions);
+                                }}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Threshold</Label>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={deduction.threshold}
+                                onChange={(e) => {
+                                  const deductions = [...(settingsForm.watch('payroll.deductions') || [])];
+                                  deductions[index] = { ...deductions[index], threshold: parseFloat(e.target.value) };
+                                  settingsForm.setValue('payroll.deductions', deductions);
+                                }}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            const deductions = [...(settingsForm.watch('payroll.deductions') || [])];
+                            deductions.push({ type: '', rate: 0, threshold: 0 });
+                            settingsForm.setValue('payroll.deductions', deductions);
+                          }}
+                        >
+                          Add Deduction
+                        </Button>
+                      </div>
+                    </div>
+
+                    <Button type="submit" className="w-full">
+                      Save Payroll Settings
+                    </Button>
+                  </form>
+                </TabsContent>
+
+                <TabsContent value="benefits">
+                  <form onSubmit={settingsForm.handleSubmit(onSettingsSubmit)} className="space-y-6">
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-medium">Mandatory Benefits</h3>
+                      <div className="space-y-4">
+                        {settingsForm.watch('benefits.mandatory')?.map((benefit, index) => (
+                          <div key={index} className="p-4 border rounded-lg space-y-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label>Type</Label>
+                                <Input
+                                  value={benefit.type}
+                                  onChange={(e) => {
+                                    const benefits = [...(settingsForm.watch('benefits.mandatory') || [])];
+                                    benefits[index] = { ...benefit, type: e.target.value };
+                                    settingsForm.setValue('benefits.mandatory', benefits);
+                                  }}
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Provider</Label>
+                                <Input
+                                  value={benefit.provider}
+                                  onChange={(e) => {
+                                    const benefits = [...(settingsForm.watch('benefits.mandatory') || [])];
+                                    benefits[index] = { ...benefit, provider: e.target.value };
+                                    settingsForm.setValue('benefits.mandatory', benefits);
+                                  }}
+                                />
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Coverage</Label>
+                              <Textarea
+                                value={benefit.coverage}
+                                onChange={(e) => {
+                                  const benefits = [...(settingsForm.watch('benefits.mandatory') || [])];
+                                  benefits[index] = { ...benefit, coverage: e.target.value };
+                                  settingsForm.setValue('benefits.mandatory', benefits);
+                                }}
+                              />
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label>Employee Cost</Label>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  value={benefit.cost.employee}
+                                  onChange={(e) => {
+                                    const benefits = [...(settingsForm.watch('benefits.mandatory') || [])];
+                                    benefits[index] = {
+                                      ...benefit,
+                                      cost: { ...benefit.cost, employee: parseFloat(e.target.value) }
+                                    };
+                                    settingsForm.setValue('benefits.mandatory', benefits);
+                                  }}
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Employer Cost</Label>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  value={benefit.cost.employer}
+                                  onChange={(e) => {
+                                    const benefits = [...(settingsForm.watch('benefits.mandatory') || [])];
+                                    benefits[index] = {
+                                      ...benefit,
+                                      cost: { ...benefit.cost, employer: parseFloat(e.target.value) }
+                                    };
+                                    settingsForm.setValue('benefits.mandatory', benefits);
+                                  }}
+                                />
+                              </div>
+                            </div>
+                            <Button
+                              variant="destructive"
+                              onClick={() => {
+                                const benefits = settingsForm.watch('benefits.mandatory') || [];
+                                settingsForm.setValue(
+                                  'benefits.mandatory',
+                                  benefits.filter((_, i) => i !== index)
+                                );
+                              }}
+                            >
+                              Remove Benefit
+                            </Button>
+                          </div>
+                        ))}
+                        <Button
+                          onClick={() => {
+                            const benefits = settingsForm.watch('benefits.mandatory') || [];
+                            settingsForm.setValue('benefits.mandatory', [
+                              ...benefits,
+                              { type: '', provider: '', coverage: '', cost: { employee: 0, employer: 0 } }
+                            ]);
+                          }}
+                        >
+                          Add Mandatory Benefit
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-medium">Optional Benefits</h3>
+                      <div className="space-y-4">
+                        {settingsForm.watch('benefits.optional')?.map((benefit, index) => (
+                          <div key={index} className="p-4 border rounded-lg space-y-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label>Type</Label>
+                                <Input
+                                  value={benefit.type}
+                                  onChange={(e) => {
+                                    const benefits = [...(settingsForm.watch('benefits.optional') || [])];
+                                    benefits[index] = { ...benefit, type: e.target.value };
+                                    settingsForm.setValue('benefits.optional', benefits);
+                                  }}
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Provider</Label>
+                                <Input
+                                  value={benefit.provider}
+                                  onChange={(e) => {
+                                    const benefits = [...(settingsForm.watch('benefits.optional') || [])];
+                                    benefits[index] = { ...benefit, provider: e.target.value };
+                                    settingsForm.setValue('benefits.optional', benefits);
+                                  }}
+                                />
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Coverage</Label>
+                              <Textarea
+                                value={benefit.coverage}
+                                onChange={(e) => {
+                                  const benefits = [...(settingsForm.watch('benefits.optional') || [])];
+                                  benefits[index] = { ...benefit, coverage: e.target.value };
+                                  settingsForm.setValue('benefits.optional', benefits);
+                                }}
+                              />
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label>Employee Cost</Label>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  value={benefit.cost.employee}
+                                  onChange={(e) => {
+                                    const benefits = [...(settingsForm.watch('benefits.optional') || [])];
+                                    benefits[index] = {
+                                      ...benefit,
+                                      cost: { ...benefit.cost, employee: parseFloat(e.target.value) }
+                                    };
+                                    settingsForm.setValue('benefits.optional', benefits);
+                                  }}
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Employer Cost</Label>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  value={benefit.cost.employer}
+                                  onChange={(e) => {
+                                    const benefits = [...(settingsForm.watch('benefits.optional') || [])];
+                                    benefits[index] = {
+                                      ...benefit,
+                                      cost: { ...benefit.cost, employer: parseFloat(e.target.value) }
+                                    };
+                                    settingsForm.setValue('benefits.optional', benefits);
+                                  }}
+                                />
+                              </div>
+                            </div>
+                            <Button
+                              variant="destructive"
+                              onClick={() => {
+                                const benefits = settingsForm.watch('benefits.optional') || [];
+                                settingsForm.setValue(
+                                  'benefits.optional',
+                                  benefits.filter((_, i) => i !== index)
+                                );
+                              }}
+                            >
+                              Remove Benefit
+                            </Button>
+                          </div>
+                        ))}
+                        <Button
+                          onClick={() => {
+                            const benefits = settingsForm.watch('benefits.optional') || [];
+                            settingsForm.setValue('benefits.optional', [
+                              ...benefits,
+                              { type: '', provider: '', coverage: '', cost: { employee: 0, employer: 0 } }
+                            ]);
+                          }}
+                        >
+                          Add Optional Benefit
+                        </Button>
+                      </div>
+                    </div>
+
+                    <Button type="submit" className="w-full">
+                      Save Benefits Settings
+                    </Button>
+                  </form>
+                </TabsContent>
+
+                <TabsContent value="compliance">
+                  <form onSubmit={settingsForm.handleSubmit(onSettingsSubmit)} className="space-y-6">
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-medium">Required Reports</h3>
+                      <div className="space-y-2">
+                        <Label>Required Reports</Label>
+                        <div className="space-y-2">
+                          {settingsForm.watch('accounting.compliance.requiredReports')?.map((report, index) => (
+                            <div key={index} className="flex items-center space-x-2">
+                              <Input
+                                value={report}
+                                onChange={(e) => {
+                                  const reports = [...(settingsForm.watch('accounting.compliance.requiredReports') || [])];
+                                  reports[index] = e.target.value;
+                                  settingsForm.setValue('accounting.compliance.requiredReports', reports);
+                                }}
+                              />
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                size="icon"
+                                onClick={() => {
+                                  const reports = [...(settingsForm.watch('accounting.compliance.requiredReports') || [])];
+                                  reports.splice(index, 1);
+                                  settingsForm.setValue('accounting.compliance.requiredReports', reports);
+                                }}
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          ))}
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                              const reports = [...(settingsForm.watch('accounting.compliance.requiredReports') || [])];
+                              reports.push('');
+                              settingsForm.setValue('accounting.compliance.requiredReports', reports);
+                            }}
+                          >
+                            Add Report
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-medium">Filing Deadlines</h3>
+                      <div className="space-y-2">
+                        <Label>Filing Deadlines</Label>
+                        <div className="space-y-2">
+                          {Object.entries(settingsForm.watch('accounting.compliance.filingDeadlines') || {}).map(([report, deadlines], index) => (
+                            <div key={index} className="space-y-2">
+                              <div className="flex items-center space-x-2">
+                                <Input
+                                  value={report}
+                                  onChange={(e) => {
+                                    const deadlines = settingsForm.watch('accounting.compliance.filingDeadlines') || {};
+                                    const newDeadlines = { ...deadlines };
+                                    delete newDeadlines[report];
+                                    newDeadlines[e.target.value] = deadlines[report];
+                                    settingsForm.setValue('accounting.compliance.filingDeadlines', newDeadlines);
+                                  }}
+                                />
+                                <Button
+                                  type="button"
+                                  variant="destructive"
+                                  size="icon"
+                                  onClick={() => {
+                                    const deadlines = { ...(settingsForm.watch('accounting.compliance.filingDeadlines') || {}) };
+                                    delete deadlines[report];
+                                    settingsForm.setValue('accounting.compliance.filingDeadlines', deadlines);
+                                  }}
+                                >
+                                  <X className="w-4 h-4" />
+                                </Button>
+                              </div>
+                              <div className="pl-4 space-y-2">
+                                {deadlines.map((deadline, deadlineIndex) => (
+                                  <div key={deadlineIndex} className="flex items-center space-x-2">
+                                    <Input
+                                      value={deadline}
+                                      onChange={(e) => {
+                                        const deadlines = settingsForm.watch('accounting.compliance.filingDeadlines') || {};
+                                        const newDeadlines = [...deadlines[report]];
+                                        newDeadlines[deadlineIndex] = e.target.value;
+                                        settingsForm.setValue('accounting.compliance.filingDeadlines', {
+                                          ...deadlines,
+                                          [report]: newDeadlines,
+                                        });
+                                      }}
+                                    />
+                                    <Button
+                                      type="button"
+                                      variant="destructive"
+                                      size="icon"
+                                      onClick={() => {
+                                        const deadlines = settingsForm.watch('accounting.compliance.filingDeadlines') || {};
+                                        const newDeadlines = [...deadlines[report]];
+                                        newDeadlines.splice(deadlineIndex, 1);
+                                        settingsForm.setValue('accounting.compliance.filingDeadlines', {
+                                          ...deadlines,
+                                          [report]: newDeadlines,
+                                        });
+                                      }}
+                                    >
+                                      <X className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                ))}
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  onClick={() => {
+                                    const deadlines = settingsForm.watch('accounting.compliance.filingDeadlines') || {};
+                                    settingsForm.setValue('accounting.compliance.filingDeadlines', {
+                                      ...deadlines,
+                                      [report]: [...deadlines[report], ''],
+                                    });
+                                  }}
+                                >
+                                  Add Deadline
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                              const deadlines = settingsForm.watch('accounting.compliance.filingDeadlines') || {};
+                              settingsForm.setValue('accounting.compliance.filingDeadlines', {
+                                ...deadlines,
+                                'New Report': [''],
+                              });
+                            }}
+                          >
+                            Add Report
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-medium">Required Documentation</h3>
+                      <div className="space-y-2">
+                        <Label>Required Documentation</Label>
+                        <div className="space-y-2">
+                          {settingsForm.watch('accounting.compliance.documentation')?.map((doc, index) => (
+                            <div key={index} className="flex items-center space-x-2">
+                              <Input
+                                value={doc}
+                                onChange={(e) => {
+                                  const docs = [...(settingsForm.watch('accounting.compliance.documentation') || [])];
+                                  docs[index] = e.target.value;
+                                  settingsForm.setValue('accounting.compliance.documentation', docs);
+                                }}
+                              />
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                size="icon"
+                                onClick={() => {
+                                  const docs = [...(settingsForm.watch('accounting.compliance.documentation') || [])];
+                                  docs.splice(index, 1);
+                                  settingsForm.setValue('accounting.compliance.documentation', docs);
+                                }}
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          ))}
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                              const docs = [...(settingsForm.watch('accounting.compliance.documentation') || [])];
+                              docs.push('');
+                              settingsForm.setValue('accounting.compliance.documentation', docs);
+                            }}
+                          >
+                            Add Documentation
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <Button type="submit" className="w-full">
+                      Save Compliance Settings
+                    </Button>
+                  </form>
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
 

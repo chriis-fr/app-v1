@@ -8,6 +8,7 @@ export function useModuleAccess() {
   const [, setLocation] = useLocation();
 
   const checkModuleAccess = (moduleName: string) => {
+    if (user?.isOwner) return true;
     if (!user?.organizationId) return false;
 
     // Get company modules from staticData (will be replaced with API call later)
@@ -19,6 +20,7 @@ export function useModuleAccess() {
   };
 
   const requireModuleAccess = (moduleName: string) => {
+    if (user?.isOwner) return true;
     if (!checkModuleAccess(moduleName)) {
       setLocation('/dashboard');
       return false;

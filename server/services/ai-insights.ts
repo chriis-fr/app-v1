@@ -37,7 +37,7 @@ export class AIInsightsService {
 
     // Calculate expenses
     const expenses = transactions
-      .filter(t => t.type === 'purchase' && t.status === 'completed')
+      .filter(t => t.type === 'expense' && t.status === 'completed')
       .reduce((sum, t) => sum + t.amount, 0);
 
     // Calculate customer growth rate

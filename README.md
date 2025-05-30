@@ -1,302 +1,328 @@
-# Chains ERP - Enterprise Resource Planning System
+# Enterprise Resource Planning (ERP) System
 
-## 🚀 Overview
-Chains ERP is a modern, modular enterprise resource planning system built with TypeScript, React, and Prisma. The system is designed to be flexible, secure, and scalable, with a focus on industry-specific needs and compliance requirements.
+A comprehensive ERP system built with modern technologies, supporting multiple modules for business management including accounting, HR, inventory, and more.
 
-## 🎯 Core Principles
-- **Zero Pre-seeding**: The system starts completely empty. All data is created through the application by users.
-- **Industry-First Design**: Module recommendations and configurations are tailored to specific industries.
-- **Strict Access Control**: Hierarchical access system with clear separation of concerns.
-- **Legal Compliance**: Built-in support for country-specific legal requirements and tax regulations.
+## Table of Contents
+- [Features](#features)
+- [Architecture](#architecture)
+- [Technology Stack](#technology-stack)
+- [Getting Started](#getting-started)
+- [Database Schema](#database-schema)
+- [API Documentation](#api-documentation)
+- [Security](#security)
+- [Deployment](#deployment)
+- [Development Guidelines](#development-guidelines)
 
-## 🏗 Architecture
+## Features
 
-### Backend (server/)
-- **TypeScript + Express**: Robust API server with type safety
-- **Prisma + MongoDB**: Modern database ORM with MongoDB for flexibility
-- **Authentication**: Session-based auth with Passport.js
-- **Module System**: Dynamic module loading and access control
+### Core Features
+- **Organization Management**
+  - Multi-tenant architecture
+  - Organization settings and branding
+  - Module management and access control
+  - Role-based permissions
 
-### Frontend (client/)
-- **React + TypeScript**: Modern UI with type safety
-- **Tailwind CSS**: Utility-first styling
-- **Shadcn/ui**: High-quality, accessible components
-- **Module-based Routing**: Dynamic route loading based on user access
+- **User Management**
+  - Role-based access control
+  - Department-based organization
+  - User profiles and settings
+  - Module access management
 
-## 🔐 Access Control Hierarchy
+- **Module System**
+  - Accounting
+  - Human Resources
+  - Inventory Management
+  - Point of Sale
+  - Customer Relationship Management
+  - Project Management
+  - Analytics
+  - Blockchain Integration
 
-### 1. Organization Owner
-- Full access to all modules
-- Can create module admins
-- Manages organization settings
-- Access to compact sidebar
+### Module-Specific Features
 
-### 2. Module Admin
-- Access limited to assigned module
-- Manages module-specific settings
-- Cannot access other modules
-- No access to compact sidebar
+#### Accounting
+- Chart of accounts
+- Journal entries
+- Financial periods
+- Tax management
+- Multi-currency support
 
-### 3. Regular Employee
-- Basic access to assigned modules
-- Limited to specific actions
-- No administrative capabilities
+#### Human Resources
+- Employee management
+- Attendance tracking
+- Leave management
+- Payroll processing
+- Performance reviews
 
-## 📦 Module System
+#### Inventory
+- Product management
+- Category management
+- Stock tracking
+- Unit management
+- Low stock alerts
 
-### Primary Module (Always Included)
-- **Accounting**: Core financial management
-  - Required for all organizations
-  - Cannot be disabled
-  - Foundation for other modules
+#### Point of Sale
+- Transaction processing
+- Sales tracking
+- Payment processing
+- Receipt generation
 
-### Industry-Specific Recommendations
-```typescript
-const industryModules = {
-  technology: ['project', 'inventory', 'hr', 'crm'],
-  manufacturing: ['inventory', 'manufacturing', 'warehouse', 'procurement'],
-  retail: ['pos', 'inventory', 'crm', 'ecommerce'],
-  healthcare: ['hr', 'inventory', 'crm', 'compliance'],
-  finance: ['accounting', 'blockchain', 'compliance', 'analytics'],
-  // ... more industries
-};
-```
+## Architecture
 
-### Module Selection Rules
-1. Accounting is automatically included
-2. Organizations can select up to 2 additional modules
-3. Total maximum: 3 modules (1 primary + 2 additional)
-4. Modules are recommended based on industry
+### Frontend
+- React-based SPA
+- Component-based architecture
+- Context-based state management
+- Responsive design
+- Material-UI components
 
-## 🌍 Legal Compliance
+### Backend
+- Express.js server
+- Prisma ORM
+- MongoDB database
+- JWT authentication
+- Role-based middleware
 
-### Organization Settings
-```typescript
-settings: {
-  legalCompliance: {
-    country: string;
-    taxJurisdiction: string;
-    fiscalYearStart: string;
-    currency: string;
-  }
+### Database Schema
+
+#### Core Models
+```prisma
+model Organization {
+  id              String           @id @default(auto()) @map("_id") @db.ObjectId
+  name            String
+  type            OrganizationType
+  industry        String
+  size            String?
+  walletAddress   String?
+  activeModules   Module[]
+  maxModules      Int              @default(3)
+  // ... other fields
+}
+
+model User {
+  id              String           @id @default(auto()) @map("_id") @db.ObjectId
+  username        String           @unique
+  email           String           @unique
+  role            UserRole
+  department      Department
+  // ... other fields
 }
 ```
 
-### Country-Specific Features
-- Tax calculations
-- Legal requirements
-- Currency handling
-- Regional compliance
+## Technology Stack
 
-## 🚦 Application Flow
+### Frontend
+- React
+- TypeScript
+- Vite
+- Tailwind CSS
+- React Query
+- React Hook Form
+- Zod
 
-### 1. Organization Creation
-```typescript
-POST /api/organization
-{
-  name: string;
-  industry: string;
-  country: string;
-  selectedModules: string[]; // Max 2 additional modules
-}
-```
+### Backend
+- Node.js
+- Express
+- TypeScript
+- Prisma
+- MongoDB
+- JWT
+- bcrypt
 
-### 2. User Management
-```typescript
-POST /api/mongodb/users
-{
-  username: string;
-  email: string;
-  role: 'owner' | 'admin' | 'employee';
-  department: string;
-  // ... other user fields
-}
-```
+### Development Tools
+- Git
+- ESLint
+- Prettier
+- Jest
+- Docker
 
-### 3. Module Access
-```typescript
-// Automatically handled based on role
-moduleAccess: {
-  create: activeModules.map(module => ({
-    module,
-    access: 'read_write' | 'read'
-  }))
-}
-```
-
-## 🔒 Security Features
-
-### 1. Authentication
-- Session-based authentication
-- Secure password hashing
-- Role-based access control
-
-### 2. Module Access
-- Middleware-based access control
-- Role-specific permissions
-- Module-level restrictions
-
-### 3. Data Protection
-- Input validation
-- Type safety
-- Secure data handling
-
-## 🛠 Development
+## Getting Started
 
 ### Prerequisites
-- Node.js 18+
+- Node.js (v16 or higher)
 - MongoDB
-- TypeScript
-- pnpm
+- npm or yarn
 
-### Setup
+### Installation
+
+1. Clone the repository:
 ```bash
-# Install dependencies
-pnpm install
-
-# Start development server
-pnpm dev
-
-# Build for production
-pnpm build
+git clone [repository-url]
+cd app-v1
 ```
 
-## ⚠️ Important Notes
-
-1. **NO SEEDING**: The system starts empty. All data must be created through the application.
-2. **Module Limits**: Strict enforcement of 3-module limit (1 primary + 2 additional).
-3. **Access Control**: Clear separation between owner, admin, and employee roles.
-4. **Legal Compliance**: Country-specific settings are required for proper operation.
-
-## 🎯 Design Decisions
-
-### Why No Seeding?
-- Clean slate for each installation
-- Prevents unwanted data
-- Forces proper setup through UI
-- Better security
-
-### Why Module Limits?
-- Focused functionality
-- Better performance
-- Clearer user experience
-- Easier maintenance
-
-### Why Industry-Specific?
-- Tailored solutions
-- Better user experience
-- Relevant features
-- Efficient operations
-
-## 📚 API Documentation
-
-### Organization Endpoints
-- `POST /api/organization`: Create organization
-- `GET /api/organization/settings`: Get settings
-- `PATCH /api/organization/settings`: Update settings
-
-### User Endpoints
-- `POST /api/mongodb/users`: Create user
-- `GET /api/mongodb/users`: List users
-- `PUT /api/mongodb/users/:id`: Update user
-
-### Module Endpoints
-- `GET /api/modules/access`: Check module access
-- `POST /api/modules/configure`: Configure module
-
-## 🚨 Error Handling
-
-### Common Errors
-- Module limit exceeded
-- Invalid role assignment
-- Access denied
-- Invalid module selection
-
-### Error Responses
-```typescript
-{
-  error: string;
-  code: string;
-  details?: any;
-}
+2. Install dependencies:
+```bash
+npm install
 ```
 
-## 🔄 Database Schema
+3. Set up environment variables:
+```bash
+cp .env.example .env
+```
 
-### Organization
-```typescript
+4. Configure your environment variables:
+```env
+DATABASE_URL="mongodb+srv://..."
+JWT_SECRET="your-secret-key"
+```
+
+5. Initialize the database:
+```bash
+npx prisma db push
+```
+
+6. Start the development server:
+```bash
+npm run dev
+```
+
+## API Documentation
+
+### Authentication Endpoints
+
+#### Register Organization
+```http
+POST /api/organization
+Content-Type: application/json
+
 {
-  id: string;
-  name: string;
-  industry: string;
-  country: string;
-  activeModules: string[];
-  maxModules: number;
-  settings: {
-    legalCompliance: {
-      country: string;
-      taxJurisdiction: string;
-      fiscalYearStart: string;
-      currency: string;
-    }
+  "organization": {
+    "name": "string",
+    "type": "business|ngo",
+    "industry": "string"
+  },
+  "owner": {
+    "username": "string",
+    "email": "string",
+    "password": "string",
+    "firstName": "string",
+    "lastName": "string"
   }
 }
 ```
 
-### User
-```typescript
+#### Login
+```http
+POST /api/auth/login
+Content-Type: application/json
+
 {
-  id: string;
-  username: string;
-  email: string;
-  role: string;
-  department: string;
-  organizationId: string;
-  isOwner: boolean;
-  moduleAccess: {
-    module: string;
-    access: string;
-  }[];
+  "email": "string",
+  "password": "string"
 }
 ```
 
-## 🎨 UI Components
+### Organization Endpoints
 
-### Layout
-- Compact sidebar (owner only)
-- Module-specific dashboards
-- Role-based navigation
-- Responsive design
+#### Get Organization Settings
+```http
+GET /api/organization/settings
+Authorization: Bearer <token>
+```
 
-### Features
-- Dark/light mode
-- Responsive tables
-- Dynamic forms
-- Real-time updates
+#### Update Organization Settings
+```http
+PATCH /api/organization/settings
+Authorization: Bearer <token>
+Content-Type: application/json
 
-## 🔍 Monitoring
+{
+  "settings": {
+    "theme": {},
+    "branding": {},
+    "modules": {}
+  }
+}
+```
 
-### Available Scripts
-- `check-users.ts`: Database state check
-- No seeding scripts
-- No data manipulation scripts
+## Security
 
-## 📈 Future Improvements
+### Authentication
+- JWT-based authentication
+- HTTP-only cookies
+- Secure password hashing
+- Session management
 
-1. **Module Marketplace**
-   - Additional module purchases
-   - Third-party integrations
-   - Custom module development
+### Authorization
+- Role-based access control
+- Module-level permissions
+- Organization-level isolation
 
-2. **Enhanced Compliance**
-   - More country support
-   - Automated tax calculations
-   - Legal requirement updates
+### Data Protection
+- Input validation
+- SQL injection prevention
+- XSS protection
+- CSRF protection
 
-3. **Advanced Analytics**
-   - Business intelligence
-   - Performance metrics
-   - Custom reports
+## Deployment
 
-## ⚖️ License
-Proprietary - All rights reserved 
+### Production Requirements
+- Node.js server
+- MongoDB database
+- SSL certificate
+- Environment variables
+- PM2 or similar process manager
+
+### Deployment Steps
+1. Build the application:
+```bash
+npm run build
+```
+
+2. Set up environment variables
+3. Configure SSL
+4. Start the server:
+```bash
+npm start
+```
+
+## Development Guidelines
+
+### Code Style
+- Follow TypeScript best practices
+- Use ESLint and Prettier
+- Write meaningful commit messages
+- Document complex logic
+
+### Testing
+- Write unit tests for utilities
+- Add integration tests for API endpoints
+- Test critical user flows
+- Maintain test coverage
+
+### Git Workflow
+1. Create feature branch
+2. Make changes
+3. Write tests
+4. Create pull request
+5. Code review
+6. Merge to main
+
+### Error Handling
+- Use try-catch blocks
+- Log errors appropriately
+- Return meaningful error messages
+- Implement error boundaries
+
+### Performance Optimization
+- Implement caching
+- Optimize database queries
+- Use pagination
+- Lazy load components
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a pull request
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Support
+
+For support, email [support@example.com] or create an issue in the repository. 

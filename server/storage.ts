@@ -11,26 +11,25 @@ dotenv.config()
 const mongoUri = process.env.MONGODB_URI
 
 export interface IUserDocument extends Document {
-  id?: number;
+  _id: Types.ObjectId;
   username: string;
   password: string;
-  role: typeof userRoles[number];
-  department: typeof departments[number];
+  role: string;
+  department: string;
   firstName: string;
   lastName: string;
   email: string;
   phoneNumber?: string | null;
-  // Allow organizationId to be either a string or a Mongoose ObjectId
-  organizationId: string | Types.ObjectId;
+  organizationId: Types.ObjectId;
   isOwner: boolean;
   createdAt: Date;
   updatedAt: Date;
-  moduleAccess?: string[];
-  permissions?: {
-    module: string;
-    actions: string[];
-  }[];
-  avatarUrl?: string | null;
+  permissions: { module: string; actions: string[] }[];
+  moduleAccess: string[];
+  position: string;
+  isActive: boolean;
+  lastLogin: Date;
+  modulePermissions: Record<string, string[]>;
 }
 
 export interface IOrganizationDocument extends Document {
@@ -80,9 +79,12 @@ export class DatabaseStorage implements IStorage {
     return await User.findOne({ username });
   }
 
-  async createUser(userData: any): Promise<IUserDocument> {
-    const user = new User(userData);
-    return await user.save();
+  async createUser(userData: Partial<IUserDocument>): Promise<IUserDocument> {
+    const user = new User({
+      ...userData,
+      permissions: userData.permissions || [{ module: 'default', actions: [] }]
+    });
+    return await user.save() as unknown as IUserDocument;
   }
 
   async getOrganization(id: string): Promise<IOrganizationDocument | null> {

@@ -341,6 +341,74 @@ export interface OrganizationSettings {
     retention: number;
     autoBackup: boolean;
   };
+  workingDays: string[];
+  workingHours: {
+    start: string;
+    end: string;
+  };
+  holidays: Array<{
+    name: string;
+    date: string;
+  }>;
+  customSettings?: Record<string, any>;
+  accounting?: {
+    fiscalYearStart: string;
+    fiscalYearEnd: string;
+    taxYearStart: string;
+    taxYearEnd: string;
+    currency: string;
+    taxRates: Record<string, number>;
+    chartOfAccounts?: Array<{
+      code: string;
+      name: string;
+      type: string;
+      category: string;
+      isActive: boolean;
+    }>;
+    reportingPeriods: string[];
+    taxJurisdictions: Array<{
+      name: string;
+      type: string;
+      rates: Record<string, number>;
+      filingDeadlines: string[];
+    }>;
+    compliance: {
+      requiredReports: string[];
+      filingDeadlines: Record<string, string[]>;
+      documentation: string[];
+    };
+  };
+  payroll?: {
+    paymentFrequency: 'weekly' | 'biweekly' | 'monthly';
+    paymentDay: number;
+    overtimeRate: number;
+    bonusStructure?: Record<string, number>;
+    deductions: Array<{
+      type: string;
+      rate: number;
+      threshold?: number;
+    }>;
+  };
+  benefits?: {
+    mandatory: Array<{
+      type: string;
+      provider: string;
+      coverage: string;
+      cost: {
+        employee: number;
+        employer: number;
+      };
+    }>;
+    optional: Array<{
+      type: string;
+      provider: string;
+      coverage: string;
+      cost: {
+        employee: number;
+        employer: number;
+      };
+    }>;
+  };
 }
 
 export interface Permission {
@@ -427,6 +495,8 @@ export type User = Omit<z.infer<typeof userSchema>, "role" | "createdAt" | "upda
     relationship?: string;
     phone?: string;
   };
+  department: string;
+  modulePermissions?: any[];
 };
 
 // ---------------------------------
@@ -499,7 +569,7 @@ export const organizationSettingsSchema = z.object({
   }),
   security: z.object({
     twoFactorAuth: z.boolean().default(false),
-    sessionTimeout: z.number().default(30), // minutes
+    sessionTimeout: z.number().default(30),
     passwordPolicy: z.object({
       minLength: z.number().default(8),
       requireSpecialChars: z.boolean().default(true),
@@ -513,9 +583,77 @@ export const organizationSettingsSchema = z.object({
   }),
   backup: z.object({
     frequency: z.enum(['daily', 'weekly', 'monthly']).default('daily'),
-    retention: z.number().default(30), // days
+    retention: z.number().default(30),
     autoBackup: z.boolean().default(true),
   }),
+  workingDays: z.array(z.string()).default([]),
+  workingHours: z.object({
+    start: z.string(),
+    end: z.string(),
+  }).default({ start: '09:00', end: '17:00' }),
+  holidays: z.array(z.object({
+    name: z.string(),
+    date: z.string(),
+  })).default([]),
+  customSettings: z.record(z.any()).optional(),
+  accounting: z.object({
+    fiscalYearStart: z.string(),
+    fiscalYearEnd: z.string(),
+    taxYearStart: z.string(),
+    taxYearEnd: z.string(),
+    currency: z.string(),
+    taxRates: z.record(z.number()),
+    chartOfAccounts: z.array(z.object({
+      code: z.string(),
+      name: z.string(),
+      type: z.string(),
+      category: z.string(),
+      isActive: z.boolean(),
+    })).optional(),
+    reportingPeriods: z.array(z.string()),
+    taxJurisdictions: z.array(z.object({
+      name: z.string(),
+      type: z.string(),
+      rates: z.record(z.number()),
+      filingDeadlines: z.array(z.string()),
+    })),
+    compliance: z.object({
+      requiredReports: z.array(z.string()),
+      filingDeadlines: z.record(z.array(z.string())),
+      documentation: z.array(z.string()),
+    }),
+  }).optional(),
+  payroll: z.object({
+    paymentFrequency: z.enum(['weekly', 'biweekly', 'monthly']),
+    paymentDay: z.number(),
+    overtimeRate: z.number(),
+    bonusStructure: z.record(z.number()).optional(),
+    deductions: z.array(z.object({
+      type: z.string(),
+      rate: z.number(),
+      threshold: z.number().optional(),
+    })),
+  }).optional(),
+  benefits: z.object({
+    mandatory: z.array(z.object({
+      type: z.string(),
+      provider: z.string(),
+      coverage: z.string(),
+      cost: z.object({
+        employee: z.number(),
+        employer: z.number(),
+      }),
+    })),
+    optional: z.array(z.object({
+      type: z.string(),
+      provider: z.string(),
+      coverage: z.string(),
+      cost: z.object({
+        employee: z.number(),
+        employer: z.number(),
+      }),
+    })),
+  }).optional(),
 });
 
 export const modules = [
@@ -655,3 +793,40 @@ export const modules = [
     description: 'Blockchain for secure transactions and digital currency payment options'
   }
 ] as const;
+
+// --- Types matching MongoDB organization object ---
+
+export type MongoOrganization = {
+  _id: string;
+  name: string;
+  type: string;
+  industry: string;
+  walletAddress?: string;
+  activeModules: string[];
+  maxModules: number;
+  settings?: MongoOrganizationSettings;
+  roles?: MongoRole[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type MongoRole = {
+  name: string;
+  description: string;
+  permissions: string[];
+  isSystem: boolean;
+  moduleAccess: { module: string; access: string }[];
+};
+
+export type MongoOrganizationSettings = {
+  theme?: Record<string, any>;
+  branding?: Record<string, any>;
+  modules?: Record<string, any>;
+  notifications?: Record<string, any>;
+  security?: Record<string, any>;
+  integrations?: Record<string, any>;
+  backup?: Record<string, any>;
+  legalCompliance?: Record<string, any>;
+  recommendedModules?: string[];
+  primaryModule?: string;
+};

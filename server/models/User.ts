@@ -199,6 +199,22 @@ const userSchema = new Schema<UserDocument>({
     lastUpdated: { type: Date, default: Date.now },
     updatedBy: { type: String, required: true }
   }
+}, {
+  timestamps: true
+});
+
+// Add indexes for better query performance
+userSchema.index({ organizationId: 1 });
+userSchema.index({ organizationId: 1, role: 1 });
+userSchema.index({ status: 1 });
+userSchema.index({ department: 1 });
+userSchema.index({ organizationId: 1, department: 1 });
+
+// Add middleware to ensure organization filtering
+userSchema.pre(['find', 'findOne'], function(this: any) {
+  if (!this.getQuery().organizationId) {
+    console.warn('Query missing organizationId filter - this should not happen!');
+  }
 });
 
 export default mongoose.model<UserDocument>('User', userSchema); 

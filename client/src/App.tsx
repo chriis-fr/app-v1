@@ -45,6 +45,7 @@ import SupportPage from '@/pages/support-page';
 import HRPage from '@/pages/hr';
 import HRInfoPage from '@/pages/modules/hr-info';
 import { HRReports } from './components/hr/HRReports';
+import AnalyticsPage from '@/pages/analytics';
 
 function App() {
   return (
@@ -126,6 +127,7 @@ function App() {
             <ProtectedRoute path="/dashboard/accounting/:module" component={AccountingModulePage} />
             <ProtectedRoute path="/dashboard/finance" component={FinancePage} />
             <ProtectedRoute path="/dashboard/finance/:module" component={FinanceModulePage} />
+            <ProtectedRoute path="/analytics" component={AnalyticsPage} />
             <Route component={NotFound} />
           </Switch>
           <Toaster />

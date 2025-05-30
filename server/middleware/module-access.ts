@@ -8,7 +8,7 @@ export const checkModuleAccess = (module: string) => {
     }
 
     // If user is owner, grant access to all modules
-    if (req.user.role === 'owner') {
+    if (req.user.isOwner) {
       return next();
     }
 

@@ -13,10 +13,7 @@ declare global {
         module: string;
         actions: string[];
       }[];
-      modulePermissions: {
-        module: string;
-        permissions: string[];
-      }[];
+      modulePermissions?: any[];
     }
     interface Request {
       user?: User;

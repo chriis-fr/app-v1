@@ -11,6 +11,10 @@ export function useRoleAccess() {
     return user?.role === 'admin';
   };
 
+  const isHR = () => {
+    return user?.department === 'HR';
+  };
+
   const canAccessDashboard = () => {
     return isOwner() || isAdmin();
   };
@@ -19,10 +23,41 @@ export function useRoleAccess() {
     return isOwner();
   };
 
+  const canAccessDepartment = (department: string) => {
+    if (isOwner()) return true;
+    if (isAdmin()) return user?.department === department;
+    return user?.department === department;
+  };
+
+  const canManageUsers = () => {
+    if (isOwner()) return true;
+    if (isAdmin()) return true;
+    if (isHR()) return true;
+    return false;
+  };
+
+  const canCreateUser = (targetDepartment: string) => {
+    if (isOwner()) return true;
+    if (isAdmin()) return user?.department === targetDepartment;
+    if (isHR()) return targetDepartment === 'HR';
+    return false;
+  };
+
+  const canAccessModule = (module: string) => {
+    if (isOwner()) return true;
+    if (!user?.moduleAccess) return false;
+    return user.moduleAccess.includes(module);
+  };
+
   return {
     isOwner,
     isAdmin,
+    isHR,
     canAccessDashboard,
-    canAccessCompactSidebar
+    canAccessCompactSidebar,
+    canAccessDepartment,
+    canManageUsers,
+    canCreateUser,
+    canAccessModule
   };
 } 
