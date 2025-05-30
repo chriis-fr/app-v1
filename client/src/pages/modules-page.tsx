@@ -465,9 +465,8 @@ export default function ModulesPage() {
     );
   }
   
-  const activeModules = (user?.role === 'owner' || user?.isOwner)
-    ? allModules.map(m => m.id)
-    : user?.organization?.activeModules || [];
+  // Always use organization activeModules for all users, including owners
+  const activeModules = user?.organization?.activeModules || [];
   
   const subscribedModules = allModules.filter(module => 
     activeModules.includes(module.id as any)
