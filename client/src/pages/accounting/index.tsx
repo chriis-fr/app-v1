@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/hooks/use-auth';
+import { useRoleAccess } from '@/hooks/use-role-access';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -141,6 +142,7 @@ export default function AccountingPage() {
   const [activeTab, setActiveTab] = useState('overview');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { canAccessCompactSidebar } = useRoleAccess();
 
   useEffect(() => {
     if (!authLoading) {
@@ -362,8 +364,8 @@ export default function AccountingPage() {
 
   return (
     <div className="flex">
-      <CompactSidebar />
-      <div className="flex-1 ml-20">
+      {canAccessCompactSidebar() && <CompactSidebar />}
+      <div className={`flex-1 ${canAccessCompactSidebar() ? 'ml-20' : ''}`}>
         {renderContent()}
       </div>
     </div>

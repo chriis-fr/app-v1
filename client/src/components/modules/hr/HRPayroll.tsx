@@ -30,7 +30,7 @@ export default function HRPayroll() {
     try {
       setLoading(true);
       // Fetch employees
-      const employeesResponse = await fetch('/api/mongodb/users');
+      const employeesResponse = await fetch('/api/hr/employees');
       if (!employeesResponse.ok) throw new Error('Failed to fetch employees');
       const employeesData = await employeesResponse.json();
       setEmployees(employeesData);

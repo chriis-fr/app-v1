@@ -28,6 +28,7 @@ import {
   Users,
   Activity
 } from 'lucide-react';
+import { useRoleAccess } from '@/hooks/use-role-access';
 
 const faqCategories = [
   {
@@ -162,6 +163,7 @@ export default function SupportPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [feedbackType, setFeedbackType] = useState('bug');
   const [feedbackPriority, setFeedbackPriority] = useState('medium');
+  const { canAccessCompactSidebar } = useRoleAccess();
 
   const handleSubmitSupportTicket = (e: React.FormEvent) => {
     e.preventDefault();
@@ -177,8 +179,8 @@ export default function SupportPage() {
 
   return (
     <div className="flex">
-      <CompactSidebar />
-      <div className="flex-1 ml-20 p-8">
+      {canAccessCompactSidebar() && <CompactSidebar />}
+      <div className={`flex-1 ${canAccessCompactSidebar() ? 'ml-20' : ''} p-8`}>
         <div className="max-w-6xl mx-auto">
           <div className="mb-8">
             <h1 className="text-3xl font-bold mb-2">Support Center</h1>

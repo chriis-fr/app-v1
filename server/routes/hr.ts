@@ -19,7 +19,14 @@ const isHRAdmin = (req: Request, res: Response, next: NextFunction) => {
 // Get all employees (HR admin only)
 router.get('/employees', isAuthenticated, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
   try {
-    const employees = await Employee.find()
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+    // Exclude owners and filter by organizationId
+    const employees = await Employee.find({
+      role: { $ne: 'owner' },
+      organizationId: req.user.organizationId
+    })
       .select('-password')
       .sort({ createdAt: -1 });
     res.json(employees);
@@ -53,16 +60,16 @@ router.get('/employees/:id', isAuthenticated, checkModuleAccess('hr'), async (re
 router.post('/employees', isAuthenticated, checkModuleAccess('hr'), isHRAdmin, async (req: Request, res: Response) => {
   try {
     const employee = new Employee({
-        ...req.body,
+      ...req.body,
       role: 'Employee',
-      status: 'Active'
-      });
-
-      await employee.save();
-      res.status(201).json(employee);
-    } catch (error) {
-      res.status(500).json({ message: 'Error creating employee' });
-    }
+      status: 'Active',
+      canLogin: req.body.canLogin ?? false // Default to false if not provided
+    });
+    await employee.save();
+    res.status(201).json(employee);
+  } catch (error) {
+    res.status(500).json({ message: 'Error creating employee' });
+  }
 });
 
 // Update employee (HR admin only)

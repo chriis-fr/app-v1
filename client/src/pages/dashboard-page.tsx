@@ -1,15 +1,17 @@
 import { useAuth } from '@/hooks/use-auth';
 import CompactSidebar from '@/components/layout/CompactSidebar';
 import BlockchainInsights from '@/components/modules/dashboard/BlockchainInsights';
+import { useRoleAccess } from '@/hooks/use-role-access';
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const activeModules = user?.organization?.activeModules || [];
+  const { canAccessCompactSidebar } = useRoleAccess();
 
   return (
     <div className="flex min-h-screen">
-      <CompactSidebar />
-      <div className="flex-1 p-8 ml-20">
+      {canAccessCompactSidebar() && <CompactSidebar />}
+      <div className={`flex-1 p-8 ${canAccessCompactSidebar() ? 'ml-20' : ''}`}>
         <h1 className="text-2xl font-bold mb-8">Dashboard</h1>
         
         {/* Display blockchain insights if the module is active */}

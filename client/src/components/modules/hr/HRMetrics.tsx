@@ -37,7 +37,7 @@ export default function HRMetrics() {
   const fetchMetrics = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/mongodb/users');
+      const response = await fetch('/api/hr/employees');
       if (!response.ok) throw new Error('Failed to fetch employee data');
       const employees: Employee[] = await response.json();
 

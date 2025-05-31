@@ -29,6 +29,7 @@ import {
   Lock,
   ArrowLeft
 } from 'lucide-react';
+import { useRoleAccess } from '@/hooks/use-role-access';
 
 interface ModuleInfo {
   id: string;
@@ -445,6 +446,7 @@ const allModules: ModuleInfo[] = [
 
 export default function ModulesPage() {
   const { user } = useAuth();
+  const { canAccessCompactSidebar } = useRoleAccess();
   const [, setLocation] = useLocation();
   
   // Check if user is admin
@@ -453,8 +455,7 @@ export default function ModulesPage() {
   if (!isAdmin) {
     return (
       <div className="flex min-h-screen">
-        <CompactSidebar />
-        <div className="flex-1 p-8 ml-20">
+        <div className="flex-1 p-8">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-red-600 mb-4">Access Denied</h1>
             <p className="text-gray-600 mb-4">You don't have permission to access this page.</p>
@@ -482,8 +483,8 @@ export default function ModulesPage() {
 
   return (
     <div className="flex min-h-screen">
-      <CompactSidebar />
-      <div className="flex-1 p-8 ml-20">
+      {canAccessCompactSidebar() && <CompactSidebar />}
+      <div className={`flex-1 p-8 ${canAccessCompactSidebar() ? 'ml-20' : ''}`}>
         <div className="flex items-center gap-4 mb-8">
           <Button
             variant="ghost"

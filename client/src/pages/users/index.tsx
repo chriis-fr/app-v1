@@ -73,12 +73,16 @@ export default function UsersPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    if (currentUser && currentUser.organization && currentUser.organization.id) {
+      fetchUsers();
+    }
+  }, [currentUser]);
 
   const fetchUsers = async () => {
+    if (!currentUser || !currentUser.organization || !currentUser.organization.id) return;
+    const orgId = currentUser.organization.id;
     try {
-      const response = await fetch('/api/mongodb/users');
+      const response = await fetch(`/api/mongodb/users?organizationId=${orgId}`);
       if (!response.ok) {
         throw new Error('Failed to fetch users');
       }
@@ -159,8 +163,8 @@ export default function UsersPage() {
     );
   });
 
-  // Only owner/admin can access
-  if (!currentUser || (currentUser.role !== 'owner' && currentUser.role !== 'admin')) {
+  // Only owner, admin, or HR admin can access
+  if (!currentUser || (currentUser.role !== 'owner' && currentUser.role !== 'admin' && currentUser.role !== 'hr_admin')) {
     setLocation('/dashboard');
     return null;
   }

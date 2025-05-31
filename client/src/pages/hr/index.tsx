@@ -45,7 +45,7 @@ export default function HRPage() {
 
   const fetchEmployees = async () => {
     try {
-      const response = await fetch('/api/mongodb/users');
+      const response = await fetch('/api/hr/employees');
       if (!response.ok) throw new Error('Failed to fetch employees');
       const data = await response.json();
       setEmployees(data);

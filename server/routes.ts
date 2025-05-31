@@ -935,64 +935,24 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
     }
   });
 
-  // Get actual users from MongoDB
-  app.get('/api/mongodb/users', isAuthenticated, async (req: Request, res: Response) => {
+  // Get users by organizationId (and optionally department/role) - no authentication
+  app.get('/api/mongodb/users', async (req, res) => {
     try {
-      const user = (req as unknown as AuthenticatedRequest).user;
-      console.log('/api/mongodb/users: req.user =', user);
-      if (!user) {
-        console.log('/api/mongodb/users: No user on request');
-        return res.status(401).json({ message: 'Unauthorized: No user on request' });
+      const { organizationId, department, role } = req.query;
+      if (!organizationId) {
+        return res.status(400).json({ message: 'organizationId is required' });
       }
-
-      // Parse permissions if string
-      if (typeof user.permissions === 'string') {
-        try {
-          user.permissions = JSON.parse(user.permissions);
-        } catch (e) {
-          user.permissions = [];
-        }
-      }
-
-      // For owners, set moduleAccess to all modules if missing/empty
-      if (user.isOwner && (!user.moduleAccess || user.moduleAccess.length === 0)) {
-        user.moduleAccess = [
-          'accounting', 'procurement', 'manufacturing', 'inventory', 'order_management', 'warehouse', 'supply_chain', 'crm', 'project_service', 'workforce', 'hr', 'ecommerce', 'marketing', 'pos', 'quality', 'maintenance', 'project', 'analytics', 'global_finance', 'international_trade', 'customer_experience', 'vendor_management', 'ai_analytics', 'ecommerce_global', 'localization', 'digital_currency'
-        ];
-      }
-
-      // Log the current user's organization for debugging
-      console.log('Current user organization:', user.organizationId);
-      // Log the full user object
-      console.dir(user, { depth: null, colors: true });
-
-      // Strict organization filtering
-      const query = {
-        organizationId: user.organizationId
-      };
-
-      // Log the query for debugging
-      console.log('User query:', query);
-
+      const query: any = { organizationId };
+      if (department) query.department = department;
+      if (role) query.role = role;
       const users = await UserModel.find(query, {
         password: 0, // Exclude password field
-        __v: 0 // Exclude version field
+        __v: 0
       });
-
-      // Log the number of users found
-      console.log('Number of users found:', users.length);
-
-      // Verify organization filtering by comparing string representations
-      const hasWrongOrg = users.some(u => u.organizationId.toString() !== user.organizationId.toString());
-      if (hasWrongOrg) {
-        console.error('SECURITY ALERT: Found users from different organization!');
-        return res.status(500).json({ message: "Security error: Data integrity violation" });
-      }
-
-      return res.json(users);
+      res.json(users);
     } catch (error) {
-      console.error('Error fetching users from MongoDB:', error);
-      return res.status(500).json({ message: "Failed to fetch users from database" });
+      console.error('Error fetching users:', error);
+      res.status(500).json({ message: 'Failed to fetch users' });
     }
   });
 

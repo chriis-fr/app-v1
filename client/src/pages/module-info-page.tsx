@@ -45,6 +45,7 @@ import InventoryInfoPage from './modules/inventory-info';
 import CRMInfoPage from './modules/crm-info';
 import AccountingInfoPage from './modules/accounting-info';
 import { useState } from 'react';
+import { useRoleAccess } from '@/hooks/use-role-access';
 
 // Dummy data for analytics
 const analyticsData = {
@@ -170,6 +171,7 @@ export default function ModuleInfoPage() {
   const { user } = useAuth();
   const [location, setLocation] = useLocation();
   const [currentView, setCurrentView] = useState<ViewType>('admin');
+  const { canAccessCompactSidebar } = useRoleAccess();
   
   // Extract module ID from URL - fix the extraction logic
   const pathParts = location.split('/');
@@ -181,8 +183,8 @@ export default function ModuleInfoPage() {
   if (!ModuleInfoComponent) {
     return (
       <div className="flex min-h-screen">
-        <CompactSidebar />
-        <div className="flex-1 p-8 ml-20">
+        {canAccessCompactSidebar() && <CompactSidebar />}
+        <div className={`flex-1 ${canAccessCompactSidebar() ? 'ml-20' : ''}`}>
           <div className="text-center">
             <h1 className="text-2xl font-bold text-red-600 mb-4">Module Not Found</h1>
             <p className="text-gray-600 mb-4">The requested module could not be found.</p>
@@ -195,8 +197,8 @@ export default function ModuleInfoPage() {
 
   return (
     <div className="flex min-h-screen">
-      <CompactSidebar />
-      <div className="flex-1 ml-20">
+      {canAccessCompactSidebar() && <CompactSidebar />}
+      <div className={`flex-1 ${canAccessCompactSidebar() ? 'ml-20' : ''}`}>
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
             <div className="flex items-center gap-4">

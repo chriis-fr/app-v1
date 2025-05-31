@@ -167,4 +167,46 @@ router.put('/:id/compensation', async (req: Request, res: Response) => {
   }
 });
 
+// When fetching users for HR, exclude owners
+router.get('/employees', async (req: Request, res: Response) => {
+  try {
+    // Exclude owners from employee list
+    const employees = await UserModel.find({ role: { $ne: 'owner' } });
+    res.json(employees);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching employees' });
+  }
+});
+
+// When creating a new user/employee, allow canLogin to be set (default false for non-login roles)
+router.post('/employees', async (req: Request, res: Response) => {
+  try {
+    const user = new UserModel({
+      ...req.body,
+      canLogin: req.body.canLogin ?? false // Default to false if not provided
+    });
+    await user.save();
+    res.status(201).json(user);
+  } catch (error) {
+    res.status(500).json({ message: 'Error creating employee' });
+  }
+});
+
+// When updating an employee, allow canLogin to be updated
+router.put('/employees/:id', async (req: Request, res: Response) => {
+  try {
+    const user = await UserModel.findByIdAndUpdate(
+      req.params.id,
+      { $set: req.body },
+      { new: true }
+    );
+    if (!user) {
+      return res.status(404).json({ message: 'Employee not found' });
+    }
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating employee' });
+  }
+});
+
 export default router; 
