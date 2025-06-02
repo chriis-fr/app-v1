@@ -306,7 +306,9 @@ const employeeSchema = new mongoose.Schema({
     content: { type: String, required: true },
     addedBy: { type: Schema.Types.ObjectId, ref: 'Employee', required: true },
     addedAt: { type: Date, default: Date.now }
-  }]
+  }],
+  canLogin: { type: Boolean, default: false },
+  role: { type: String, default: 'employee' },
 });
 
 // Add indexes for common queries

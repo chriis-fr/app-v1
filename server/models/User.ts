@@ -91,6 +91,8 @@ export interface UserDocument extends Document {
     lastUpdated: Date;
     updatedBy: string;
   };
+  canLogin: boolean;
+  isOwner: boolean;
 }
 
 const userSchema = new Schema<UserDocument>({
@@ -198,7 +200,9 @@ const userSchema = new Schema<UserDocument>({
     lifeInsurance: { type: Boolean, default: false },
     lastUpdated: { type: Date, default: Date.now },
     updatedBy: { type: String, required: true }
-  }
+  },
+  canLogin: { type: Boolean, default: true },
+  isOwner: { type: Boolean, default: false },
 }, {
   timestamps: true
 });

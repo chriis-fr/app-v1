@@ -12,7 +12,7 @@ export function useRoleAccess() {
   };
 
   const isHR = () => {
-    return user?.department === 'HR';
+    return user?.role === 'hr_admin' || user?.department === 'HR';
   };
 
   const canAccessDashboard = () => {

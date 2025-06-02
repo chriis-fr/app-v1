@@ -20,8 +20,11 @@ export default function Header() {
   // Check if user is admin
   const isAdmin = user?.role === 'admin' || user?.role === 'owner';
 
+  // Only owners get the left offset for double sidebar
+  const isOwner = user?.role === 'owner' || user?.isOwner;
+
   return (
-    <div className="h-16 bg-white border-b flex items-center justify-between px-4 sm:px-6 fixed top-0 left-0 sm:left-[336px] right-0 z-10">
+    <div className={`h-16 bg-white border-b flex items-center justify-between px-4 sm:px-6 fixed top-0 right-0 z-10 ${isOwner ? 'sm:left-[336px]' : 'sm:left-64'}`}>
       <div className="flex items-center gap-4">
         <Button
           variant="ghost"

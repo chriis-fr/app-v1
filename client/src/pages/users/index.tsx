@@ -54,6 +54,7 @@ interface User {
   phoneNumber?: string;
   organizationId: string;
   isOwner: boolean;
+  canLogin?: boolean;
   createdAt: string;
   updatedAt: string;
   status?: 'active' | 'inactive';
@@ -152,22 +153,20 @@ export default function UsersPage() {
     );
   };
 
-  const filteredUsers = users.filter(u => {
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      `${u.firstName} ${u.lastName}`.toLowerCase().includes(searchLower) ||
-      u.email.toLowerCase().includes(searchLower) ||
-      u.role.toLowerCase().includes(searchLower) ||
-      u.department.toLowerCase().includes(searchLower) ||
-      (u.phoneNumber && u.phoneNumber.toLowerCase().includes(searchLower))
-    );
-  });
-
   // Only owner, admin, or HR admin can access
   if (!currentUser || (currentUser.role !== 'owner' && currentUser.role !== 'admin' && currentUser.role !== 'hr_admin')) {
     setLocation('/dashboard');
     return null;
   }
+
+  // Only show users with canLogin: true
+  const filteredUsers = users.filter(u => u.canLogin !== false && (
+    `${u.firstName} ${u.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    u.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    u.department.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (u.phoneNumber && u.phoneNumber.toLowerCase().includes(searchTerm.toLowerCase()))
+  ));
 
   return (
     <ModuleLayout>
@@ -186,6 +185,10 @@ export default function UsersPage() {
             <Button onClick={() => setLocation('/users/new')}>
               <Plus className="mr-2 h-4 w-4" />
               Add User
+            </Button>
+            <Button variant="secondary" onClick={() => setLocation('/hr/new')}>
+              <User className="mr-2 h-4 w-4" />
+              Add Employee
             </Button>
           </div>
         </div>

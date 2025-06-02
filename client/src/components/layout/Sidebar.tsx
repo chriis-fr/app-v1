@@ -85,9 +85,21 @@ export default function Sidebar() {
 
   // Filter modules based on active subscriptions and user access
   const getActiveModules = (moduleList: typeof allModules.main) => {
-    return moduleList.filter(module => 
-      activeModules.includes(module.id as any) && 
-      (user?.isOwner || userModuleAccess.includes(module.id))
+    const normalizedActiveModules = activeModules.map((m: string) => m.toLowerCase());
+    const normalizedUserModuleAccess = userModuleAccess.map((m: string) => m.toLowerCase());
+
+    if (user?.isOwner) {
+      // Owner: show all organization modules
+      return moduleList.filter(module => normalizedActiveModules.includes(module.id.toLowerCase()));
+    }
+    if (user?.role === 'hr_admin' && (!userModuleAccess || userModuleAccess.length === 0)) {
+      // HR admin fallback: show all organization modules
+      return moduleList.filter(module => normalizedActiveModules.includes(module.id.toLowerCase()));
+    }
+    // All others: intersection of org modules and user.moduleAccess
+    return moduleList.filter(module =>
+      normalizedActiveModules.includes(module.id.toLowerCase()) &&
+      normalizedUserModuleAccess.includes(module.id.toLowerCase())
     );
   };
 
@@ -109,7 +121,7 @@ export default function Sidebar() {
     allModules.other.some(m => !activeModules.includes(m.id as any));
 
   return (
-    <div className="w-64 bg-white h-screen fixed left-20 border-r overflow-y-auto flex flex-col">
+    <div className="w-64 bg-white h-screen left-20 border-r overflow-y-auto flex flex-col">
       <div className="flex items-center gap-2 px-5 py-3 border-b">
         <div>
           <div className="text-xl text-gray-500">Chains ERP&trade;</div>

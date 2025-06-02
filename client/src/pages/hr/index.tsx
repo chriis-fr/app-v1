@@ -35,25 +35,32 @@ export default function HRPage() {
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    if (!user || !(user.role === 'owner' || user.isOwner || user.moduleAccess?.includes('hr'))) {
+    if (!user || !(user.role === 'owner' || user.role === 'hr_admin')) {
       setLocation('/dashboard');
       return;
     }
-
     fetchEmployees();
   }, [user]);
 
   const fetchEmployees = async () => {
     try {
-      const response = await fetch('/api/hr/employees');
-      if (!response.ok) throw new Error('Failed to fetch employees');
+      const response = await fetch('/api/hr/employees', { credentials: 'include' });
+      const contentType = response.headers.get('content-type');
+      if (!response.ok) {
+        throw new Error('Failed to fetch employees');
+      }
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        throw new Error('Expected JSON, got: ' + text.slice(0, 200));
+      }
       const data = await response.json();
-      setEmployees(data);
+      // Exclude owners if any slipped through
+      setEmployees(data.filter((emp: any) => emp.role !== 'owner'));
     } catch (error) {
       console.error('Error fetching employees:', error);
       toast({
         title: 'Error',
-        description: 'Failed to fetch employees',
+        description: String(error),
         variant: 'destructive',
       });
     } finally {

@@ -115,19 +115,23 @@ router.get('/', isAuthenticated, async (req: Request, res: Response, next: NextF
 
     const user = req.user as unknown as UserDocument;
     const { department } = req.query;
-    
-    // Log the current user's organization for debugging
-    console.log('Current user organization:', user.organizationId);
-    
+
+    // Only allow owners, admins, or HR admins
+    if (!(user.role === 'owner' || user.role === 'admin' || user.role === 'hr_admin')) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
     // Define query type
     interface UserQuery {
       organizationId: string;
       department?: string;
+      canLogin: boolean;
     }
-    
+
     // Strict organization filtering - this is the primary filter
     const query: UserQuery = {
-      organizationId: user.organizationId
+      organizationId: user.organizationId,
+      canLogin: true
     };
 
     // Add department filter only if needed
@@ -137,23 +141,10 @@ router.get('/', isAuthenticated, async (req: Request, res: Response, next: NextF
       query.department = department as string;
     }
 
-    // Log the query for debugging
-    console.log('User query:', query);
-
-    // Use findOneAndUpdate to ensure organization filter is applied
+    // Use find to ensure organization and canLogin filter is applied
     const users = await User.find(query)
       .select('-password')
       .lean();
-
-    // Log the number of users found
-    console.log('Number of users found:', users.length);
-
-    // Verify organization filtering
-    const hasWrongOrg = users.some(u => u.organizationId !== user.organizationId);
-    if (hasWrongOrg) {
-      console.error('SECURITY ALERT: Found users from different organization!');
-      return res.status(500).json({ message: "Security error: Data integrity violation" });
-    }
 
     // Sync with HR data
     const usersWithHRData = await Promise.all(users.map(async (user) => {
