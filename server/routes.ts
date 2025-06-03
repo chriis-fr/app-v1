@@ -1054,6 +1054,14 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
         prismaData.moduleAccess = userDataWithoutMongoFields.moduleAccess;
       }
 
+      // Before updating in Prisma, sanitize ObjectId fields
+      const objectIdFields = ['employeeId', 'managerId', 'organizationId'];
+      for (const field of objectIdFields) {
+        if ((prismaData as any)[field] === '') {
+          (prismaData as any)[field] = null;
+        }
+      }
+
       // Update in MongoDB first
       const updatedUserMongoose = await UserModel.findByIdAndUpdate(
         userId,

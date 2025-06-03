@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
@@ -9,6 +10,8 @@ const transporter = nodemailer.createTransport({
     pass: process.env.SMTP_PASS
   }
 });
+
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 export const sendEmail = async (to: string, subject: string, body: string) => {
   const mailOptions = {
@@ -131,4 +134,25 @@ export const sendTerminationRescindNotification = async (data: {
   `;
 
   return sendEmail(data.recipient, subject, body);
+};
+
+export const sendActivationEmail = async (email: string, token: string) => {
+  const link = `${process.env.APP_BASE_URL || 'http://localhost:5000'}/activate?token=${token}`;
+  const subject = 'Activate Your Account';
+  const html = `
+    <h1>Welcome!</h1>
+    <p>Your account is ready. Click the link below to set your password and activate your account:</p>
+    <a href="${link}">Activate Account</a>
+    <p>This link will expire in 2 days.</p>
+  `;
+  if (resend) {
+    await resend.emails.send({
+      from: process.env.SMTP_FROM || 'hr@yourdomain.com',
+      to: email,
+      subject,
+      html
+    });
+  } else {
+    await sendEmail(email, subject, html);
+  }
 }; 

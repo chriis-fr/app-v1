@@ -23,10 +23,14 @@ router.get('/employees', isAuthenticated, checkModuleAccess('hr'), isHRAdminOrOw
       return res.status(401).json({ message: 'Unauthorized' });
     }
     // Exclude owners and filter by organizationId
-    const employees = await Employee.find({
+    const query: any = {
       role: { $ne: 'owner' },
       organizationId: req.user.organizationId
-    })
+    };
+    if (typeof req.query.canLogin !== 'undefined') {
+      query.canLogin = req.query.canLogin === 'true';
+    }
+    const employees = await Employee.find(query)
       .select('-password')
       .sort({ createdAt: -1 });
     res.json(employees);
@@ -35,23 +39,61 @@ router.get('/employees', isAuthenticated, checkModuleAccess('hr'), isHRAdminOrOw
   }
 });
 
-// Get employee by ID (HR admin or self)
+// Get employee by ID (HR admin, owner, or self)
 router.get('/employees/:id', isAuthenticated, checkModuleAccess('hr'), async (req: Request, res: Response) => {
   try {
-    // Allow HR admins to view any employee, or users to view their own profile
-    if (!req.user || (req.user.role !== 'hr_admin' && req.user.id !== req.params.id)) {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+    // Allow HR admins, owners, or self
+    const canView = req.user.role === 'hr_admin' || req.user.isOwner || req.user.id === req.params.id;
+    if (!canView) {
       return res.status(403).json({ message: 'Access denied' });
     }
-
-    const employee = await Employee.findById(req.params.id)
-      .select('-password');
-    
-    if (!employee) {
+    // Strict organization filtering
+    const employee = await Employee.findOne({
+      _id: req.params.id,
+      organizationId: req.user.organizationId
+    })
+      .select('-password')
+      .lean();
+    if (!employee || typeof employee !== 'object' || Array.isArray(employee)) {
       return res.status(404).json({ message: 'Employee not found' });
     }
-
-    res.json(employee);
+    // Try to find the linked user (if any)
+    let user = null;
+    if (employee.employeeNumber && typeof employee.employeeNumber === 'string') {
+      try {
+        user = await require('../models/User').default.findOne({
+          employeeId: employee.employeeNumber,
+          organizationId: req.user.organizationId
+        }).select('-password').lean();
+      } catch (userErr) {
+        user = null;
+      }
+    }
+    // Merge employee and user data for frontend compatibility
+    const employeeWithUserData = {
+      ...employee,
+      user: user ? {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        department: user.department,
+        position: user.position,
+        status: user.status,
+        canLogin: user.canLogin,
+        isActive: user.isActive,
+        emailVerified: user.emailVerified,
+        moduleAccess: user.moduleAccess,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt
+      } : null
+    };
+    res.json(employeeWithUserData);
   } catch (error) {
+    console.error('Error fetching employee:', error);
     res.status(500).json({ message: 'Error fetching employee' });
   }
 });
@@ -112,14 +154,22 @@ router.get('/employees/:id/attendance', isAuthenticated, checkModuleAccess('hr')
     if (!req.user) {
       return res.status(401).json({ message: 'User not authenticated' });
     }
-    const attendance = await Attendance.find({
-      employeeId: req.params.id,
-      organizationId: req.user.organizationId
-    });
-      res.json(attendance);
-    } catch (error) {
-    res.status(500).json({ message: 'Error fetching attendance' });
+    let attendance = [];
+    try {
+      attendance = await Attendance.find({
+        employeeId: req.params.id,
+        organizationId: req.user.organizationId
+      });
+      if (!attendance) attendance = [];
+    } catch (err) {
+      console.error('Error fetching attendance:', err);
+      attendance = [];
     }
+    res.json(attendance);
+  } catch (error) {
+    console.error('Error fetching attendance:', error);
+    res.status(500).json({ message: 'Error fetching attendance' });
+  }
 });
 
 // Record attendance
@@ -145,14 +195,22 @@ router.get('/employees/:id/payroll', isAuthenticated, checkModuleAccess('hr'), a
     if (!req.user) {
       return res.status(401).json({ message: 'User not authenticated' });
     }
-    const payroll = await Payroll.find({
-      employeeId: req.params.id,
-      organizationId: req.user.organizationId
-    });
+    let payroll = [];
+    try {
+      payroll = await Payroll.find({
+        employeeId: req.params.id,
+        organizationId: req.user.organizationId
+      });
+      if (!payroll) payroll = [];
+    } catch (err) {
+      console.error('Error fetching payroll:', err);
+      payroll = [];
+    }
     res.json(payroll);
   } catch (error) {
+    console.error('Error fetching payroll:', error);
     res.status(500).json({ message: 'Error fetching payroll' });
-    }
+  }
 });
 
 // Create payroll record
@@ -605,6 +663,36 @@ router.post('/employees/:id/dependents/:dependentId/verify', isAuthenticated, ch
   } catch (error) {
     res.status(500).json({ message: 'Error verifying dependent' });
     }
+});
+
+// Get all payroll records (HR admin or owner only)
+router.get('/payroll', isAuthenticated, checkModuleAccess('hr'), isHRAdminOrOwner, async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+    const payroll = await Payroll.find({
+      organizationId: req.user.organizationId
+    });
+    res.json(payroll);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching payroll records' });
+  }
+});
+
+// Get all attendance records (HR admin or owner only)
+router.get('/attendance', isAuthenticated, checkModuleAccess('hr'), isHRAdminOrOwner, async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+    const attendance = await Attendance.find({
+      organizationId: req.user.organizationId
+    });
+    res.json(attendance);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching attendance records' });
+  }
 });
 
 export default router; 

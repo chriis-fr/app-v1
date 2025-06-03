@@ -104,6 +104,7 @@
     "react-router-dom": "^7.6.0",
     "readable-stream": "^4.7.0",
     "recharts": "^2.15.2",
+    "resend": "^4.5.1",
     "sonner": "^2.0.3",
     "swr": "^2.3.3",
     "tailwind-merge": "^2.5.4",

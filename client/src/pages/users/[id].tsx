@@ -25,11 +25,15 @@ import {
   Globe,
   Clock,
   Users,
-  Key
+  Key,
+  Copy,
+  Trash,
+  Wallet
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { CredentialVerification } from '@/components/hr/CredentialVerification';
 import { SkillMatching } from '@/components/hr/SkillMatching';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface User {
   id: string;
@@ -177,6 +181,26 @@ const moduleDisplayInfo = {
   digital_currency: { name: 'Digital Currency', description: 'Digital currency and blockchain' }
 };
 
+// Modern horizontal stepper with icons and progress
+const stepIcons = [
+  User, Briefcase, MapPin, Users, CreditCard, FileText, Globe, Key, Building, Save, Shield
+];
+
+/* Hide horizontal scrollbar utility */
+if (typeof window !== 'undefined') {
+  const style = document.createElement('style');
+  style.innerHTML = `
+    .hide-scrollbar {
+      scrollbar-width: none; /* Firefox */
+      -ms-overflow-style: none; /* IE 10+ */
+    }
+    .hide-scrollbar::-webkit-scrollbar {
+      display: none; /* Chrome/Safari/Webkit */
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 export default function EditUserPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -186,12 +210,94 @@ export default function EditUserPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const [basicInfo, setBasicInfo] = useState({
+    username: '',
+    firstName: '',
+    lastName: '',
+    email: '',
+    phoneNumber: '',
+    employeeId: '',
+  });
+  const [professionalInfo, setProfessionalInfo] = useState({
+    role: '',
+    department: '',
+    position: '',
+    team: '',
+    hireDate: '',
+    managerId: '',
+  });
+  const [locationInfo, setLocationInfo] = useState({
+    office: '',
+    floor: '',
+    deskNumber: '',
+  });
+  const [workSchedule, setWorkSchedule] = useState({
+    startTime: '',
+    endTime: '',
+    timezone: '',
+  });
+  const [emergencyContact, setEmergencyContact] = useState({
+    name: '',
+    relationship: '',
+    phone: '',
+  });
+  const [status, setStatus] = useState('active');
+  const [step, setStep] = useState(0);
+  const [moduleAccess, setModuleAccess] = useState<string[]>([]);
+  const steps = [
+    'Basic & Professional Info',
+    'Location, Work & Emergency',
+    'Compensation, Benefits & Wallet',
+    'Skills, Certifications, Education & Equipment',
+    'Address & Documents',
+    'Status, Verification & Executive Info',
+    'Module Access',
+    'Blockchain & AI',
+  ];
 
   useEffect(() => {
     if (userId) {
       fetchUser();
     }
   }, [userId]);
+
+  useEffect(() => {
+    if (user) {
+      setBasicInfo({
+        username: user.username,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        phoneNumber: user.phoneNumber || '',
+        employeeId: user.id || '',
+      });
+      setProfessionalInfo({
+        role: user.role,
+        department: user.department,
+        position: user.position || '',
+        team: user.team || '',
+        hireDate: user.hireDate || '',
+        managerId: user.managerId || '',
+      });
+      setLocationInfo({
+        office: user.location?.office || '',
+        floor: user.location?.floor || '',
+        deskNumber: user.location?.deskNumber || '',
+      });
+      setWorkSchedule({
+        startTime: user.workSchedule?.startTime || '',
+        endTime: user.workSchedule?.endTime || '',
+        timezone: user.workSchedule?.timezone || '',
+      });
+      setEmergencyContact({
+        name: user.emergencyContact?.name || '',
+        relationship: user.emergencyContact?.relationship || '',
+        phone: user.emergencyContact?.phone || '',
+      });
+      setStatus(user.status || 'active');
+      setModuleAccess(Array.isArray(user.moduleAccess) ? user.moduleAccess : []);
+    }
+  }, [user]);
 
   const fetchUser = async () => {
     try {
@@ -346,6 +452,160 @@ export default function EditUserPage() {
     }
   };
 
+  const handleBasicInfoSave = async () => {
+    if (!user) return;
+    setIsSaving(true);
+    try {
+      const updateData = {
+        username: basicInfo.username,
+        firstName: basicInfo.firstName,
+        lastName: basicInfo.lastName,
+        email: basicInfo.email,
+        phoneNumber: basicInfo.phoneNumber,
+      };
+      const response = await fetch(`/api/mongodb/users/${userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updateData),
+      });
+      if (!response.ok) throw new Error('Failed to update user');
+      const updatedUser = await response.json();
+      setUser({ ...user, ...updatedUser });
+      toast({ title: 'Success', description: 'Basic info updated.' });
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to update basic info', variant: 'destructive' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleProfessionalInfoSave = async () => {
+    if (!user) return;
+    setIsSaving(true);
+    try {
+      const updateData = { ...professionalInfo };
+      const response = await fetch(`/api/mongodb/users/${userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updateData),
+      });
+      if (!response.ok) throw new Error('Failed to update user');
+      const updatedUser = await response.json();
+      setUser({ ...user, ...updatedUser });
+      toast({ title: 'Success', description: 'Professional info updated.' });
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to update professional info', variant: 'destructive' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleLocationInfoSave = async () => {
+    if (!user) return;
+    setIsSaving(true);
+    try {
+      const updateData = { location: locationInfo };
+      const response = await fetch(`/api/mongodb/users/${userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updateData),
+      });
+      if (!response.ok) throw new Error('Failed to update user');
+      const updatedUser = await response.json();
+      setUser({ ...user, ...updatedUser });
+      toast({ title: 'Success', description: 'Location info updated.' });
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to update location info', variant: 'destructive' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleWorkScheduleSave = async () => {
+    if (!user) return;
+    setIsSaving(true);
+    try {
+      const updateData = { workSchedule };
+      const response = await fetch(`/api/mongodb/users/${userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updateData),
+      });
+      if (!response.ok) throw new Error('Failed to update user');
+      const updatedUser = await response.json();
+      setUser({ ...user, ...updatedUser });
+      toast({ title: 'Success', description: 'Work schedule updated.' });
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to update work schedule', variant: 'destructive' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleEmergencyContactSave = async () => {
+    if (!user) return;
+    setIsSaving(true);
+    try {
+      const updateData = { emergencyContact };
+      const response = await fetch(`/api/mongodb/users/${userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updateData),
+      });
+      if (!response.ok) throw new Error('Failed to update user');
+      const updatedUser = await response.json();
+      setUser({ ...user, ...updatedUser });
+      toast({ title: 'Success', description: 'Emergency contact updated.' });
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to update emergency contact', variant: 'destructive' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleStatusSave = async () => {
+    if (!user) return;
+    setIsSaving(true);
+    try {
+      const updateData = { status };
+      const response = await fetch(`/api/mongodb/users/${userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updateData),
+      });
+      if (!response.ok) throw new Error('Failed to update user');
+      const updatedUser = await response.json();
+      setUser({ ...user, ...updatedUser });
+      toast({ title: 'Success', description: 'Status updated.' });
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to update status', variant: 'destructive' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleModuleAccessSave = async () => {
+    if (!user) return;
+    setIsSaving(true);
+    try {
+      const updateData = { moduleAccess };
+      const response = await fetch(`/api/mongodb/users/${userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updateData),
+      });
+      if (!response.ok) throw new Error('Failed to update module access');
+      const updatedUser = await response.json();
+      setUser({ ...user, ...updatedUser });
+      setModuleAccess(Array.isArray(updatedUser.moduleAccess) ? updatedUser.moduleAccess : []);
+      toast({ title: 'Success', description: 'Module access updated.' });
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to update module access', variant: 'destructive' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   // Only owner and admin can access this page
   if (!currentUser || (currentUser.role !== 'owner' && currentUser.role !== 'admin')) {
     setLocation('/dashboard');
@@ -372,115 +632,151 @@ export default function EditUserPage() {
     );
   }
 
+  const educationList = Array.isArray(user?.education) ? user.education : [];
+  const walletData = user?.wallet && typeof user.wallet === 'object'
+    ? {
+        balance: typeof user.wallet.balance === 'number' ? user.wallet.balance : 0,
+        currency: typeof user.wallet.currency === 'string' ? user.wallet.currency : '',
+        bankAccounts: Array.isArray(user.wallet.bankAccounts) ? user.wallet.bankAccounts : []
+      }
+    : { balance: 0, currency: '', bankAccounts: [] };
+
+  const legalDetailsData = user?.legalDetails && typeof user.legalDetails === 'object'
+    ? {
+        taxId: typeof user.legalDetails.taxId === 'string' ? user.legalDetails.taxId : '',
+        businessType: typeof user.legalDetails.businessType === 'string' ? user.legalDetails.businessType : '',
+        registrationNumber: typeof user.legalDetails.registrationNumber === 'string' ? user.legalDetails.registrationNumber : '',
+        incorporationDate: typeof user.legalDetails.incorporationDate === 'string' ? user.legalDetails.incorporationDate : ''
+      }
+    : { taxId: '', businessType: '', registrationNumber: '', incorporationDate: '' };
+
+  const addressData = user?.address && typeof user.address === 'object'
+    ? {
+        street: typeof user.address.street === 'string' ? user.address.street : '',
+        city: typeof user.address.city === 'string' ? user.address.city : '',
+        state: typeof user.address.state === 'string' ? user.address.state : '',
+        country: typeof user.address.country === 'string' ? user.address.country : '',
+        postalCode: typeof user.address.postalCode === 'string' ? user.address.postalCode : '',
+        isBillingAddress: typeof user.address.isBillingAddress === 'boolean' ? user.address.isBillingAddress : false,
+        isShippingAddress: typeof user.address.isShippingAddress === 'boolean' ? user.address.isShippingAddress : false
+      }
+    : { street: '', city: '', state: '', country: '', postalCode: '', isBillingAddress: false, isShippingAddress: false };
+
+  const documentsList = Array.isArray(user?.documents) ? user.documents : [];
+
   return (
     <ModuleLayout>
       <div className="container mx-auto py-6">
-        <div className="flex items-center space-x-4 mb-6">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setLocation('/users')}
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Users
-          </Button>
-          <h1 className="text-2xl font-bold">Edit User</h1>
+        {/* Modern Stepper Navigation */}
+        <div className="sticky top-0 z-10 bg-white pb-4 mb-6 border-b border-gray-200 shadow-sm">
+          <div className="overflow-hidden max-w-full  hide-scrollbar">
+            <div className="flex flex-wrap md:flex-nowrap items-center justify-between gap-x-7 max-w-screen-lg mx-auto px-2 md:px-6">
+              {steps.map((label, idx) => {
+                const Icon = stepIcons[idx] || User;
+                const isActive = step === idx;
+                const isCompleted = step > idx;
+                return (
+                  <div key={label} className="flex-shrink-0 flex flex-col items-center min-w-[90px] md:min-w-[110px] max-w-[140px] px-2 md:px-4 relative">
+                    <button
+                      className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-colors duration-200
+                        ${isActive ? 'bg-primary text-white border-primary shadow-lg' : isCompleted ? 'bg-primary/10 text-primary border-primary/50' : 'bg-gray-100 text-gray-400 border-gray-200 hover:bg-primary/10 hover:text-primary'}
+                      `}
+                      onClick={() => setStep(idx)}
+                      aria-label={label}
+                    >
+                      <Icon className="w-5 h-5" />
+                    </button>
+                    <span className={`mt-2 text-xs font-medium text-center break-words ${isActive ? 'text-primary' : 'text-gray-500'}`}>{label}</span>
+                    {/* Progress bar */}
+                    {idx < steps.length - 1 && (
+                      <div className={`absolute top-5 left-full w-full h-1 z-0 ${isCompleted ? 'bg-primary' : 'bg-gray-200'}`} style={{ right: '-50%', left: '50%' }} />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Basic Information */}
+        {/* Step Content */}
+        {step === 0 && (
           <Card>
             <div className="p-6 space-y-4">
               <h2 className="text-lg font-semibold flex items-center">
                 <User className="mr-2 h-5 w-5" />
-                Basic Information
+                Basic & Professional Information
               </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
                   <Label htmlFor="username">Username</Label>
                   <Input
                     id="username"
-                    value={user.username}
-                    onChange={(e) => setUser({ ...user, username: e.target.value })}
+                    value={basicInfo.username}
+                    onChange={(e) => setBasicInfo({ ...basicInfo, username: e.target.value })}
                     required
                   />
                 </div>
-
-                <div className="space-y-2">
+                <div className="space-y-2 relative">
                   <Label htmlFor="employeeId">Employee ID</Label>
                   <Input
                     id="employeeId"
-                    value={user.employeeId || ''}
-                    onChange={(e) => setUser({ ...user, employeeId: e.target.value })}
+                    value={basicInfo.employeeId}
+                    readOnly
+                    disabled
                   />
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="absolute right-2 top-7"
+                    onClick={() => {
+                      navigator.clipboard.writeText(basicInfo.employeeId);
+                      toast({ title: 'Copied', description: 'Employee ID copied to clipboard.' });
+                    }}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
                 </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="firstName">First Name</Label>
                   <Input
                     id="firstName"
-                    value={user.firstName}
-                    onChange={(e) => setUser({ ...user, firstName: e.target.value })}
+                    value={basicInfo.firstName}
+                    onChange={(e) => setBasicInfo({ ...basicInfo, firstName: e.target.value })}
                     required
                   />
                 </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="lastName">Last Name</Label>
-              <Input
+                  <Input
                     id="lastName"
-                    value={user.lastName}
-                    onChange={(e) => setUser({ ...user, lastName: e.target.value })}
-                    required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                    value={user.email}
-                    onChange={(e) => setUser({ ...user, email: e.target.value })}
+                    value={basicInfo.lastName}
+                    onChange={(e) => setBasicInfo({ ...basicInfo, lastName: e.target.value })}
                     required
                   />
                 </div>
-
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={basicInfo.email}
+                    onChange={(e) => setBasicInfo({ ...basicInfo, email: e.target.value })}
+                    required
+                  />
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="phoneNumber">Phone Number</Label>
                   <Input
                     id="phoneNumber"
-                    value={user.phoneNumber || ''}
-                    onChange={(e) => setUser({ ...user, phoneNumber: e.target.value })}
+                    value={basicInfo.phoneNumber}
+                    onChange={(e) => setBasicInfo({ ...basicInfo, phoneNumber: e.target.value })}
                   />
                 </div>
-
                 <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="Leave blank to keep current password"
-                    onChange={(e) => setUser({ ...user, password: e.target.value })}
-                  />
-                </div>
-              </div>
-            </div>
-          </Card>
-
-          {/* Professional Information */}
-          <Card>
-            <div className="p-6 space-y-4">
-              <h2 className="text-lg font-semibold flex items-center">
-                <Briefcase className="mr-2 h-5 w-5" />
-                Professional Information
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="role">Role</Label>
-              <Select
-                    value={user.role}
-                    onValueChange={(value) => setUser({ ...user, role: value })}
+                  <Label htmlFor="role">Role</Label>
+                  <Select
+                    value={professionalInfo.role}
+                    onValueChange={(value) => setProfessionalInfo({ ...professionalInfo, role: value })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select role" />
@@ -492,14 +788,13 @@ export default function EditUserPage() {
                         </SelectItem>
                       ))}
                     </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="department">Department</Label>
-              <Select
-                    value={user.department}
-                    onValueChange={(value) => setUser({ ...user, department: value })}
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="department">Department</Label>
+                  <Select
+                    value={professionalInfo.department}
+                    onValueChange={(value) => setProfessionalInfo({ ...professionalInfo, department: value })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select department" />
@@ -511,202 +806,461 @@ export default function EditUserPage() {
                         </SelectItem>
                       ))}
                     </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="position">Position</Label>
-              <Input
-                id="position"
-                    value={user.position}
-                    onChange={(e) => setUser({ ...user, position: e.target.value })}
-              />
-            </div>
-
-              <div className="space-y-2">
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="position">Position</Label>
+                  <Input
+                    id="position"
+                    value={professionalInfo.position}
+                    onChange={(e) => setProfessionalInfo({ ...professionalInfo, position: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="team">Team</Label>
-                <Input
+                  <Input
                     id="team"
-                    value={user.team || ''}
-                    onChange={(e) => setUser({ ...user, team: e.target.value })}
-                />
-              </div>
-
-              <div className="space-y-2">
+                    value={professionalInfo.team}
+                    onChange={(e) => setProfessionalInfo({ ...professionalInfo, team: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="hireDate">Hire Date</Label>
                   <Input
                     id="hireDate"
                     type="date"
-                    value={user.hireDate || ''}
-                    onChange={(e) => setUser({ ...user, hireDate: e.target.value })}
+                    value={professionalInfo.hireDate}
+                    onChange={(e) => setProfessionalInfo({ ...professionalInfo, hireDate: e.target.value })}
                   />
                 </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="managerId">Manager ID</Label>
                   <Input
                     id="managerId"
-                    value={user.managerId || ''}
-                    onChange={(e) => setUser({ ...user, managerId: e.target.value })}
+                    value={professionalInfo.managerId}
+                    onChange={(e) => setProfessionalInfo({ ...professionalInfo, managerId: e.target.value })}
                   />
                 </div>
+              </div>
+              <div className="flex justify-between pt-4">
+                <div />
+                <Button type="button" onClick={handleBasicInfoSave} disabled={isSaving}>
+                  {isSaving ? 'Saving...' : 'Save'}
+                </Button>
+                <Button type="button" onClick={() => setStep(step + 1)}>
+                  Next
+                </Button>
+              </div>
             </div>
-          </div>
-        </Card>
-
-          {/* Location Information */}
+          </Card>
+        )}
+        {step === 1 && (
           <Card>
             <div className="p-6 space-y-4">
               <h2 className="text-lg font-semibold flex items-center">
                 <MapPin className="mr-2 h-5 w-5" />
-                Location Information
+                Location, Work & Emergency
               </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
                   <Label htmlFor="office">Office</Label>
-              <Input
+                  <Input
                     id="office"
-                    value={user.location?.office || ''}
-                    onChange={(e) => setUser({ 
-                      ...user, 
-                      location: { ...user.location, office: e.target.value } 
-                })}
-              />
-            </div>
-
-            <div className="space-y-2">
+                    value={locationInfo.office}
+                    onChange={(e) => setLocationInfo({ ...locationInfo, office: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="floor">Floor</Label>
-              <Input
+                  <Input
                     id="floor"
-                    value={user.location?.floor || ''}
-                    onChange={(e) => setUser({ 
-                      ...user, 
-                      location: { ...user.location, floor: e.target.value } 
-                })}
-              />
-            </div>
-
-            <div className="space-y-2">
+                    value={locationInfo.floor}
+                    onChange={(e) => setLocationInfo({ ...locationInfo, floor: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="deskNumber">Desk Number</Label>
-              <Input
+                  <Input
                     id="deskNumber"
-                    value={user.location?.deskNumber || ''}
-                    onChange={(e) => setUser({ 
-                      ...user, 
-                      location: { ...user.location, deskNumber: e.target.value } 
-                })}
-              />
-            </div>
-            </div>
-          </div>
-        </Card>
-
-          {/* Work Schedule */}
-          <Card>
-            <div className="p-6 space-y-4">
-              <h2 className="text-lg font-semibold flex items-center">
-                <Clock className="mr-2 h-5 w-5" />
-                Work Schedule
-              </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
+                    value={locationInfo.deskNumber}
+                    onChange={(e) => setLocationInfo({ ...locationInfo, deskNumber: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="startTime">Start Time</Label>
-              <Input
+                  <Input
                     id="startTime"
                     type="time"
-                    value={user.workSchedule?.startTime || ''}
-                    onChange={(e) => setUser({ 
-                      ...user, 
-                      workSchedule: { ...user.workSchedule, startTime: e.target.value } 
-                })}
-              />
-            </div>
-
-            <div className="space-y-2">
+                    value={workSchedule.startTime}
+                    onChange={(e) => setWorkSchedule({ ...workSchedule, startTime: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="endTime">End Time</Label>
-              <Input
+                  <Input
                     id="endTime"
                     type="time"
-                    value={user.workSchedule?.endTime || ''}
-                    onChange={(e) => setUser({ 
-                      ...user, 
-                      workSchedule: { ...user.workSchedule, endTime: e.target.value } 
-                })}
-              />
-            </div>
-
-            <div className="space-y-2">
+                    value={workSchedule.endTime}
+                    onChange={(e) => setWorkSchedule({ ...workSchedule, endTime: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="timezone">Timezone</Label>
-              <Input
+                  <Input
                     id="timezone"
-                    value={user.workSchedule?.timezone || ''}
-                    onChange={(e) => setUser({ 
-                      ...user, 
-                      workSchedule: { ...user.workSchedule, timezone: e.target.value } 
-                })}
-              />
-            </div>
+                    value={workSchedule.timezone}
+                    onChange={(e) => setWorkSchedule({ ...workSchedule, timezone: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="flex justify-between pt-4">
+                <Button type="button" onClick={() => setStep(step - 1)}>
+                  Back
+                </Button>
+                <Button type="button" onClick={handleLocationInfoSave} disabled={isSaving}>
+                  {isSaving ? 'Saving...' : 'Save'}
+                </Button>
+                <Button type="button" onClick={() => setStep(step + 1)}>
+                  Next
+                </Button>
               </div>
             </div>
           </Card>
-
-          {/* Emergency Contact */}
+        )}
+        {step === 2 && (
+          <Card>
+            <div className="p-6 space-y-4">
+              <h2 className="text-lg font-semibold flex items-center">
+                <CreditCard className="mr-2 h-5 w-5" />
+                Compensation, Benefits & Wallet
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="baseSalary">Base Salary</Label>
+                  <Input
+                    id="baseSalary"
+                    type="number"
+                    value={user.compensation?.baseSalary}
+                    onChange={(e) => setUser({ ...user, compensation: { ...user.compensation, baseSalary: Number(e.target.value) } })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="bonus">Bonus</Label>
+                  <Input
+                    id="bonus"
+                    type="number"
+                    value={user.compensation?.bonus}
+                    onChange={(e) => setUser({ ...user, compensation: { ...user.compensation, bonus: Number(e.target.value) } })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="stockOptions">Stock Options</Label>
+                  <Input
+                    id="stockOptions"
+                    type="number"
+                    value={user.compensation?.stockOptions}
+                    onChange={(e) => setUser({ ...user, compensation: { ...user.compensation, stockOptions: Number(e.target.value) } })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="currency">Currency</Label>
+                  <Input
+                    id="currency"
+                    value={user.compensation?.currency}
+                    onChange={(e) => setUser({ ...user, compensation: { ...user.compensation, currency: e.target.value } })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="healthInsurance">Health Insurance</Label>
+                  <Input
+                    id="healthInsurance"
+                    type="checkbox"
+                    checked={user.benefits?.healthInsurance}
+                    onChange={(e) => setUser({ ...user, benefits: { ...user.benefits, healthInsurance: e.target.checked } })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="dentalInsurance">Dental Insurance</Label>
+                  <Input
+                    id="dentalInsurance"
+                    type="checkbox"
+                    checked={user.benefits?.dentalInsurance}
+                    onChange={(e) => setUser({ ...user, benefits: { ...user.benefits, dentalInsurance: e.target.checked } })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="visionInsurance">Vision Insurance</Label>
+                  <Input
+                    id="visionInsurance"
+                    type="checkbox"
+                    checked={user.benefits?.visionInsurance}
+                    onChange={(e) => setUser({ ...user, benefits: { ...user.benefits, visionInsurance: e.target.checked } })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="retirementPlan">Retirement Plan</Label>
+                  <Input
+                    id="retirementPlan"
+                    type="checkbox"
+                    checked={user.benefits?.retirementPlan}
+                    onChange={(e) => setUser({ ...user, benefits: { ...user.benefits, retirementPlan: e.target.checked } })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lifeInsurance">Life Insurance</Label>
+                  <Input
+                    id="lifeInsurance"
+                    type="checkbox"
+                    checked={user.benefits?.lifeInsurance}
+                    onChange={(e) => setUser({ ...user, benefits: { ...user.benefits, lifeInsurance: e.target.checked } })}
+                  />
+                </div>
+              </div>
+              <div className="flex justify-between pt-4">
+                <Button type="button" onClick={() => setStep(step - 1)}>
+                  Back
+                </Button>
+                <Button type="button" onClick={() => setStep(step + 1)}>
+                  Next
+                </Button>
+              </div>
+            </div>
+          </Card>
+        )}
+        {step === 3 && (
+          <Card>
+            <div className="p-6 space-y-4">
+              <h2 className="text-lg font-semibold flex items-center">
+                <Wallet className="mr-2 h-5 w-5" />
+                Wallet & Legal
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="balance">Balance</Label>
+                  <Input
+                    id="balance"
+                    type="number"
+                    value={walletData.balance}
+                    onChange={(e) => setUser({ ...user, wallet: { ...walletData, balance: Number(e.target.value) } })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="currency">Currency</Label>
+                  <Input
+                    id="currency"
+                    value={walletData.currency}
+                    onChange={(e) => setUser({ ...user, wallet: { ...walletData, currency: e.target.value } })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="bankAccounts">Bank Accounts</Label>
+                  {walletData.bankAccounts.map((account, index) => (
+                    <div key={index} className="flex items-center space-x-2">
+                      <Input
+                        id={`bankAccounts.${index}.id`}
+                        value={account.id}
+                        onChange={(e) => {
+                          const updatedBankAccounts = [...walletData.bankAccounts];
+                          updatedBankAccounts[index].id = e.target.value;
+                          setUser({ ...user, wallet: { ...walletData, bankAccounts: updatedBankAccounts } });
+                        }}
+                      />
+                      <Input
+                        id={`bankAccounts.${index}.bankName`}
+                        value={account.bankName}
+                        onChange={(e) => {
+                          const updatedBankAccounts = [...walletData.bankAccounts];
+                          updatedBankAccounts[index].bankName = e.target.value;
+                          setUser({ ...user, wallet: { ...walletData, bankAccounts: updatedBankAccounts } });
+                        }}
+                      />
+                      <Input
+                        id={`bankAccounts.${index}.accountNumber`}
+                        value={account.accountNumber}
+                        onChange={(e) => {
+                          const updatedBankAccounts = [...walletData.bankAccounts];
+                          updatedBankAccounts[index].accountNumber = e.target.value;
+                          setUser({ ...user, wallet: { ...walletData, bankAccounts: updatedBankAccounts } });
+                        }}
+                      />
+                      <Input
+                        id={`bankAccounts.${index}.accountType`}
+                        value={account.accountType}
+                        onChange={(e) => {
+                          const updatedBankAccounts = [...walletData.bankAccounts];
+                          updatedBankAccounts[index].accountType = e.target.value;
+                          setUser({ ...user, wallet: { ...walletData, bankAccounts: updatedBankAccounts } });
+                        }}
+                      />
+                      <Input
+                        id={`bankAccounts.${index}.isDefault`}
+                        type="checkbox"
+                        checked={account.isDefault}
+                        onChange={(e) => {
+                          const updatedBankAccounts = [...walletData.bankAccounts];
+                          updatedBankAccounts[index].isDefault = e.target.checked;
+                          setUser({ ...user, wallet: { ...walletData, bankAccounts: updatedBankAccounts } });
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="ml-2"
+                        onClick={() => {
+                          const updatedBankAccounts = walletData.bankAccounts.filter((_, i) => i !== index);
+                          setUser({ ...user, wallet: { ...walletData, bankAccounts: updatedBankAccounts } });
+                        }}
+                      >
+                        <Trash className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="taxId">Tax ID</Label>
+                  <Input
+                    id="taxId"
+                    value={legalDetailsData.taxId}
+                    onChange={(e) => setUser({ ...user, legalDetails: { ...legalDetailsData, taxId: e.target.value } })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="businessType">Business Type</Label>
+                  <Input
+                    id="businessType"
+                    value={legalDetailsData.businessType}
+                    onChange={(e) => setUser({ ...user, legalDetails: { ...legalDetailsData, businessType: e.target.value } })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="registrationNumber">Registration Number</Label>
+                  <Input
+                    id="registrationNumber"
+                    value={legalDetailsData.registrationNumber}
+                    onChange={(e) => setUser({ ...user, legalDetails: { ...legalDetailsData, registrationNumber: e.target.value } })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="incorporationDate">Incorporation Date</Label>
+                  <Input
+                    id="incorporationDate"
+                    value={legalDetailsData.incorporationDate}
+                    onChange={(e) => setUser({ ...user, legalDetails: { ...legalDetailsData, incorporationDate: e.target.value } })}
+                  />
+                </div>
+              </div>
+              <div className="flex justify-between pt-4">
+                <Button type="button" onClick={() => setStep(step - 1)}>
+                  Back
+                </Button>
+                <Button type="button" onClick={() => setStep(step + 1)}>
+                  Next
+                </Button>
+              </div>
+            </div>
+          </Card>
+        )}
+        {step === 4 && (
           <Card>
             <div className="p-6 space-y-4">
               <h2 className="text-lg font-semibold flex items-center">
                 <Users className="mr-2 h-5 w-5" />
-                Emergency Contact
+                Skills, Certifications, Education & Equipment
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-                  <Label htmlFor="emergencyName">Contact Name</Label>
-              <Input
-                    id="emergencyName"
-                    value={user.emergencyContact?.name || ''}
-                    onChange={(e) => setUser({ 
-                      ...user, 
-                      emergencyContact: { ...user.emergencyContact, name: e.target.value } 
-                })}
-              />
-            </div>
-
-            <div className="space-y-2">
-                  <Label htmlFor="emergencyRelationship">Relationship</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="skills">Skills</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {user.skills?.map((skill, index) => (
+                      <div key={index} className="bg-gray-100 px-3 py-1 rounded-full text-sm">
+                        {skill}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="certifications">Certifications</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {user.certifications?.map((cert, index) => (
+                      <div key={index} className="bg-gray-100 px-3 py-1 rounded-full text-sm">
+                        {cert}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="education">Education</Label>
+                  {educationList.map((edu, index) => (
+                    <div key={index} className="flex items-center space-x-2">
+                      <Input
+                        id={`education.${index}.degree`}
+                        value={edu.degree}
+                        onChange={(e) => {
+                          const updatedEducation = [...educationList];
+                          updatedEducation[index].degree = e.target.value;
+                          setUser({ ...user, education: updatedEducation });
+                        }}
+                      />
+                      <Input
+                        id={`education.${index}.institution`}
+                        value={edu.institution}
+                        onChange={(e) => {
+                          const updatedEducation = [...educationList];
+                          updatedEducation[index].institution = e.target.value;
+                          setUser({ ...user, education: updatedEducation });
+                        }}
+                      />
+                      <Input
+                        id={`education.${index}.graduationYear`}
+                        value={edu.graduationYear}
+                        onChange={(e) => {
+                          const updatedEducation = [...educationList];
+                          updatedEducation[index].graduationYear = e.target.value;
+                          setUser({ ...user, education: updatedEducation });
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="ml-2"
+                        onClick={() => {
+                          const updatedEducation = educationList.filter((_, i) => i !== index);
+                          setUser({ ...user, education: updatedEducation });
+                        }}
+                      >
+                        <Trash className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="laptop">Laptop</Label>
                   <Input
-                    id="emergencyRelationship"
-                    value={user.emergencyContact?.relationship || ''}
-                    onChange={(e) => setUser({ 
-                      ...user, 
-                      emergencyContact: { ...user.emergencyContact, relationship: e.target.value } 
-                    })}
+                    id="laptop"
+                    value={user.equipment?.laptop}
+                    onChange={(e) => setUser({ ...user, equipment: { ...user.equipment, laptop: e.target.value } })}
                   />
                 </div>
-
                 <div className="space-y-2">
-                  <Label htmlFor="emergencyPhone">Phone Number</Label>
+                  <Label htmlFor="monitor">Monitor</Label>
                   <Input
-                    id="emergencyPhone"
-                    value={user.emergencyContact?.phone || ''}
-                    onChange={(e) => setUser({ 
-                      ...user, 
-                      emergencyContact: { ...user.emergencyContact, phone: e.target.value } 
-                    })}
+                    id="monitor"
+                    value={user.equipment?.monitor}
+                    onChange={(e) => setUser({ ...user, equipment: { ...user.equipment, monitor: e.target.value } })}
                   />
                 </div>
-              </div>
-            </div>
-          </Card>
-
-          {/* Access Levels */}
-          <Card>
-            <div className="p-6 space-y-4">
-              <h2 className="text-lg font-semibold flex items-center">
-                <Key className="mr-2 h-5 w-5" />
-                Access Levels
-              </h2>
-              <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Systems Access</Label>
+                  <Label htmlFor="phone">Phone</Label>
+                  <Input
+                    id="phone"
+                    value={user.equipment?.phone}
+                    onChange={(e) => setUser({ ...user, equipment: { ...user.equipment, phone: e.target.value } })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="accessLevels">Access Levels</Label>
                   <div className="flex flex-wrap gap-2">
                     {user.accessLevels?.systems?.map((system, index) => (
                       <div key={index} className="bg-gray-100 px-3 py-1 rounded-full text-sm">
@@ -715,9 +1269,8 @@ export default function EditUserPage() {
                     ))}
                   </div>
                 </div>
-
                 <div className="space-y-2">
-                  <Label>Building Access</Label>
+                  <Label htmlFor="buildings">Building Access</Label>
                   <div className="flex flex-wrap gap-2">
                     {user.accessLevels?.buildings?.map((building, index) => (
                       <div key={index} className="bg-gray-100 px-3 py-1 rounded-full text-sm">
@@ -726,9 +1279,8 @@ export default function EditUserPage() {
                     ))}
                   </div>
                 </div>
-
                 <div className="space-y-2">
-                  <Label>Room Access</Label>
+                  <Label htmlFor="rooms">Room Access</Label>
                   <div className="flex flex-wrap gap-2">
                     {user.accessLevels?.rooms?.map((room, index) => (
                       <div key={index} className="bg-gray-100 px-3 py-1 rounded-full text-sm">
@@ -736,166 +1288,197 @@ export default function EditUserPage() {
                       </div>
                     ))}
                   </div>
+                </div>
+              </div>
+              <div className="flex justify-between pt-4">
+                <Button type="button" onClick={() => setStep(step - 1)}>
+                  Back
+                </Button>
+                <Button type="button" onClick={() => setStep(step + 1)}>
+                  Next
+                </Button>
               </div>
             </div>
-          </div>
-        </Card>
-
-          {/* Module Access */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Key className="h-5 w-5" />
-                Module Access
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {availableModules.map((moduleId) => {
-                  const isChecked = (user.role === 'owner' || user.isOwner) ? true : Array.isArray(user.moduleAccess) && user.moduleAccess.includes(moduleId);
-                  console.log(`Checking module ${moduleId}:`, {
-                    moduleAccess: user.moduleAccess,
-                    isChecked
-                  });
-                  return (
-                    <div key={moduleId} className="flex items-center space-x-2">
-                    <Checkbox
-                        id={moduleId}
-                        checked={isChecked}
-                      onCheckedChange={(checked) => {
-                          const currentModules = Array.isArray(user.moduleAccess) ? user.moduleAccess : [];
-                        const newModuleAccess = checked
-                            ? [...currentModules, moduleId]
-                            : currentModules.filter(ma => ma !== moduleId);
-                          console.log('Module access changed:', {
-                            moduleId,
-                            checked,
-                            currentModules,
-                            newModuleAccess
-                          });
-                        setUser({ ...user, moduleAccess: newModuleAccess });
-                      }}
-                    />
-                      <Label htmlFor={moduleId} className="flex flex-col">
-                        <span>{moduleDisplayInfo[moduleId].name}</span>
-                        <span className="text-sm text-muted-foreground">{moduleDisplayInfo[moduleId].description}</span>
-                    </Label>
-                  </div>
-                  );
-                })}
-              </div>
-            </CardContent>
           </Card>
-
-          {/* Blockchain-Verified Credentials */}
-          <CredentialVerification
-            credentials={user.credentials || []}
-            onVerify={async (credentialId) => {
-              try {
-                const response = await fetch('/api/hr/verify-credential', {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify({
-                    credentialId,
-                    userId: user.id
-                  }),
-                });
-                const data = await response.json();
-                if (data.success) {
-                  // Update the local state with the verified credential
-                  setUser({
-                    ...user,
-                    credentials: user.credentials?.map(cred => 
-                      cred.id === credentialId 
-                        ? { ...cred, verified: true, blockchainHash: data.blockchainHash }
-                        : cred
-                    )
-                  });
-                }
-              } catch (error) {
-                console.error('Error verifying credential:', error);
-              }
-            }}
-          />
-
-          {/* AI Skill Matching */}
-          <SkillMatching
-            projectRequirements={{
-              skills: ['javascript', 'typescript', 'react', 'node.js'],
-              experience: 3
-            }}
-          />
-
-          {/* Status */}
+        )}
+        {step === 5 && (
+          <Card>
+            <div className="p-6 space-y-4">
+              <h2 className="text-lg font-semibold flex items-center">
+                <FileText className="mr-2 h-5 w-5" />
+                Address & Documents
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="street">Street</Label>
+                  <Input
+                    id="street"
+                    value={addressData.street}
+                    onChange={(e) => setUser({ ...user, address: { ...addressData, street: e.target.value } })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="city">City</Label>
+                  <Input
+                    id="city"
+                    value={addressData.city}
+                    onChange={(e) => setUser({ ...user, address: { ...addressData, city: e.target.value } })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="state">State</Label>
+                  <Input
+                    id="state"
+                    value={addressData.state}
+                    onChange={(e) => setUser({ ...user, address: { ...addressData, state: e.target.value } })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="country">Country</Label>
+                  <Input
+                    id="country"
+                    value={addressData.country}
+                    onChange={(e) => setUser({ ...user, address: { ...addressData, country: e.target.value } })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="postalCode">Postal Code</Label>
+                  <Input
+                    id="postalCode"
+                    value={addressData.postalCode}
+                    onChange={(e) => setUser({ ...user, address: { ...addressData, postalCode: e.target.value } })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="isBillingAddress">Is Billing Address</Label>
+                  <Input
+                    id="isBillingAddress"
+                    type="checkbox"
+                    checked={addressData.isBillingAddress}
+                    onChange={(e) => setUser({ ...user, address: { ...addressData, isBillingAddress: e.target.checked } })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="isShippingAddress">Is Shipping Address</Label>
+                  <Input
+                    id="isShippingAddress"
+                    type="checkbox"
+                    checked={addressData.isShippingAddress}
+                    onChange={(e) => setUser({ ...user, address: { ...addressData, isShippingAddress: e.target.checked } })}
+                  />
+                </div>
+              </div>
+              <div className="flex justify-between pt-4">
+                <Button type="button" onClick={() => setStep(step - 1)}>
+                  Back
+                </Button>
+                <Button type="button" onClick={() => setStep(step + 1)}>
+                  Next
+                </Button>
+              </div>
+            </div>
+          </Card>
+        )}
+        {step === 6 && (
           <Card>
             <div className="p-6 space-y-4">
               <h2 className="text-lg font-semibold flex items-center">
                 <Shield className="mr-2 h-5 w-5" />
-                Status
+                Status, Verification & Executive Info
               </h2>
-              <div className="space-y-2">
-                <Label htmlFor="status">Account Status</Label>
-                <Select
-                  value={user.status}
-                  onValueChange={(value) => setUser({ ...user, status: value as 'active' | 'inactive' })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="status">Account Status</Label>
+                  <Select
+                    value={status}
+                    onValueChange={(value) => setStatus(value as 'active' | 'inactive')}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="createdAt">Created At</Label>
+                  <Input
+                    id="createdAt"
+                    value={user.createdAt ? new Date(user.createdAt).toLocaleString() : ''}
+                    disabled
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="updatedAt">Last Updated</Label>
+                  <Input
+                    id="updatedAt"
+                    value={user.updatedAt ? new Date(user.updatedAt).toLocaleString() : ''}
+                    disabled
+                  />
+                </div>
+              </div>
+              <div className="flex justify-between pt-4">
+                <Button type="button" onClick={() => setStep(step - 1)}>
+                  Back
+                </Button>
+                <Button type="button" onClick={handleStatusSave} disabled={isSaving}>
+                  {isSaving ? 'Saving...' : 'Save'}
+                </Button>
               </div>
             </div>
           </Card>
-
-          {/* Executive/Manager Information */}
-          {(currentUser.role === 'owner' || currentUser.role === 'admin' || currentUser.role === 'manager') && (
-            <Card>
-              <div className="p-6 space-y-4">
-                <h2 className="text-lg font-semibold flex items-center">
-                  <Briefcase className="mr-2 h-5 w-5" />
-                  Executive/Manager Information
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="moduleAccess">Module Access</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {user.moduleAccess?.map((module, index) => (
-                        <div key={index} className="bg-gray-100 px-3 py-1 rounded-full text-sm">
-                          {module}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="createdAt">Created At</Label>
-                    <Input
-                      id="createdAt"
-                      value={user.createdAt ? new Date(user.createdAt).toLocaleString() : ''}
-                      disabled
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="updatedAt">Last Updated</Label>
-                    <Input
-                      id="updatedAt"
-                      value={user.updatedAt ? new Date(user.updatedAt).toLocaleString() : ''}
-                      disabled
-                    />
-                  </div>
-                </div>
-              </div>
-            </Card>
-          )}
-
-          <div className="flex justify-end">
+        )}
+        {step === 7 && (
+          <Card>
+            <div className="p-6 space-y-4">
+              <h2 className="text-lg font-semibold flex items-center">
+                <Users className="mr-2 h-5 w-5" />
+                Blockchain & AI
+              </h2>
+              <CredentialVerification
+                credentials={user.credentials || []}
+                onVerify={async (credentialId) => {
+                  try {
+                    const response = await fetch('/api/hr/verify-credential', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({
+                        credentialId,
+                        userId: user.id
+                      }),
+                    });
+                    const data = await response.json();
+                    if (data.success) {
+                      // Update the local state with the verified credential
+                      setUser({
+                        ...user,
+                        credentials: user.credentials?.map(cred => 
+                          cred.id === credentialId 
+                            ? { ...cred, verified: true, blockchainHash: data.blockchainHash }
+                            : cred
+                        )
+                      });
+                    }
+                  } catch (error) {
+                    console.error('Error verifying credential:', error);
+                  }
+                }}
+              />
+              <SkillMatching
+                projectRequirements={{
+                  skills: ['javascript', 'typescript', 'react', 'node.js'],
+                  experience: 3
+                }}
+              />
+            </div>
+          </Card>
+        )}
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="flex justify-end mt-8">
             <Button type="submit" disabled={isSaving}>
               {isSaving ? (
                 <>
@@ -905,11 +1488,11 @@ export default function EditUserPage() {
               ) : (
                 <>
                   <Save className="mr-2 h-4 w-4" />
-            Save Changes
+                  Save Changes
                 </>
               )}
-          </Button>
-        </div>
+            </Button>
+          </div>
         </form>
       </div>
     </ModuleLayout>

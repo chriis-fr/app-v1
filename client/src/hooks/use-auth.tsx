@@ -75,6 +75,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     checkAuth();
   }, []);
 
+  // Redirect to /activate if user is not active or not email verified
+  useEffect(() => {
+    if (user && (user.isActive === false || user.emailVerified === false)) {
+      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/activate')) {
+        setLocation('/activate');
+      }
+    }
+  }, [user, setLocation]);
+
   const checkAuth = async () => {
     try {
       const token = localStorage.getItem('token');

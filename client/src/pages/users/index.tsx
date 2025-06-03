@@ -60,6 +60,8 @@ interface User {
   status?: 'active' | 'inactive';
   lastLogin?: string;
   moduleAccess?: string[];
+  isActive?: boolean;
+  emailVerified?: boolean;
 }
 
 export default function UsersPage() {
@@ -174,15 +176,27 @@ export default function UsersPage() {
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-2xl font-bold">Users</h1>
-            <p className="text-sm text-gray-500 mt-1">
-              Manage your organization's users and their access levels
-            </p>
+            <div className="flex items-center gap-2 mt-1">
+              <p className="text-sm text-gray-500">
+                Manage your organization's users and their access levels
+              </p>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="ml-1 cursor-pointer text-blue-500">?</span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Only users with login access (canLogin: true) are shown here. Employees without login access are managed in the HR section.
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
           </div>
           <div className="flex items-center gap-4">
             <Button variant="outline" onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}>
               {viewMode === 'grid' ? 'List View' : 'Grid View'}
             </Button>
-            <Button onClick={() => setLocation('/users/new')}>
+            <Button onClick={() => setLocation('/users/new')} variant="default">
               <Plus className="mr-2 h-4 w-4" />
               Add User
             </Button>
@@ -259,6 +273,19 @@ export default function UsersPage() {
                                   </TooltipContent>
                                 </Tooltip>
                               </TooltipProvider>
+                            )}
+                            {/* Activation/Verification badges */}
+                            {u.isActive === false && (
+                              <Badge variant="destructive" className="ml-1">Inactive</Badge>
+                            )}
+                            {u.isActive && (
+                              <Badge variant="secondary" className="ml-1 bg-green-100 text-green-800">Active</Badge>
+                            )}
+                            {u.emailVerified === false && (
+                              <Badge variant="outline" className="ml-1 bg-yellow-100 text-yellow-800">Email Not Verified</Badge>
+                            )}
+                            {u.emailVerified && (
+                              <Badge variant="secondary" className="ml-1 bg-blue-100 text-blue-800">Email Verified</Badge>
                             )}
                           </div>
                           <p className="text-sm text-gray-500">{u.email}</p>

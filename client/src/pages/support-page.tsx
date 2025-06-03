@@ -26,7 +26,8 @@ import {
   Clock,
   Star,
   Users,
-  Activity
+  Activity,
+  ArrowLeft
 } from 'lucide-react';
 import { useRoleAccess } from '@/hooks/use-role-access';
 
@@ -182,6 +183,10 @@ export default function SupportPage() {
       {canAccessCompactSidebar() && <CompactSidebar />}
       <div className={`flex-1 ${canAccessCompactSidebar() ? 'ml-20' : ''} p-8`}>
         <div className="max-w-6xl mx-auto">
+          <Button variant="ghost" className="mb-4" onClick={() => setLocation('/dashboard')}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back
+          </Button>
           <div className="mb-8">
             <h1 className="text-3xl font-bold mb-2">Support Center</h1>
             <p className="text-muted-foreground">

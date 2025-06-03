@@ -195,7 +195,9 @@ export const userSchema = z.object({
     isShippingAddress: z.boolean()
   }).optional(),
   createdAt: z.date().default(() => new Date()),
-  updatedAt: z.date().default(() => new Date())
+  updatedAt: z.date().default(() => new Date()),
+  emailVerified: z.boolean().optional(),
+  isActive: z.boolean().optional(),
 });
 
 // Define a schema for an Organization document.
@@ -497,6 +499,8 @@ export type User = Omit<z.infer<typeof userSchema>, "role" | "createdAt" | "upda
   };
   department: string;
   modulePermissions?: any[];
+  emailVerified?: boolean;
+  isActive?: boolean;
 };
 
 // ---------------------------------

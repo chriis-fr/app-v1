@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
 import { Plus, Search, Filter } from 'lucide-react';
-import { Link } from 'wouter';
+import { Link, useLocation } from 'wouter';
 
 export default function EmployeesPage() {
   const { getEmployees, searchEmployees, getEmployeesByDepartment, getEmployeesByStatus, loading, error } = useEmployee();
@@ -28,6 +28,7 @@ export default function EmployeesPage() {
   const [department, setDepartment] = useState('');
   const [status, setStatus] = useState('');
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
 
   useEffect(() => {
     loadEmployees();
@@ -173,11 +174,13 @@ export default function EmployeesPage() {
                   </TableCell>
                   <TableCell>{employee.contractType}</TableCell>
                   <TableCell>
-                    <Link href={`/hr/employees/${employee.id}`}>
-                      <Button variant="ghost" size="sm">
-                        View
-                      </Button>
-                    </Link>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setLocation(`/hr/employees/${employee.id}`)}
+                    >
+                      View
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))

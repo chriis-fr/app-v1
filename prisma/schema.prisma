@@ -303,7 +303,7 @@ model Organization {
   type          String // Organization type: e.g., business, SME, NGO, large, etc.
   industry      String
   size          String?
-  walletAddress String?  @unique
+  walletAddress String?
   activeModules String[]
   maxModules    Int      @default(3)
   address       String?
@@ -363,6 +363,10 @@ model User {
   organizationId   String        @db.ObjectId
   organization     Organization? @relation("OrgUsers", fields: [organizationId], references: [id])
   isOwner          Boolean?      @default(false)
+  isActive         Boolean?      @default(false)
+  emailVerified    Boolean?      @default(false)
+  activationToken  String?
+  tokenExpiresAt   DateTime?
   moduleAccess     ModuleAccess[] @relation("UserModuleAccess")
   permissions      Json?
   position         String?

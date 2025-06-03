@@ -23,6 +23,7 @@ export interface Employee {
   status: 'active' | 'on_leave' | 'terminated';
   joinDate: string;
   credentials?: Credential[];
+  canLogin: boolean;
 }
 
 export const columns: ColumnDef<Employee>[] = [
@@ -100,5 +101,15 @@ export const columns: ColumnDef<Employee>[] = [
       const date = new Date(row.getValue('joinDate'));
       return date.toLocaleDateString();
     },
+  },
+  {
+    accessorKey: 'canLogin',
+    header: 'Login Access',
+    cell: ({ row }: { row: any }) =>
+      row.original.canLogin ? (
+        <span className="inline-block px-2 py-1 text-xs bg-green-100 text-green-700 rounded">Yes</span>
+      ) : (
+        <span className="inline-block px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded">No</span>
+      ),
   },
 ]; 

@@ -5,6 +5,8 @@ import { Employee } from '../mongodb/models/hr';
 import { checkModuleAccess } from '../middleware/module-access';
 import crypto from 'crypto';
 import bcrypt from 'bcrypt';
+import { v4 as uuidv4 } from 'uuid';
+import { sendActivationEmail } from '../utils/email';
 
 const router = express.Router();
 
@@ -188,99 +190,60 @@ const generatePassword = (length: number = 12): string => {
   return password;
 };
 
-// Create new user with module access and generated password
+// Create new user with activation token and email verification
 router.post('/', isAuthenticated, checkModulePermission('create_user'), checkDepartmentAccess, async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!req.user) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
-
     const user = req.user as unknown as UserDocument;
     const userData = req.body;
     const changeLog: ChangeLog[] = [];
-
-    // Generate temporary password
-    const tempPassword = generatePassword();
-    const hashedPassword = await bcrypt.hash(tempPassword, 10);
-
-    // Set department based on admin's department if not owner
-    if (user.role === 'admin') {
-      userData.department = user.department;
-    }
-
-    // Set default module permissions based on role
-    const defaultPermissions = userData.role === 'admin' 
-      ? ['view', 'edit', 'manage']
-      : ['view'];
-
-    // If owner, grant all modules
-    let modules = userData.modules;
-    if (userData.role === 'owner' || userData.isOwner) {
-      modules = ['*']; // or list all modules explicitly if needed
-    }
-
-    // Create module permissions array
-    const modulePermissions = modules.map((module: string) => ({
-      module,
-      permissions: defaultPermissions
-    }));
-
-    // Create user
-    const newUser = new User({
+    // Generate activation token and expiry
+    const activationToken = uuidv4();
+    const tokenExpiresAt = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000); // 2 days
+    // Create user without password, inactive
+    const newUser = await User.create({
       ...userData,
-      password: hashedPassword,
-      createdBy: user.id,
-      updatedBy: user.id,
-      modulePermissions,
-      changeLog: [{
-        field: 'all',
-        oldValue: null,
-        newValue: userData,
-        changedBy: user.id,
-        changedAt: new Date(),
-        changeType: 'create',
-        department: userData.department
-      }]
+      password: '', // No password yet
+      activationToken,
+      tokenExpiresAt,
+      emailVerified: false,
+      isActive: false,
+      changeLog,
     });
-
-    await newUser.save();
-
-    // Create HR record if employeeId is provided
-    if (userData.employeeId) {
-      const hrData: HRData = {
-        employmentGrade: userData.employmentGrade,
-        contractType: userData.contractType,
-        contractExpiryDate: userData.contractExpiryDate,
-        division: userData.division,
-        workLocation: userData.workLocation,
-        costCenter: userData.costCenter,
-        employmentStatus: userData.employmentStatus,
-        bankDetails: userData.bankDetails,
-        children: userData.children,
-        maritalStatus: userData.maritalStatus,
-        addresses: userData.addresses
-      };
-
-      await Employee.create({
-        ...hrData,
-        employeeNumber: userData.employeeId,
-        organizationId: userData.organizationId,
-        createdBy: user.id,
-        updatedBy: user.id
-      });
-    }
-
-    // Return user data with temporary password
+    // Send activation email
+    await sendActivationEmail(newUser.email, activationToken);
     res.status(201).json({
       user: {
         ...newUser.toObject(),
         password: undefined,
-        tempPassword
-      }
+        activationToken: undefined,
+        tokenExpiresAt: undefined,
+      },
+      message: 'Activation email sent.'
     });
   } catch (error) {
     console.error('Error creating user:', error);
     res.status(500).json({ message: "Failed to create user" });
+  }
+});
+
+// Activation endpoint
+router.post('/activate', async (req: Request, res: Response) => {
+  try {
+    const { token, password } = req.body;
+    const user = await User.findOne({ activationToken: token, tokenExpiresAt: { $gt: new Date() } });
+    if (!user) return res.status(400).json({ error: 'Invalid or expired token' });
+    user.password = await bcrypt.hash(password, 10);
+    user.isActive = true;
+    user.emailVerified = true;
+    user.activationToken = null;
+    user.tokenExpiresAt = null;
+    await user.save();
+    res.json({ message: 'Account activated' });
+  } catch (error) {
+    res.status(500).json({ error: 'Activation failed' });
   }
 });
 

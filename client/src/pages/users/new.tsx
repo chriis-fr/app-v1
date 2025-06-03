@@ -57,7 +57,6 @@ interface FormData {
   firstName: string;
   lastName: string;
   email: string;
-  password: string;
   phoneNumber: string;
   role: 'owner' | 'admin' | 'manager' | 'employee' | 'contractor';
   department: typeof departments[number];
@@ -221,7 +220,6 @@ export default function NewUserPage() {
     firstName: '',
     lastName: '',
     email: '',
-    password: '',
     phoneNumber: '',
     role: 'employee',
     department: 'Engineering',
@@ -326,7 +324,7 @@ export default function NewUserPage() {
           actions: Object.entries(p.permissions)
             .filter(([_, value]) => value)
             .map(([key]) => key)
-        }))
+        })),
       };
 
       console.log('Creating user with data:', newUserData);
@@ -478,7 +476,7 @@ export default function NewUserPage() {
   const renderStepContent = () => {
     switch (currentStep) {
       case 1:
-  return (
+        return (
           <Card>
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -521,18 +519,6 @@ export default function NewUserPage() {
                     value={formData.email}
                     onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
                     required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={formData.password}
-                    onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-                    required
-                    minLength={6}
                   />
                 </div>
 
@@ -970,7 +956,7 @@ export default function NewUserPage() {
               <Alert>
                 <AlertTitle>Review User Information</AlertTitle>
                 <AlertDescription>
-                  Please review all the information before creating the user. Once created, the user will be able to log in with their email and password.
+                  Please review all the information before creating the user. Once created, the user will receive an activation email and must activate their account to set their password and log in.
                 </AlertDescription>
               </Alert>
 

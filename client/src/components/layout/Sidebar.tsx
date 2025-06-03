@@ -30,23 +30,37 @@ import {
   CheckCircle,
   Clock,
   AlertCircle,
-  Info
+  Info,
+  ChevronDown
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useAuth } from '@/hooks/use-auth';
 import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
+import { useState } from 'react';
 
 export default function Sidebar() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   
   // Define all available modules
   const allModules = {
     main: [
       { id: 'dashboard', name: 'Dashboard', icon: LayoutGrid, route: '/dashboard' },
       { id: 'pos', name: 'Point of Sale', icon: ShoppingBag, route: '/dashboard/pos/info' },
-      { id: 'hr', name: 'HR Management', icon: Users, route: '/dashboard/hr/info' },
+      {
+        id: 'hr',
+        name: 'HR Management',
+        icon: Users,
+        route: '/dashboard/hr/info',
+        subItems: [
+          { name: 'Employees', route: '/hr', icon: Users },
+          { name: 'Payroll', route: '/dashboard/hr/payroll', icon: DollarSign },
+          { name: 'Attendance', route: '/dashboard/hr/attendance', icon: Clock },
+          // Add more HR submodules as needed
+        ]
+      },
       { id: 'inventory', name: 'Inventory', icon: Package, route: '/dashboard/inventory/info' }
     ],
     finance: [
@@ -136,13 +150,37 @@ export default function Sidebar() {
             <div
               key={item.id}
               className={clsx(
-                'flex items-center gap-3 px-3 py-2 rounded-lg mb-1 transition-colors cursor-pointer',
-                'hover:bg-gray-50'
+                'flex flex-col',
+                item.subItems ? 'relative group' : ''
               )}
-              onClick={() => setLocation(item.route)}
+              onMouseEnter={() => item.subItems && setOpenDropdown(item.id)}
+              onMouseLeave={() => item.subItems && setOpenDropdown(null)}
             >
-              <item.icon className="h-5 w-5 text-gray-400" />
-              <span className="text-sm text-gray-600">{item.name}</span>
+              <div
+                className={clsx(
+                  'flex items-center gap-3 px-3 py-2 rounded-lg mb-1 transition-colors cursor-pointer hover:bg-gray-50',
+                  openDropdown === item.id && 'bg-gray-100'
+                )}
+                onClick={() => setLocation(item.route)}
+              >
+                <item.icon className="h-5 w-5 text-gray-400" />
+                <span className="text-sm text-gray-600">{item.name}</span>
+                {item.subItems && <ChevronDown className="h-4 w-4 ml-auto text-gray-400" />}
+              </div>
+              {item.subItems && openDropdown === item.id && (
+                <div className="absolute left-0 top-full mt-1 w-48 bg-white border rounded-lg shadow-lg z-50 py-2">
+                  {item.subItems.map((sub) => (
+                    <div
+                      key={sub.route}
+                      className="flex items-center gap-2 px-4 py-2 hover:bg-gray-50 cursor-pointer"
+                      onClick={() => setLocation(sub.route)}
+                    >
+                      <sub.icon className="h-4 w-4 text-gray-400" />
+                      <span className="text-sm text-gray-700">{sub.name}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
           {/* {hasInactiveModules && (
@@ -164,11 +202,38 @@ export default function Sidebar() {
             {activeFinanceModules.map((item) => (
               <div
                 key={item.id}
-                className="flex items-center gap-3 px-3 py-2 rounded-lg mb-1 hover:bg-gray-50 transition-colors cursor-pointer"
-                onClick={() => setLocation(item.route)}
+                className={clsx(
+                  'flex flex-col',
+                  item.subItems ? 'relative group' : ''
+                )}
+                onMouseEnter={() => item.subItems && setOpenDropdown(item.id)}
+                onMouseLeave={() => item.subItems && setOpenDropdown(null)}
               >
-                <item.icon className="h-5 w-5 text-gray-400" />
-                <span className="text-sm text-gray-600">{item.name}</span>
+                <div
+                  className={clsx(
+                    'flex items-center gap-3 px-3 py-2 rounded-lg mb-1 hover:bg-gray-50 transition-colors cursor-pointer',
+                    openDropdown === item.id && 'bg-gray-100'
+                  )}
+                  onClick={() => setLocation(item.route)}
+                >
+                  <item.icon className="h-5 w-5 text-gray-400" />
+                  <span className="text-sm text-gray-600">{item.name}</span>
+                  {item.subItems && <ChevronDown className="h-4 w-4 ml-auto text-gray-400" />}
+                </div>
+                {item.subItems && openDropdown === item.id && (
+                  <div className="absolute left-0 top-full mt-1 w-48 bg-white border rounded-lg shadow-lg z-50 py-2">
+                    {item.subItems.map((sub) => (
+                      <div
+                        key={sub.route}
+                        className="flex items-center gap-2 px-4 py-2 hover:bg-gray-50 cursor-pointer"
+                        onClick={() => setLocation(sub.route)}
+                      >
+                        <sub.icon className="h-4 w-4 text-gray-400" />
+                        <span className="text-sm text-gray-700">{sub.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -180,11 +245,38 @@ export default function Sidebar() {
             {activeOperationsModules.map((item) => (
               <div
                 key={item.id}
-                className="flex items-center gap-3 px-3 py-2 rounded-lg mb-1 hover:bg-gray-50 transition-colors cursor-pointer"
-                onClick={() => setLocation(item.route)}
+                className={clsx(
+                  'flex flex-col',
+                  item.subItems ? 'relative group' : ''
+                )}
+                onMouseEnter={() => item.subItems && setOpenDropdown(item.id)}
+                onMouseLeave={() => item.subItems && setOpenDropdown(null)}
               >
-                <item.icon className="h-5 w-5 text-gray-400" />
-                <span className="text-sm text-gray-600">{item.name}</span>
+                <div
+                  className={clsx(
+                    'flex items-center gap-3 px-3 py-2 rounded-lg mb-1 hover:bg-gray-50 transition-colors cursor-pointer',
+                    openDropdown === item.id && 'bg-gray-100'
+                  )}
+                  onClick={() => setLocation(item.route)}
+                >
+                  <item.icon className="h-5 w-5 text-gray-400" />
+                  <span className="text-sm text-gray-600">{item.name}</span>
+                  {item.subItems && <ChevronDown className="h-4 w-4 ml-auto text-gray-400" />}
+                </div>
+                {item.subItems && openDropdown === item.id && (
+                  <div className="absolute left-0 top-full mt-1 w-48 bg-white border rounded-lg shadow-lg z-50 py-2">
+                    {item.subItems.map((sub) => (
+                      <div
+                        key={sub.route}
+                        className="flex items-center gap-2 px-4 py-2 hover:bg-gray-50 cursor-pointer"
+                        onClick={() => setLocation(sub.route)}
+                      >
+                        <sub.icon className="h-4 w-4 text-gray-400" />
+                        <span className="text-sm text-gray-700">{sub.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -196,11 +288,38 @@ export default function Sidebar() {
             {activeBusinessModules.map((item) => (
               <div
                 key={item.id}
-                className="flex items-center gap-3 px-3 py-2 rounded-lg mb-1 hover:bg-gray-50 transition-colors cursor-pointer"
-                onClick={() => setLocation(item.route)}
+                className={clsx(
+                  'flex flex-col',
+                  item.subItems ? 'relative group' : ''
+                )}
+                onMouseEnter={() => item.subItems && setOpenDropdown(item.id)}
+                onMouseLeave={() => item.subItems && setOpenDropdown(null)}
               >
-                <item.icon className="h-5 w-5 text-gray-400" />
-                <span className="text-sm text-gray-600">{item.name}</span>
+                <div
+                  className={clsx(
+                    'flex items-center gap-3 px-3 py-2 rounded-lg mb-1 hover:bg-gray-50 transition-colors cursor-pointer',
+                    openDropdown === item.id && 'bg-gray-100'
+                  )}
+                  onClick={() => setLocation(item.route)}
+                >
+                  <item.icon className="h-5 w-5 text-gray-400" />
+                  <span className="text-sm text-gray-600">{item.name}</span>
+                  {item.subItems && <ChevronDown className="h-4 w-4 ml-auto text-gray-400" />}
+                </div>
+                {item.subItems && openDropdown === item.id && (
+                  <div className="absolute left-0 top-full mt-1 w-48 bg-white border rounded-lg shadow-lg z-50 py-2">
+                    {item.subItems.map((sub) => (
+                      <div
+                        key={sub.route}
+                        className="flex items-center gap-2 px-4 py-2 hover:bg-gray-50 cursor-pointer"
+                        onClick={() => setLocation(sub.route)}
+                      >
+                        <sub.icon className="h-4 w-4 text-gray-400" />
+                        <span className="text-sm text-gray-700">{sub.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -212,11 +331,38 @@ export default function Sidebar() {
             {activeReportingModules.map((item) => (
               <div
                 key={item.id}
-                className="flex items-center gap-3 px-3 py-2 rounded-lg mb-1 hover:bg-gray-50 transition-colors cursor-pointer"
-                onClick={() => setLocation(item.route)}
+                className={clsx(
+                  'flex flex-col',
+                  item.subItems ? 'relative group' : ''
+                )}
+                onMouseEnter={() => item.subItems && setOpenDropdown(item.id)}
+                onMouseLeave={() => item.subItems && setOpenDropdown(null)}
               >
-                <item.icon className="h-5 w-5 text-gray-400" />
-                <span className="text-sm text-gray-600">{item.name}</span>
+                <div
+                  className={clsx(
+                    'flex items-center gap-3 px-3 py-2 rounded-lg mb-1 hover:bg-gray-50 transition-colors cursor-pointer',
+                    openDropdown === item.id && 'bg-gray-100'
+                  )}
+                  onClick={() => setLocation(item.route)}
+                >
+                  <item.icon className="h-5 w-5 text-gray-400" />
+                  <span className="text-sm text-gray-600">{item.name}</span>
+                  {item.subItems && <ChevronDown className="h-4 w-4 ml-auto text-gray-400" />}
+                </div>
+                {item.subItems && openDropdown === item.id && (
+                  <div className="absolute left-0 top-full mt-1 w-48 bg-white border rounded-lg shadow-lg z-50 py-2">
+                    {item.subItems.map((sub) => (
+                      <div
+                        key={sub.route}
+                        className="flex items-center gap-2 px-4 py-2 hover:bg-gray-50 cursor-pointer"
+                        onClick={() => setLocation(sub.route)}
+                      >
+                        <sub.icon className="h-4 w-4 text-gray-400" />
+                        <span className="text-sm text-gray-700">{sub.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -228,11 +374,38 @@ export default function Sidebar() {
             {activeOtherModules.map((item) => (
               <div
                 key={item.id}
-                className="flex items-center gap-3 px-3 py-2 rounded-lg mb-1 hover:bg-gray-50 transition-colors cursor-pointer"
-                onClick={() => setLocation(item.route)}
+                className={clsx(
+                  'flex flex-col',
+                  item.subItems ? 'relative group' : ''
+                )}
+                onMouseEnter={() => item.subItems && setOpenDropdown(item.id)}
+                onMouseLeave={() => item.subItems && setOpenDropdown(null)}
               >
-                <item.icon className="h-5 w-5 text-gray-400" />
-                <span className="text-sm text-gray-600">{item.name}</span>
+                <div
+                  className={clsx(
+                    'flex items-center gap-3 px-3 py-2 rounded-lg mb-1 hover:bg-gray-50 transition-colors cursor-pointer',
+                    openDropdown === item.id && 'bg-gray-100'
+                  )}
+                  onClick={() => setLocation(item.route)}
+                >
+                  <item.icon className="h-5 w-5 text-gray-400" />
+                  <span className="text-sm text-gray-600">{item.name}</span>
+                  {item.subItems && <ChevronDown className="h-4 w-4 ml-auto text-gray-400" />}
+                </div>
+                {item.subItems && openDropdown === item.id && (
+                  <div className="absolute left-0 top-full mt-1 w-48 bg-white border rounded-lg shadow-lg z-50 py-2">
+                    {item.subItems.map((sub) => (
+                      <div
+                        key={sub.route}
+                        className="flex items-center gap-2 px-4 py-2 hover:bg-gray-50 cursor-pointer"
+                        onClick={() => setLocation(sub.route)}
+                      >
+                        <sub.icon className="h-4 w-4 text-gray-400" />
+                        <span className="text-sm text-gray-700">{sub.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>

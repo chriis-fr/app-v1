@@ -25,6 +25,7 @@ import { SkillMatching } from '@/components/hr/SkillMatching';
 import { DataTable } from '@/components/ui/data-table';
 import { columns, Employee } from './columns';
 import { Payroll } from '@/components/hr/Payroll';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function HRPage() {
   const [, setLocation] = useLocation();
@@ -33,6 +34,7 @@ export default function HRPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [loginAccessFilter, setLoginAccessFilter] = useState<'all' | 'login' | 'no-login'>('all');
 
   useEffect(() => {
     if (!user || !(user.role === 'owner' || user.role === 'hr_admin')) {
@@ -44,7 +46,10 @@ export default function HRPage() {
 
   const fetchEmployees = async () => {
     try {
-      const response = await fetch('/api/hr/employees', { credentials: 'include' });
+      let url = '/api/hr/employees';
+      if (loginAccessFilter === 'login') url += '?canLogin=true';
+      if (loginAccessFilter === 'no-login') url += '?canLogin=false';
+      const response = await fetch(url, { credentials: 'include' });
       const contentType = response.headers.get('content-type');
       if (!response.ok) {
         throw new Error('Failed to fetch employees');
@@ -131,15 +136,22 @@ export default function HRPage() {
       <div className="container mx-auto py-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">HR Management</h1>
-          {user?.role === 'admin' && (
-            <Button onClick={() => setLocation('/dashboard/hr/info')}>
-              Admin View
+          <div className="flex gap-2">
+            <Select value={loginAccessFilter} onValueChange={v => setLoginAccessFilter(v as any)}>
+              <SelectTrigger className="w-36">
+                <SelectValue placeholder="Login Access" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Employees</SelectItem>
+                <SelectItem value="login">With Login</SelectItem>
+                <SelectItem value="no-login">No Login</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button onClick={() => setLocation('/hr/new')}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Employee
             </Button>
-          )}
-          <Button onClick={() => setLocation('/users/new')}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Employee
-          </Button>
+          </div>
         </div>
 
         <div className="mb-6">

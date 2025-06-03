@@ -93,6 +93,10 @@ export interface UserDocument extends Document {
   };
   canLogin: boolean;
   isOwner: boolean;
+  isActive?: boolean;
+  emailVerified?: boolean;
+  activationToken?: string | null;
+  tokenExpiresAt?: Date | null;
 }
 
 const userSchema = new Schema<UserDocument>({
@@ -203,6 +207,10 @@ const userSchema = new Schema<UserDocument>({
   },
   canLogin: { type: Boolean, default: true },
   isOwner: { type: Boolean, default: false },
+  isActive: { type: Boolean, default: false },
+  emailVerified: { type: Boolean, default: false },
+  activationToken: { type: String, default: null },
+  tokenExpiresAt: { type: Date, default: null },
 }, {
   timestamps: true
 });

@@ -33,6 +33,10 @@ export default function Dashboard() {
     return null;
   }
 
+  if (user?.role === 'hr_admin') {
+    return <HRMain />;
+  }
+
   // Return department-specific dashboard based on user's department
   switch(user?.department?.toLowerCase()) {
     case 'pos':

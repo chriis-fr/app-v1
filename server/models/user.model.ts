@@ -112,6 +112,9 @@ interface MongooseUser {
     isBillingAddress: boolean;
     isShippingAddress: boolean;
   };
+  activationToken?: string | null;
+  tokenExpiresAt?: Date | null;
+  emailVerified?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -223,6 +226,9 @@ const userMongooseSchema = new Schema<MongooseUser>({
     isBillingAddress: { type: Boolean },
     isShippingAddress: { type: Boolean }
   },
+  activationToken: { type: String, default: null },
+  tokenExpiresAt: { type: Date, default: null },
+  emailVerified: { type: Boolean, default: false },
   createdAt: { type: Date, required: true },
   updatedAt: { type: Date, required: true }
 }, {
