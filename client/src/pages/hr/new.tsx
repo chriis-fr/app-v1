@@ -99,7 +99,7 @@ export default function NewEmployeePage() {
         setLoading(false);
         return;
       }
-      const response = await fetch('/api/hr/employees', {
+      const response = await fetch('/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

@@ -37,7 +37,7 @@ import { clsx } from 'clsx';
 import { useAuth } from '@/hooks/use-auth';
 import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 
 export default function Sidebar() {
   const { user } = useAuth();
@@ -95,12 +95,23 @@ export default function Sidebar() {
 
   // Get active modules from organization
   const activeModules = user?.organization?.activeModules || [];
-  const userModuleAccess = user?.moduleAccess || [];
+
+  // If moduleAccess is missing, derive it from permissions
+  let userModuleAccess = user?.moduleAccess;
+  if (
+    (!userModuleAccess || userModuleAccess.length === 0) &&
+    Array.isArray(user?.permissions)
+  ) {
+    userModuleAccess = user.permissions.map((p: any) => p.module);
+  }
 
   // Filter modules based on active subscriptions and user access
   const getActiveModules = (moduleList: typeof allModules.main) => {
     const normalizedActiveModules = activeModules.map((m: string) => m.toLowerCase());
-    const normalizedUserModuleAccess = userModuleAccess.map((m: string) => m.toLowerCase());
+    // Robustly handle moduleAccess as array of strings or array of objects
+    const normalizedUserModuleAccess = (userModuleAccess || []).map(
+      (m: any) => typeof m === 'string' ? m.toLowerCase() : (m && m.module ? m.module.toLowerCase() : undefined)
+    ).filter(Boolean);
 
     if (user?.isOwner) {
       // Owner: show all organization modules
@@ -133,6 +144,44 @@ export default function Sidebar() {
     allModules.business.some(m => !activeModules.includes(m.id as any)) ||
     allModules.reporting.some(m => !activeModules.includes(m.id as any)) ||
     allModules.other.some(m => !activeModules.includes(m.id as any));
+
+  // Mapping from module name to settings route
+  const moduleSettingsRoutes: Record<string, string> = {
+    hr: '/hr/settings',
+    pos: '/app/pos/settings',
+    inventory: '/app/inventory/settings',
+    // Add more as needed
+  };
+
+  const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
+  const settingsButtonRef = useRef<HTMLDivElement>(null);
+
+  // Get normalized module access
+  const normalizedModuleAccess = (userModuleAccess || []).map(
+    (m: any) => typeof m === 'string' ? m.toLowerCase() : (m && m.module ? m.module.toLowerCase() : undefined)
+  ).filter(Boolean);
+
+  const handleSettingsClick = () => {
+    if (user?.isOwner) {
+      setLocation('/organization-settings');
+      return;
+    }
+    if (user?.role === 'admin' && normalizedModuleAccess.length > 1) {
+      setShowSettingsDropdown((v) => !v);
+      return;
+    }
+    if (user?.role === 'admin' && normalizedModuleAccess.length === 1) {
+      const route = moduleSettingsRoutes[normalizedModuleAccess[0]] || '/organization-settings';
+      setLocation(route);
+      return;
+    }
+    // HR admin special case
+    if (user?.role === 'hr_admin') {
+      setLocation('/hr/settings');
+      return;
+    }
+    setLocation('/organization-settings');
+  };
 
   return (
     <div className="w-64 bg-white h-screen left-20 border-r overflow-y-auto flex flex-col">
@@ -167,6 +216,21 @@ export default function Sidebar() {
                 <span className="text-sm text-gray-600">{item.name}</span>
                 {item.subItems && <ChevronDown className="h-4 w-4 ml-auto text-gray-400" />}
               </div>
+              {/* For admins, show shortcuts to subItems/components below the module name */}
+              {user?.role === 'admin' && item.subItems && (
+                <div className="ml-8 mt-1 space-y-1">
+                  {item.subItems.map((sub) => (
+                    <div
+                      key={sub.route}
+                      className="flex items-center gap-2 px-2 py-1 rounded cursor-pointer text-gray-600 text-xs"
+                      onClick={() => setLocation(sub.route)}
+                    >
+                      <sub.icon className="h-4 w-4 text-gray-400" />
+                      <span>{sub.name}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
               {item.subItems && openDropdown === item.id && (
                 <div className="absolute left-0 top-full mt-1 w-48 bg-white border rounded-lg shadow-lg z-50 py-2">
                   {item.subItems.map((sub) => (
@@ -416,11 +480,33 @@ export default function Sidebar() {
         <div className="text-xs text-gray-400 mb-3">SYSTEM</div>
         <div className="space-y-1">
           <div
-            className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
-            onClick={() => setLocation('/organization-settings')}
+            ref={settingsButtonRef}
+            className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer relative"
+            onClick={handleSettingsClick}
           >
             <Settings className="h-5 w-5 text-gray-400" />
             <span className="text-sm text-gray-600">Settings</span>
+            {user?.role === 'admin' && normalizedModuleAccess.length > 1 && (
+              <ChevronDown className="h-4 w-4 ml-auto text-gray-400" />
+            )}
+            {showSettingsDropdown && user?.role === 'admin' && normalizedModuleAccess.length > 1 && (
+              <div style={{ minWidth: 180 }} className="absolute left-0 top-full mt-1 w-56 bg-white border rounded-lg shadow-lg z-50 py-2">
+                {normalizedModuleAccess.map((mod: string) => (
+                  <div
+                    key={mod}
+                    className="flex items-center gap-2 px-4 py-2 hover:bg-gray-50 cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowSettingsDropdown(false);
+                      setLocation(moduleSettingsRoutes[mod] || '/organization-settings');
+                    }}
+                  >
+                    <Settings className="h-4 w-4 text-gray-400" />
+                    <span className="text-sm text-gray-700 capitalize">{mod} Settings</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           <div
             className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"

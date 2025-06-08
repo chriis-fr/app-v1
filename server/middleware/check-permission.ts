@@ -32,6 +32,16 @@ export function checkPermission(module: string, action: string) {
       return next();
     }
 
+    // HR admin special case: allow HR admins to create users/employees
+    if (
+      module === 'users' &&
+      action === 'create' &&
+      user.role === 'admin' &&
+      (user.department === 'HR' || (Array.isArray(user.permissions) && user.permissions.some((p) => p.module === 'hr')))
+    ) {
+      return next();
+    }
+
     const permission = user.permissions.find(p => p.module === module);
     if (!permission || !permission.actions.includes(action)) {
       return res.status(403).json({ error: 'Forbidden' });

@@ -48,6 +48,7 @@ import { HRReports } from './components/hr/HRReports';
 import AnalyticsPage from '@/pages/analytics';
 import EmployeeHRDetail from '@/pages/hr/employees/[id]';
 import NewEmployeePage from '@/pages/hr/new';
+import HRSettingsPage from '@/pages/hr/settings';
 
 function App() {
   return (
@@ -75,6 +76,7 @@ function App() {
             <ProtectedRoute path="/pos/settings" component={POSSettings} />
             
             {/* HR Routes */}
+            <ProtectedRoute path="/hr/settings" component={HRSettingsPage} />
             <ProtectedRoute path="/hr" component={HRPage} requiredModule="hr" />
             <ProtectedRoute path="/dashboard/hr" component={HRPage} requiredModule="hr" />
             <ProtectedRoute path="/dashboard/hr/info" component={HRInfoPage} requiredModule="hr" />

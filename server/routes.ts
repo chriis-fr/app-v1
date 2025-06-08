@@ -1436,29 +1436,16 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
       // Hash the password before saving
       const hashedPassword = await hashPassword(userData.password);
       
-      // Determine module access based on role
-      let moduleAccess = [];
-      if (userData.role === 'owner') {
-        // Owners get full access to all modules
-        const organization = await prisma.organization.findUnique({
-          where: { id: userData.organizationId }
-        });
-        moduleAccess = (organization as any)?.activeModules?.map((module: string) => ({
-          module,
-          access: 'read_write'
-        })) || [];
-      } else if (userData.role === 'admin') {
-        // Admins get access only to their assigned module
-        moduleAccess = [{
-          module: userData.department.toLowerCase(),
-          access: 'read_write'
-        }];
-      } else {
-        // Regular employees get basic access
-        moduleAccess = [
-          { module: 'tasks', access: 'read_write' },
-          { module: 'calendar', access: 'read_write' }
-        ];
+      // If moduleAccess is missing or empty, derive it from permissions
+      let moduleAccess = userData.moduleAccess;
+      if ((!moduleAccess || moduleAccess.length === 0) && userData.permissions) {
+        moduleAccess = userData.permissions.map((p: any) =>
+          typeof p === 'string'
+            ? p
+            : p.module
+              ? { module: p.module, access: p.access || 'read_write' }
+              : null
+        ).filter(Boolean);
       }
       
       // Sanitize managerId: set to null if not a valid ObjectId
@@ -1478,10 +1465,10 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
           status: 'active',
           position: userData.position,
           hireDate,
-          managerId, // Use sanitized managerId
+          managerId,
           moduleAccess: {
-            create: moduleAccess
-          }
+            create: Array.isArray(moduleAccess) && typeof moduleAccess[0] === 'object' ? moduleAccess : (moduleAccess || []).map((m: any) => ({ module: typeof m === 'string' ? m : m.module, access: m.access || 'read_write' }))
+          },
         } as any,
         include: ({} as any)
       });
