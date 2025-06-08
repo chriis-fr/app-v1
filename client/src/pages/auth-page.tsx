@@ -48,6 +48,7 @@ export default function AuthPage() {
   const [currentStep, setCurrentStep] = useState<RegistrationStep>('owner');
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [confirmationText, setConfirmationText] = useState("");
 
   const loginForm = useForm<LoginData>({
     resolver: zodResolver(insertUserSchema.pick({ email: true, password: true })),
@@ -131,6 +132,44 @@ export default function AuthPage() {
       default:
         break;
     }
+  };
+
+  const readyModules = [
+    "ai_analytics",
+    "hr",
+    "accounting",
+    "pos",
+    "inventory",
+    "crm"
+  ];
+
+  const moduleLabels: Record<string, string> = {
+    ai_analytics: "AI",
+    hr: "HR",
+    accounting: "Accounting",
+    pos: "POS",
+    inventory: "Inventory",
+    crm: "CRM",
+    procurement: "Procurement",
+    manufacturing: "Manufacturing",
+    order_management: "Order Management",
+    warehouse: "Warehouse",
+    supply_chain: "Supply Chain",
+    project_service: "Project Service",
+    workforce: "Workforce",
+    ecommerce: "E-Commerce",
+    marketing: "Marketing",
+    quality: "Quality",
+    maintenance: "Maintenance",
+    project: "Project",
+    analytics: "Analytics",
+    global_finance: "Global Finance",
+    international_trade: "International Trade",
+    customer_experience: "Customer Experience",
+    vendor_management: "Vendor Management",
+    ecommerce_global: "E-Commerce Global",
+    localization: "Localization",
+    digital_currency: "Digital Currency"
   };
 
   const renderRegistrationStep = () => {
@@ -253,7 +292,6 @@ export default function AuthPage() {
             <h3 className="text-lg font-medium">Select Modules</h3>
             <div className="space-y-2">
               {availableModules
-                .filter(module => ['HR', 'Accounting', 'AI'].includes(module))
                 .map(module => (
                   <div key={module} className="flex items-center space-x-2">
                     <Checkbox
@@ -267,8 +305,14 @@ export default function AuthPage() {
                           registerForm.setValue('selectedModules', modules.filter(m => m !== module));
                         }
                       }}
+                      disabled={!readyModules.includes(module)}
                     />
-                    <Label htmlFor={module}>{module}</Label>
+                    <Label htmlFor={module} className={!readyModules.includes(module) ? 'text-gray-400' : ''}>
+                      {moduleLabels[module] || module}
+                      {!readyModules.includes(module) && (
+                        <span className="ml-2 text-xs text-gray-400">(Coming soon)</span>
+                      )}
+                    </Label>
                   </div>
                 ))}
             </div>
@@ -328,6 +372,16 @@ export default function AuthPage() {
                 </div>
               </div>
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirmation">Enter activation key</Label>
+              <Input
+                id="confirmation"
+                value={confirmationText}
+                onChange={e => setConfirmationText(e.target.value)}
+                placeholder="Enter activation key"
+                autoComplete="off"
+              />
+            </div>
             <div className="flex gap-2">
               <Button variant="outline" onClick={handleBack} className="flex-1">
                 <ArrowLeft className="mr-2 h-4 w-4" /> Back
@@ -362,7 +416,7 @@ export default function AuthPage() {
                   });
                 }} 
                 className="flex-1"
-                disabled={registerMutation.isPending}
+                disabled={registerMutation.isPending || confirmationText !== 'chains-erp2025'}
               >
                 {registerMutation.isPending ? (
                   <>

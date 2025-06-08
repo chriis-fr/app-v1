@@ -33,6 +33,7 @@ router.get('/employees', isAuthenticated, checkModuleAccess('hr'), isHRAdminOrOw
     const employees = await Employee.find(query)
       .select('-password')
       .sort({ createdAt: -1 });
+    console.log('EMPLOYEES RETURNED:', employees);
     res.json(employees);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching employees' });
@@ -183,8 +184,11 @@ router.get('/employees/:id', isAuthenticated, checkModuleAccess('hr'), async (re
 // Update employee (HR admin only)
 router.put('/employees/:id', isAuthenticated, checkModuleAccess('hr'), isHRAdminOrOwner, async (req: Request, res: Response) => {
     try {
-    const employee = await Employee.findByIdAndUpdate(
-      req.params.id,
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+    const employee = await Employee.findOneAndUpdate(
+      { _id: req.params.id, organizationId: req.user.organizationId },
       { $set: req.body },
       { new: true }
     ).select('-password');
@@ -202,7 +206,10 @@ router.put('/employees/:id', isAuthenticated, checkModuleAccess('hr'), isHRAdmin
 // Delete employee (HR admin only)
 router.delete('/employees/:id', isAuthenticated, checkModuleAccess('hr'), isHRAdminOrOwner, async (req: Request, res: Response) => {
     try {
-    const employee = await Employee.findByIdAndDelete(req.params.id);
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+    const employee = await Employee.findOneAndDelete({ _id: req.params.id, organizationId: req.user.organizationId });
     
     if (!employee) {
       return res.status(404).json({ message: 'Employee not found' });
