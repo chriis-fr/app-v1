@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
@@ -58,6 +58,7 @@ interface FormData {
   lastName: string;
   email: string;
   phoneNumber: string;
+  password: string;
   role: 'owner' | 'admin' | 'manager' | 'employee' | 'contractor';
   department: typeof departments[number];
   position: string;
@@ -150,52 +151,6 @@ interface FormData {
   }>;
 }
 
-// Restore the previous working employee ID generation function
-const generateEmployeeId = async (organizationId: string, department: string): Promise<string> => {
-  try {
-    // Get organization details
-    const orgResponse = await fetch(`/api/mongodb/organizations/${organizationId}`);
-    if (!orgResponse.ok) {
-      throw new Error('Failed to fetch organization details');
-    }
-    const orgData = await orgResponse.json();
-    if (!orgData || !orgData.name) {
-      throw new Error('Organization data is invalid');
-    }
-    // Get the latest employee number for this organization
-    const employeesResponse = await fetch(`/api/mongodb/users?organizationId=${organizationId}&sort=employeeId:desc&limit=1`);
-    if (!employeesResponse.ok) {
-      throw new Error('Failed to fetch latest employee');
-    }
-    let employees;
-    try {
-      employees = await employeesResponse.json();
-    } catch (err) {
-      throw new Error('Invalid response for employees');
-    }
-    // Generate organization prefix (first 3 letters of org name)
-    const orgPrefix = orgData.name.substring(0, 3).toUpperCase();
-    // Get department code (first 3 letters)
-    const deptCode = department.substring(0, 3).toUpperCase();
-    // Get current year
-    const year = new Date().getFullYear().toString().slice(-2);
-    // Get the latest sequence number
-    let sequence = 1;
-    if (Array.isArray(employees) && employees.length > 0 && employees[0].employeeId) {
-      const lastId = employees[0].employeeId;
-      const lastSequence = parseInt(lastId.split('-')[3]);
-      if (!isNaN(lastSequence)) {
-        sequence = lastSequence + 1;
-      }
-    }
-    // Format: ORG-DEPT-YY-XXXX (e.g., ABC-ENG-24-0001)
-    return `${orgPrefix}-${deptCode}-${year}-${sequence.toString().padStart(4, '0')}`;
-  } catch (error) {
-    console.error('Error generating employee ID:', error);
-    throw error;
-  }
-};
-
 // Add this interface for module permissions
 interface ModulePermission {
   module: typeof availableModules[number];
@@ -221,6 +176,7 @@ export default function NewUserPage() {
     lastName: '',
     email: '',
     phoneNumber: '',
+    password: '',
     role: 'employee',
     department: 'Engineering',
     position: '',
@@ -343,13 +299,12 @@ export default function NewUserPage() {
       }
 
       const createdUser = await response.json();
-      console.log('User created:', createdUser);
-
       toast({
         title: 'Success',
-        description: 'User created successfully',
+        description: createdUser?.user?._id
+          ? `User created successfully. Employee ID: ${createdUser.user._id}`
+          : 'User created successfully.',
       });
-
       setLocation('/users');
     } catch (error) {
       console.error('Error creating user:', error);
@@ -439,40 +394,6 @@ export default function NewUserPage() {
     }
   };
 
-  // Add this function to handle department change
-  const handleDepartmentChange = async (value: typeof departments[number]) => {
-    try {
-      // Get the current user's organization ID
-      const userResponse = await fetch('/api/auth/me');
-      if (!userResponse.ok) {
-        throw new Error('Failed to fetch current user data');
-      }
-      const userData = await userResponse.json();
-      const organizationId = userData.organizationId;
-      
-      if (!organizationId) {
-        throw new Error('No organization ID found for current user');
-      }
-
-      // Generate employee ID
-      const employeeId = await generateEmployeeId(organizationId, value);
-      
-      // Update form data with new department and employee ID
-    setFormData(prev => ({
-      ...prev,
-        department: value,
-        employeeId
-      }));
-    } catch (error) {
-      console.error('Error generating employee ID:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to generate employee ID. Please try again.',
-        variant: 'destructive',
-      });
-    }
-  };
-
   const renderStepContent = () => {
     switch (currentStep) {
       case 1:
@@ -534,6 +455,19 @@ export default function NewUserPage() {
                 </div>
 
                 <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={formData.password}
+                    onChange={e => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                    required
+                    minLength={6}
+                    placeholder="Set a password for this user"
+                  />
+                </div>
+
+                <div className="space-y-2">
                   <Label htmlFor="role">Role</Label>
                   <Select
                     value={formData.role}
@@ -556,7 +490,7 @@ export default function NewUserPage() {
                   <Label htmlFor="department">Department</Label>
                   <Select
                     value={formData.department}
-                    onValueChange={handleDepartmentChange}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, department: value as typeof departments[number] }))}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select department" />

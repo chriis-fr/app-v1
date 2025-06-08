@@ -98,21 +98,87 @@ router.get('/employees/:id', isAuthenticated, checkModuleAccess('hr'), async (re
   }
 });
 
-// Create new employee (HR admin only)
-router.post('/employees', isAuthenticated, checkModuleAccess('hr'), isHRAdminOrOwner, async (req: Request, res: Response) => {
-  try {
-    const employee = new Employee({
-      ...req.body,
-      role: 'Employee',
-      status: 'Active',
-      canLogin: req.body.canLogin ?? false // Default to false if not provided
-    });
-    await employee.save();
-    res.status(201).json(employee);
-  } catch (error) {
-    res.status(500).json({ message: 'Error creating employee' });
-  }
-});
+// DEPRECATED: Employee creation is now handled via the user creation route (/api/users)
+// router.post('/employees', isAuthenticated, checkModuleAccess('hr'), isHRAdminOrOwner, async (req: Request, res: Response) => {
+//   try {
+//     const {
+//       firstName, lastName, email, username, password, department, position, employmentType, salary, benefits, supervisor, canLogin, role, moduleAccess
+//     } = req.body;
+//
+//     // Validate required fields
+//     if (!firstName || !lastName || !department || !position || !employmentType || !salary) {
+//       return res.status(400).json({ message: 'Missing required employee fields.' });
+//     }
+//
+//     // If login is enabled, validate user fields
+//     if (canLogin) {
+//       if (!email || !username || !password || !role || !Array.isArray(moduleAccess) || moduleAccess.length === 0) {
+//         return res.status(400).json({ message: 'Missing required user fields for login-enabled employee.' });
+//       }
+//       // Check for existing user/email
+//       const existingUser = await require('../models/User').default.findOne({ $or: [ { email }, { username } ] });
+//       if (existingUser) {
+//         return res.status(409).json({ message: 'A user with this email or username already exists.' });
+//       }
+//     }
+//
+//     // Create Employee first
+//     const employee = new Employee({
+//       firstName,
+//       lastName,
+//       department,
+//       position,
+//       employmentType,
+//       salary,
+//       benefits,
+//       supervisor,
+//       canLogin: !!canLogin,
+//       role: canLogin ? role : 'Employee',
+//       status: 'Active',
+//       organizationId: req.user!.organizationId
+//     });
+//     await employee.save();
+//
+//     let user = null;
+//     if (canLogin) {
+//       const bcrypt = require('bcrypt');
+//       const saltRounds = 10;
+//       const hashedPassword = await bcrypt.hash(password, saltRounds);
+//       // Use employee._id as employeeNumber for linking
+//       const employeeNumber = employee._id.toString();
+//       // Create User
+//       const UserModel = require('../models/User').default;
+//       user = new UserModel({
+//         firstName,
+//         lastName,
+//         email,
+//         username,
+//         password: hashedPassword,
+//         department,
+//         position,
+//         status: 'active',
+//         employeeId: employeeNumber,
+//         organizationId: req.user!.organizationId,
+//         role,
+//         moduleAccess,
+//         canLogin: true,
+//         isOwner: false,
+//         isActive: false, // Set to false until activation
+//         emailVerified: false
+//       });
+//       await user.save();
+//       // Link employee to user (optional: store userId in employee if desired)
+//       employee.employeeNumber = employeeNumber;
+//       await employee.save();
+//       // TODO: Send activation email here if desired
+//     }
+//
+//     res.status(201).json({ employee, user });
+//   } catch (error) {
+//     console.error('Error creating employee:', error);
+//     res.status(500).json({ message: 'Error creating employee' });
+//   }
+// });
 
 // Update employee (HR admin only)
 router.put('/employees/:id', isAuthenticated, checkModuleAccess('hr'), isHRAdminOrOwner, async (req: Request, res: Response) => {

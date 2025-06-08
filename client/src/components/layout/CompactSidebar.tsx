@@ -77,7 +77,7 @@ const navigation: NavigationItem[] = [
     ]
   },
   {
-    name: 'Finance Activity', 
+    name: 'Finance', 
     icon: Wallet,
     route: '/dashboard/finance',
     subItems: [
@@ -93,7 +93,7 @@ const navigation: NavigationItem[] = [
     ]
   },
   {
-    name: 'Business Partners', 
+    name: 'Partners', 
     icon: Building,
     route: '/business-partners',
     subItems: [
@@ -115,7 +115,7 @@ const navigation: NavigationItem[] = [
     route: '/security'
   },
   {
-    name: 'Accounting', 
+    name: 'Accounts', 
     icon: Receipt,
     route: '/dashboard/accounting'
   }
@@ -142,7 +142,7 @@ export default function CompactSidebar() {
           href={module.route}
           className={cn(
             "flex items-center justify-center w-12 h-12 rounded-lg text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50",
-            location.startsWith(module.route) && "bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-50"
+            (location === module.route || (module.subItems && module.subItems.some(sub => location === sub.route))) && "bg-gray-400 text-gray-900 dark:bg-gray-800 dark:text-gray-50"
           )}
         >
           <module.icon className="h-5 w-5 text-white" />
@@ -150,7 +150,7 @@ export default function CompactSidebar() {
         
         {/* Tooltip */}
         {hoveredItem === module.name && (
-          <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1  text-white px-2 py-1 rounded text-xs font-medium whitespace-nowrap z-100">
+          <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1  text-white px-2 py-1 rounded overflow-hidden text-[9.5px] font-medium whitespace-nowrap">
             {module.name}
           </div>
         )}
@@ -159,7 +159,7 @@ export default function CompactSidebar() {
   };
 
   return (
-    <div className="w-20 bg-[#282881] h-screen fixed left-0 text-white flex flex-col items-center">
+    <div className="w-20 bg-[#282881]  h-screen fixed left-0 text-white flex flex-col items-center">
       {/* Logo Section */}
       <div
         className="p-4 border-b border-white/10 w-full flex justify-center cursor-pointer hover:bg-white/5 transition-colors"
@@ -169,7 +169,7 @@ export default function CompactSidebar() {
       </div>
 
       {/* Navigation Items */}
-      <div className="py-6 space-y-2 overflow-y-auto flex-1">
+      <div className="py-6 space-y-2 overflow-hidden flex-1">
         {renderModuleLinks()}
       </div>
 

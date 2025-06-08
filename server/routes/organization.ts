@@ -6,6 +6,7 @@ import OrganizationStructure, { OrganizationStructureDocument } from '../models/
 import User from '../models/User';
 import mongoose from 'mongoose';
 import { getCountryConfig } from '../config/countries';
+import { Business } from '../models/Business';
 
 const router = express.Router();
 
@@ -559,6 +560,19 @@ router.put('/settings', isAuthenticated, async (req: AuthRequest, res) => {
   } catch (error) {
     console.error('Error updating organization settings:', error);
     res.status(500).json({ message: 'Error updating organization settings' });
+  }
+});
+
+// Get organization by ID
+router.get('/:id', isAuthenticated, async (req: AuthRequest, res) => {
+  try {
+    const org = await Business.findById(req.params.id);
+    if (!org) {
+      return res.status(404).json({ message: 'Organization not found' });
+    }
+    res.json(org);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching organization' });
   }
 });
 

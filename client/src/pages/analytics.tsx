@@ -103,6 +103,29 @@ interface AnalyticsData {
     createdAt: string;
     activeModules: string[];
   };
+  moduleUsage: Array<{
+    module: string;
+    usageCount: number;
+    lastUsed: string;
+  }>;
+  loginActivity: Array<{
+    name: string;
+    logins: Array<{
+      date: string;
+      count: number;
+    }>;
+  }>;
+  loadTimeStats: Array<{
+    date: string;
+    avg: number;
+    min: number;
+    max: number;
+  }>;
+  aiInsights: Array<{
+    title: string;
+    description: string;
+    type: 'success' | 'warning' | 'error';
+  }>;
 }
 
 export default function AnalyticsPage() {
@@ -367,6 +390,127 @@ export default function AnalyticsPage() {
             </div>
           </Card>
         </div>
+
+        {/* Module Usage Section */}
+        <Card className="p-4">
+          <h3 className="text-lg font-semibold mb-4">Module Usage</h3>
+          <div className="h-[300px]">
+            {isLoading ? (
+              <Skeleton className="h-full w-full" />
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={data?.moduleUsage}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="module" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="usageCount" fill="#f59e0b" name="Usage Count" />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+          {!isLoading && (
+            <div className="mt-4 overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr>
+                    <th className="text-left font-medium">Module</th>
+                    <th className="text-left font-medium">Last Used</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data?.moduleUsage.map((mod) => (
+                    <tr key={mod.module}>
+                      <td className="py-1 pr-4">{mod.module}</td>
+                      <td className="py-1">{new Date(mod.lastUsed).toLocaleDateString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+
+        {/* Login Activity Section */}
+        <Card className="p-4">
+          <h3 className="text-lg font-semibold mb-4">Login Activity (Last 7 Days)</h3>
+          <div className="overflow-x-auto">
+            {isLoading ? (
+              <Skeleton className="h-32 w-full" />
+            ) : (
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr>
+                    <th className="text-left font-medium">User</th>
+                    {data?.loginActivity[0]?.logins.slice(0, 7).map((l, idx) => (
+                      <th key={idx} className="text-left font-medium">{l.date}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {data?.loginActivity.map((user) => (
+                    <tr key={user.name}>
+                      <td className="py-1 pr-4">{user.name}</td>
+                      {user.logins.slice(0, 7).map((l, idx) => (
+                        <td key={idx} className="py-1">{l.count}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </Card>
+
+        {/* Load Time Stats Section */}
+        <Card className="p-4">
+          <h3 className="text-lg font-semibold mb-4">Load Time Stats (ms)</h3>
+          <div className="h-[300px]">
+            {isLoading ? (
+              <Skeleton className="h-full w-full" />
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={data?.loadTimeStats}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Line type="monotone" dataKey="avg" stroke="#3b82f6" name="Avg" />
+                  <Line type="monotone" dataKey="min" stroke="#10b981" name="Min" />
+                  <Line type="monotone" dataKey="max" stroke="#ef4444" name="Max" />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </Card>
+
+        {/* AI Insights Section */}
+        <Card className="p-4">
+          <h3 className="text-lg font-semibold mb-4">AI Insights</h3>
+          <div className="space-y-4">
+            {isLoading ? (
+              <Skeleton className="h-24 w-full" />
+            ) : (
+              data?.aiInsights.map((insight, idx) => (
+                <div
+                  key={idx}
+                  className={`p-4 rounded-lg mb-2 ${
+                    insight.type === 'success'
+                      ? 'bg-green-50 text-green-700'
+                      : insight.type === 'warning'
+                      ? 'bg-yellow-50 text-yellow-700'
+                      : 'bg-blue-50 text-blue-700'
+                  }`}
+                >
+                  <div className="font-medium">{insight.title}</div>
+                  <div className="text-sm mt-1">{insight.description}</div>
+                </div>
+              ))
+            )}
+          </div>
+        </Card>
       </div>
     </MainLayout>
   );

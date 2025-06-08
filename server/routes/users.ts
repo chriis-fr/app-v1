@@ -150,12 +150,22 @@ router.get('/', isAuthenticated, async (req: Request, res: Response, next: NextF
 
     // Sync with HR data
     const usersWithHRData = await Promise.all(users.map(async (user) => {
+      // Derive moduleAccess and permissions for frontend
+      const modulePermissions = user.modulePermissions || [];
+      const moduleAccess = modulePermissions.map(mp => mp.module);
+      const permissions = modulePermissions.map(mp => ({
+        module: mp.module,
+        actions: mp.permissions
+      }));
+
       const hrData = await Employee.findOne({ 
         employeeNumber: user.employeeId,
         organizationId: user.organizationId // Ensure HR data is also filtered
       });
       return {
         ...user,
+        moduleAccess,
+        permissions,
         hrData: hrData ? {
           employmentGrade: hrData.employmentGrade,
           contractType: hrData.contractType,
@@ -190,7 +200,22 @@ const generatePassword = (length: number = 12): string => {
   return password;
 };
 
-// Create new user with activation token and email verification
+// Add after middleware, before main POST / route
+router.post('/generate-employee-id', isAuthenticated, async (req, res) => {
+  const { firstName, lastName, email, organizationId } = req.body;
+  if (!firstName || !lastName || !email || !organizationId) {
+    return res.status(400).json({ message: 'Missing required fields' });
+  }
+  // Use organizationId and email to generate a unique employeeId
+  const prefix = organizationId.slice(-3).toUpperCase();
+  const emailPart = email.split('@')[0].toUpperCase();
+  // Count users with this org
+  const count = await User.countDocuments({ organizationId });
+  const employeeId = `${prefix}-${emailPart}-${(count + 1).toString().padStart(4, '0')}`;
+  res.json({ employeeId });
+});
+
+// Create new user with direct password set (no activation email)
 router.post('/', isAuthenticated, checkModulePermission('create_user'), checkDepartmentAccess, async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!req.user) {
@@ -199,21 +224,59 @@ router.post('/', isAuthenticated, checkModulePermission('create_user'), checkDep
     const user = req.user as unknown as UserDocument;
     const userData = req.body;
     const changeLog: ChangeLog[] = [];
-    // Generate activation token and expiry
-    const activationToken = uuidv4();
-    const tokenExpiresAt = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000); // 2 days
-    // Create user without password, inactive
+    // Require password at creation
+    if (!userData.password || typeof userData.password !== 'string' || userData.password.length < 6) {
+      return res.status(400).json({ message: 'Password is required and must be at least 6 characters.' });
+    }
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(userData.password, 10);
+    // Convert date fields to Date objects if present
+    const hireDate = userData.hireDate ? new Date(userData.hireDate) : new Date();
+    const contractExpiryDate = userData.contractExpiryDate ? new Date(userData.contractExpiryDate) : undefined;
+    const employmentDate = userData.employmentDate ? new Date(userData.employmentDate) : hireDate;
+
+    // Create user with hashed password, active by default
     const newUser = await User.create({
       ...userData,
-      password: '', // No password yet
-      activationToken,
-      tokenExpiresAt,
-      emailVerified: false,
-      isActive: false,
+      hireDate,
+      contractExpiryDate,
+      employmentDate,
+      password: hashedPassword,
+      emailVerified: true,
+      isActive: true,
+      activationToken: undefined,
+      tokenExpiresAt: undefined,
       changeLog,
     });
-    // Send activation email
-    await sendActivationEmail(newUser.email, activationToken);
+    // Create corresponding Employee record
+    const employeeData = {
+      organizationId: newUser.organizationId,
+      employeeNumber: String(newUser._id),
+      firstName: newUser.firstName,
+      lastName: newUser.lastName,
+      department: newUser.department,
+      position: newUser.position,
+      employmentDate,
+      employmentGrade: userData.employmentGrade,
+      contractType: userData.contractType,
+      contractExpiryDate,
+      division: userData.division,
+      workLocation: userData.workLocation,
+      costCenter: userData.costCenter,
+      employmentStatus: userData.employmentStatus || 'active',
+      bankDetails: userData.bankDetails,
+      children: userData.children,
+      maritalStatus: userData.maritalStatus,
+      addresses: userData.addresses,
+      canLogin: newUser.canLogin,
+      role: newUser.role,
+      status: newUser.status || 'active',
+      supervisor: userData.supervisor,
+      salary: userData.salary,
+      benefits: userData.benefits,
+      // Add any other relevant fields here
+    };
+    const newEmployee = await Employee.create(employeeData);
     res.status(201).json({
       user: {
         ...newUser.toObject(),
@@ -221,10 +284,11 @@ router.post('/', isAuthenticated, checkModulePermission('create_user'), checkDep
         activationToken: undefined,
         tokenExpiresAt: undefined,
       },
-      message: 'Activation email sent.'
+      employee: newEmployee,
+      message: 'User and employee created successfully.'
     });
   } catch (error) {
-    console.error('Error creating user:', error);
+    console.error('[User Creation] Error creating user:', error);
     res.status(500).json({ message: "Failed to create user" });
   }
 });
@@ -488,13 +552,23 @@ router.get('/:id', isAuthenticated, async (req: Request, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
+    // Derive moduleAccess and permissions for frontend
+    const modulePermissions = user.modulePermissions || [];
+    const moduleAccess = modulePermissions.map(mp => mp.module);
+    const permissions = modulePermissions.map(mp => ({
+      module: mp.module,
+      actions: mp.permissions
+    }));
+
     // Sync with HR data
     const hrData = await Employee.findOne({ 
       employeeNumber: user.employeeId,
-      organizationId: req.user.organizationId // Add organization filter
+      organizationId: req.user.organizationId
     });
     const userWithHRData = {
       ...user,
+      moduleAccess,
+      permissions,
       hrData: hrData ? {
         employmentGrade: hrData.employmentGrade,
         contractType: hrData.contractType,

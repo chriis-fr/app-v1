@@ -1,0 +1,105 @@
+HR MODULE DOCUMENTATION
+========================
+
+Overview
+--------
+The HR module is a core part of the ERP system, providing robust employee and user management, role-based access control, onboarding, analytics, and seamless integration with other business modules. It is designed for organizations to manage their workforce, permissions, and HR processes efficiently.
+
+HR (Human Resources): Needs, Innovations, and Tech Approach
+----------------------------------------------------------
+What It Needs:
+- Employee profiles (personal info, contracts)
+- Payroll processing
+- Time tracking
+
+Our Twist:
+- Crypto Payroll: Pay employees in cryptocurrency or stablecoins—huge for remote teams or NGOs in developing regions.
+- Smart Contract Employment: Store contracts on-chain for legal transparency.
+- AI for Insights: Use AI to provide HR analytics, predictions, and actionable insights (e.g., attrition risk, performance trends).
+
+Tech Approach:
+- MongoDB: Used for storing employees, payroll, and HR data.
+- React calendar component: For time tracking and attendance management.
+- Solidity: For employment contracts and smart contract payroll on blockchain.
+- AI/ML: For HR analytics, predictions, and insights.
+
+Key Features Implemented
+------------------------
+- Employee management (add, edit, view, delete employees)
+- User management (login-enabled users, activation flow, permissions)
+- Role-based access (owner, admin, HR admin, manager, employee)
+- Module access and granular permissions (read, write, edit, delete, manage)
+- HR analytics (dashboard, department distribution, recent activity)
+- Attendance and payroll endpoints for analytics
+- Onboarding and activation flow (email activation, password setup)
+- Stepper/multi-step forms for user/employee creation and editing
+- Defensive error handling and robust API responses
+- UI/UX tailored for each role (sidebar, header, content alignment)
+- Support for HR documents, dependents, competencies, and more
+- Crypto payroll and smart contract employment (planned/partial)
+- AI-powered HR insights and predictions (planned/partial)
+
+Backend Models & Fields
+----------------------
+- User: canLogin, isOwner, role, moduleAccess, modulePermissions, organizationId, isActive, emailVerified, activationToken, tokenExpiresAt, etc.
+- Employee: employeeNumber, department, position, status, organizationId, canLogin, role, etc.
+- Permissions: Array of { module, actions } for each user
+- Organization (Business): name, modules, settings, etc.
+
+API Endpoints
+-------------
+- /api/hr/employees [GET, POST, PUT, DELETE]
+- /api/hr/employees/:id [GET, PUT, DELETE]
+- /api/hr/employees/:id/attendance [GET]
+- /api/hr/employees/:id/payroll [GET]
+- /api/hr/employees/:id/competencies [GET, PUT]
+- /api/hr/employees/:id/dependents [GET, POST]
+- /api/users [GET, POST]
+- /api/users/:id [GET, PUT, DELETE]
+- /api/users/:id/hr-data [PUT]
+- /api/organization/:id [GET]
+- /api/auth/me [GET]
+- (Other endpoints for documents, analytics, etc.)
+
+Frontend Features
+-----------------
+- Users and employees are managed via modern, responsive UI
+- Stepper/multi-step forms for onboarding and editing
+- Module access and permissions managed via checkboxes and dropdowns
+- Only organization modules are shown for access assignment
+- Role-based UI: owner, admin, HR admin, manager, employee
+- Analytics and dashboards for HR admins and owners
+- Defensive error handling (alerts, fallback UI)
+- Activation and onboarding flows (public /activate page, email verification)
+- Support for HR documents, dependents, competencies, payroll, attendance
+
+Known Issues & What Is Left
+--------------------------
+- No dedicated endpoint for generating unique employee IDs (currently generated on frontend)
+- Some advanced HR features (performance reviews, leave management, advanced analytics) may be incomplete or missing
+- More granular permission management (per-field, per-action) could be added
+- Bulk import/export of employees and users not yet implemented
+- More robust audit logging and change tracking could be added
+- UI/UX polish for mobile and accessibility
+- Integration with external payroll/benefits providers (if needed)
+- Automated tests for HR endpoints and UI
+- Documentation for API consumers and HR admins
+
+Setup & Integration Notes
+-------------------------
+- Ensure backend and frontend are both running and API routes are correctly proxied
+- Organization (Business) model is used for organization data; ensure at least one exists
+- Email sending (for activation) requires proper SMTP configuration
+- MongoDB and/or Prisma database must be set up and seeded
+- Permissions and module access must be configured for each organization
+
+For Developers & Admins
+-----------------------
+- All HR and user management logic is role-based and organization-scoped
+- Always check network/API responses for debugging
+- Use the provided endpoints for all HR data operations
+- Extend models and endpoints as needed for your organization's requirements
+
+---
+
+This documentation should be updated as new features are added or changes are made to the HR module. 

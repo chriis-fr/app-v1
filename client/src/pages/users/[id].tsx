@@ -149,6 +149,11 @@ interface User {
     verified: boolean;
     blockchainHash?: string;
   }>;
+  permissions?: Array<{
+    module: string;
+    role?: 'admin' | 'user';
+    actions: string[];
+  }>;
 }
 
 // Define module display names and descriptions
@@ -184,6 +189,17 @@ const moduleDisplayInfo = {
 // Modern horizontal stepper with icons and progress
 const stepIcons = [
   User, Briefcase, MapPin, Users, CreditCard, FileText, Globe, Key, Building, Save, Shield
+];
+
+const steps = [
+  'Basic & Professional Info',
+  'Location, Work & Emergency',
+  'Compensation, Benefits & Wallet',
+  'Skills, Certifications, Education & Equipment',
+  'Address & Documents',
+  'Status, Verification & Executive Info',
+  'Module Access',
+  'Blockchain & AI',
 ];
 
 /* Hide horizontal scrollbar utility */
@@ -244,16 +260,17 @@ export default function EditUserPage() {
   const [status, setStatus] = useState('active');
   const [step, setStep] = useState(0);
   const [moduleAccess, setModuleAccess] = useState<string[]>([]);
-  const steps = [
-    'Basic & Professional Info',
-    'Location, Work & Emergency',
-    'Compensation, Benefits & Wallet',
-    'Skills, Certifications, Education & Equipment',
-    'Address & Documents',
-    'Status, Verification & Executive Info',
-    'Module Access',
-    'Blockchain & AI',
-  ];
+  const [modulePermissions, setModulePermissions] = useState<{
+    module: string;
+    role: 'admin' | 'user';
+    permissions: {
+      view: boolean;
+      create: boolean;
+      edit: boolean;
+      delete: boolean;
+      manage: boolean;
+    };
+  }[]>([]);
 
   useEffect(() => {
     if (userId) {
@@ -298,6 +315,39 @@ export default function EditUserPage() {
       setModuleAccess(Array.isArray(user.moduleAccess) ? user.moduleAccess : []);
     }
   }, [user]);
+
+  useEffect(() => {
+    if (user && Array.isArray(user.permissions)) {
+      setModulePermissions(
+        (currentUser?.organization?.activeModules || []).map((module) => {
+          const found = user.permissions && user.permissions.find((p: any) => p.module === module);
+          return found
+            ? {
+                module,
+                role: found.role || 'user',
+                permissions: {
+                  view: found.actions?.includes('view') || false,
+                  create: found.actions?.includes('create') || false,
+                  edit: found.actions?.includes('edit') || false,
+                  delete: found.actions?.includes('delete') || false,
+                  manage: found.actions?.includes('manage') || false,
+                },
+              }
+            : {
+                module,
+                role: 'user',
+                permissions: {
+                  view: false,
+                  create: false,
+                  edit: false,
+                  delete: false,
+                  manage: false,
+                },
+              };
+        })
+      );
+    }
+  }, [user, currentUser]);
 
   const fetchUser = async () => {
     try {
@@ -584,11 +634,78 @@ export default function EditUserPage() {
     }
   };
 
+  const handleModuleToggle = (module: string) => {
+    setModulePermissions((prev) => {
+      const exists = prev.find((p) => p.module === module);
+      if (exists) {
+        return prev.filter((p) => p.module !== module);
+      } else {
+        return [
+          ...prev,
+          {
+            module,
+            role: 'user',
+            permissions: {
+              view: true,
+              create: false,
+              edit: false,
+              delete: false,
+              manage: false,
+            },
+          },
+        ];
+      }
+    });
+    setModuleAccess((prev) =>
+      prev.includes(module) ? prev.filter((m) => m !== module) : [...prev, module]
+    );
+  };
+
+  const handleModuleRoleChange = (module: string, role: 'admin' | 'user') => {
+    setModulePermissions((prev) =>
+      prev.map((p) =>
+        p.module === module
+          ? {
+              ...p,
+              role,
+              permissions:
+                role === 'admin'
+                  ? { view: true, create: true, edit: true, delete: true, manage: true }
+                  : p.permissions,
+            }
+          : p
+      )
+    );
+  };
+
+  const handlePermissionChange = (
+    module: string,
+    permission: keyof typeof modulePermissions[0]['permissions'],
+    value: boolean
+  ) => {
+    setModulePermissions((prev) =>
+      prev.map((p) =>
+        p.module === module
+          ? { ...p, permissions: { ...p.permissions, [permission]: value } }
+          : p
+      )
+    );
+  };
+
   const handleModuleAccessSave = async () => {
     if (!user) return;
     setIsSaving(true);
     try {
-      const updateData = { moduleAccess };
+      const updateData = {
+        moduleAccess,
+        permissions: modulePermissions.map((p) => ({
+          module: p.module,
+          role: p.role,
+          actions: Object.entries(p.permissions)
+            .filter(([_, v]) => v)
+            .map(([k]) => k),
+        })),
+      };
       const response = await fetch(`/api/mongodb/users/${userId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -671,7 +788,7 @@ export default function EditUserPage() {
         <div className="sticky top-0 z-10 bg-white pb-4 mb-6 border-b border-gray-200 shadow-sm">
           <div className="overflow-hidden max-w-full  hide-scrollbar">
             <div className="flex flex-wrap md:flex-nowrap items-center justify-between gap-x-7 max-w-screen-lg mx-auto px-2 md:px-6">
-              {steps.map((label, idx) => {
+              {steps.map((label: string, idx: number) => {
                 const Icon = stepIcons[idx] || User;
                 const isActive = step === idx;
                 const isCompleted = step > idx;
@@ -691,7 +808,7 @@ export default function EditUserPage() {
                     {idx < steps.length - 1 && (
                       <div className={`absolute top-5 left-full w-full h-1 z-0 ${isCompleted ? 'bg-primary' : 'bg-gray-200'}`} style={{ right: '-50%', left: '50%' }} />
                     )}
-                  </div>
+        </div>
                 );
               })}
             </div>
@@ -705,8 +822,8 @@ export default function EditUserPage() {
                 <User className="mr-2 h-5 w-5" />
                 Basic & Professional Information
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
                   <Label htmlFor="username">Username</Label>
                   <Input
                     id="username"
@@ -747,18 +864,18 @@ export default function EditUserPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="lastName">Last Name</Label>
-                  <Input
+              <Input
                     id="lastName"
                     value={basicInfo.lastName}
                     onChange={(e) => setBasicInfo({ ...basicInfo, lastName: e.target.value })}
                     required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
                     value={basicInfo.email}
                     onChange={(e) => setBasicInfo({ ...basicInfo, email: e.target.value })}
                     required
@@ -772,9 +889,9 @@ export default function EditUserPage() {
                     onChange={(e) => setBasicInfo({ ...basicInfo, phoneNumber: e.target.value })}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="role">Role</Label>
-                  <Select
+            <div className="space-y-2">
+              <Label htmlFor="role">Role</Label>
+              <Select
                     value={professionalInfo.role}
                     onValueChange={(value) => setProfessionalInfo({ ...professionalInfo, role: value })}
                   >
@@ -788,11 +905,11 @@ export default function EditUserPage() {
                         </SelectItem>
                       ))}
                     </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="department">Department</Label>
-                  <Select
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="department">Department</Label>
+              <Select
                     value={professionalInfo.department}
                     onValueChange={(value) => setProfessionalInfo({ ...professionalInfo, department: value })}
                   >
@@ -806,25 +923,25 @@ export default function EditUserPage() {
                         </SelectItem>
                       ))}
                     </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="position">Position</Label>
-                  <Input
-                    id="position"
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="position">Position</Label>
+              <Input
+                id="position"
                     value={professionalInfo.position}
                     onChange={(e) => setProfessionalInfo({ ...professionalInfo, position: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
+              />
+            </div>
+              <div className="space-y-2">
                   <Label htmlFor="team">Team</Label>
-                  <Input
+                <Input
                     id="team"
                     value={professionalInfo.team}
                     onChange={(e) => setProfessionalInfo({ ...professionalInfo, team: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
+                />
+              </div>
+              <div className="space-y-2">
                   <Label htmlFor="hireDate">Hire Date</Label>
                   <Input
                     id="hireDate"
@@ -841,7 +958,7 @@ export default function EditUserPage() {
                     onChange={(e) => setProfessionalInfo({ ...professionalInfo, managerId: e.target.value })}
                   />
                 </div>
-              </div>
+            </div>
               <div className="flex justify-between pt-4">
                 <div />
                 <Button type="button" onClick={handleBasicInfoSave} disabled={isSaving}>
@@ -850,9 +967,9 @@ export default function EditUserPage() {
                 <Button type="button" onClick={() => setStep(step + 1)}>
                   Next
                 </Button>
-              </div>
             </div>
-          </Card>
+          </div>
+        </Card>
         )}
         {step === 1 && (
           <Card>
@@ -861,57 +978,57 @@ export default function EditUserPage() {
                 <MapPin className="mr-2 h-5 w-5" />
                 Location, Work & Emergency
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
                   <Label htmlFor="office">Office</Label>
-                  <Input
+              <Input
                     id="office"
                     value={locationInfo.office}
                     onChange={(e) => setLocationInfo({ ...locationInfo, office: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
+              />
+            </div>
+            <div className="space-y-2">
                   <Label htmlFor="floor">Floor</Label>
-                  <Input
+              <Input
                     id="floor"
                     value={locationInfo.floor}
                     onChange={(e) => setLocationInfo({ ...locationInfo, floor: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
+              />
+            </div>
+            <div className="space-y-2">
                   <Label htmlFor="deskNumber">Desk Number</Label>
-                  <Input
+              <Input
                     id="deskNumber"
                     value={locationInfo.deskNumber}
                     onChange={(e) => setLocationInfo({ ...locationInfo, deskNumber: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
+              />
+            </div>
+            <div className="space-y-2">
                   <Label htmlFor="startTime">Start Time</Label>
-                  <Input
+              <Input
                     id="startTime"
                     type="time"
                     value={workSchedule.startTime}
                     onChange={(e) => setWorkSchedule({ ...workSchedule, startTime: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
+              />
+            </div>
+            <div className="space-y-2">
                   <Label htmlFor="endTime">End Time</Label>
-                  <Input
+              <Input
                     id="endTime"
                     type="time"
                     value={workSchedule.endTime}
                     onChange={(e) => setWorkSchedule({ ...workSchedule, endTime: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
+              />
+            </div>
+            <div className="space-y-2">
                   <Label htmlFor="timezone">Timezone</Label>
-                  <Input
+              <Input
                     id="timezone"
                     value={workSchedule.timezone}
                     onChange={(e) => setWorkSchedule({ ...workSchedule, timezone: e.target.value })}
-                  />
-                </div>
+              />
+            </div>
               </div>
               <div className="flex justify-between pt-4">
                 <Button type="button" onClick={() => setStep(step - 1)}>
@@ -935,16 +1052,16 @@ export default function EditUserPage() {
                 Compensation, Benefits & Wallet
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
+            <div className="space-y-2">
                   <Label htmlFor="baseSalary">Base Salary</Label>
-                  <Input
+              <Input
                     id="baseSalary"
                     type="number"
                     value={user.compensation?.baseSalary}
                     onChange={(e) => setUser({ ...user, compensation: { ...user.compensation, baseSalary: Number(e.target.value) } })}
-                  />
-                </div>
-                <div className="space-y-2">
+              />
+            </div>
+            <div className="space-y-2">
                   <Label htmlFor="bonus">Bonus</Label>
                   <Input
                     id="bonus"
@@ -1288,8 +1405,8 @@ export default function EditUserPage() {
                       </div>
                     ))}
                   </div>
-                </div>
               </div>
+            </div>
               <div className="flex justify-between pt-4">
                 <Button type="button" onClick={() => setStep(step - 1)}>
                   Back
@@ -1297,9 +1414,9 @@ export default function EditUserPage() {
                 <Button type="button" onClick={() => setStep(step + 1)}>
                   Next
                 </Button>
-              </div>
             </div>
-          </Card>
+          </div>
+        </Card>
         )}
         {step === 5 && (
           <Card>
@@ -1316,7 +1433,7 @@ export default function EditUserPage() {
                     value={addressData.street}
                     onChange={(e) => setUser({ ...user, address: { ...addressData, street: e.target.value } })}
                   />
-                </div>
+                  </div>
                 <div className="space-y-2">
                   <Label htmlFor="city">City</Label>
                   <Input
@@ -1324,7 +1441,7 @@ export default function EditUserPage() {
                     value={addressData.city}
                     onChange={(e) => setUser({ ...user, address: { ...addressData, city: e.target.value } })}
                   />
-                </div>
+              </div>
                 <div className="space-y-2">
                   <Label htmlFor="state">State</Label>
                   <Input
@@ -1384,47 +1501,75 @@ export default function EditUserPage() {
             <div className="p-6 space-y-4">
               <h2 className="text-lg font-semibold flex items-center">
                 <Shield className="mr-2 h-5 w-5" />
-                Status, Verification & Executive Info
+                Module Access
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="status">Account Status</Label>
-                  <Select
-                    value={status}
-                    onValueChange={(value) => setStatus(value as 'active' | 'inactive')}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="createdAt">Created At</Label>
-                  <Input
-                    id="createdAt"
-                    value={user.createdAt ? new Date(user.createdAt).toLocaleString() : ''}
-                    disabled
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="updatedAt">Last Updated</Label>
-                  <Input
-                    id="updatedAt"
-                    value={user.updatedAt ? new Date(user.updatedAt).toLocaleString() : ''}
-                    disabled
-                  />
-                </div>
+                {(currentUser?.organization?.activeModules || []).map((module) => {
+                  const modulePermission = modulePermissions.find((p) => p.module === module);
+                  return (
+                    <div key={module} className="border rounded-lg p-4 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                    <Checkbox
+                            id={`module-access-${module}`}
+                            checked={!!modulePermission}
+                            onCheckedChange={() => handleModuleToggle(module)}
+                          />
+                          <Label htmlFor={`module-access-${module}`} className="font-medium">
+                            {moduleDisplayInfo[module]?.name || module.charAt(0).toUpperCase() + module.slice(1)}
+                    </Label>
+                        </div>
+                      </div>
+                      {modulePermission && (
+                        <div className="space-y-4 pl-6">
+                          <div className="space-y-2">
+                            <Label>Role in Module</Label>
+                            <Select
+                              value={modulePermission.role}
+                              onValueChange={(value: 'admin' | 'user') => handleModuleRoleChange(module, value)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select role" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="admin">Admin</SelectItem>
+                                <SelectItem value="user">User</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Permissions</Label>
+                            <div className="space-y-2">
+                              {Object.entries(modulePermission.permissions).map(([key, value]) => (
+                                <div key={key} className="flex items-center space-x-2">
+                                  <Checkbox
+                                    id={`${module}-${key}`}
+                                    checked={value}
+                                    onCheckedChange={(checked) => handlePermissionChange(module, key as any, checked as boolean)}
+                                    disabled={modulePermission.role === 'admin'}
+                                  />
+                                  <Label htmlFor={`${module}-${key}`} className="text-sm">
+                                    {key.charAt(0).toUpperCase() + key.slice(1)}
+                                  </Label>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                  </div>
+                  );
+                })}
               </div>
               <div className="flex justify-between pt-4">
                 <Button type="button" onClick={() => setStep(step - 1)}>
                   Back
                 </Button>
-                <Button type="button" onClick={handleStatusSave} disabled={isSaving}>
+                <Button type="button" onClick={handleModuleAccessSave} disabled={isSaving}>
                   {isSaving ? 'Saving...' : 'Save'}
+                </Button>
+                <Button type="button" onClick={() => setStep(step + 1)}>
+                  Next
                 </Button>
               </div>
             </div>
@@ -1437,46 +1582,46 @@ export default function EditUserPage() {
                 <Users className="mr-2 h-5 w-5" />
                 Blockchain & AI
               </h2>
-              <CredentialVerification
-                credentials={user.credentials || []}
-                onVerify={async (credentialId) => {
-                  try {
-                    const response = await fetch('/api/hr/verify-credential', {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                      },
-                      body: JSON.stringify({
-                        credentialId,
-                        userId: user.id
-                      }),
-                    });
-                    const data = await response.json();
-                    if (data.success) {
-                      // Update the local state with the verified credential
-                      setUser({
-                        ...user,
-                        credentials: user.credentials?.map(cred => 
-                          cred.id === credentialId 
-                            ? { ...cred, verified: true, blockchainHash: data.blockchainHash }
-                            : cred
-                        )
-                      });
-                    }
-                  } catch (error) {
-                    console.error('Error verifying credential:', error);
-                  }
-                }}
-              />
-              <SkillMatching
-                projectRequirements={{
-                  skills: ['javascript', 'typescript', 'react', 'node.js'],
-                  experience: 3
-                }}
-              />
-            </div>
-          </Card>
-        )}
+          <CredentialVerification
+            credentials={user.credentials || []}
+            onVerify={async (credentialId) => {
+              try {
+                const response = await fetch('/api/hr/verify-credential', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    credentialId,
+                    userId: user.id
+                  }),
+                });
+                const data = await response.json();
+                if (data.success) {
+                  // Update the local state with the verified credential
+                  setUser({
+                    ...user,
+                    credentials: user.credentials?.map(cred => 
+                      cred.id === credentialId 
+                        ? { ...cred, verified: true, blockchainHash: data.blockchainHash }
+                        : cred
+                    )
+                  });
+                }
+              } catch (error) {
+                console.error('Error verifying credential:', error);
+              }
+            }}
+          />
+          <SkillMatching
+            projectRequirements={{
+              skills: ['javascript', 'typescript', 'react', 'node.js'],
+              experience: 3
+            }}
+          />
+              </div>
+            </Card>
+          )}
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="flex justify-end mt-8">
             <Button type="submit" disabled={isSaving}>
@@ -1488,11 +1633,11 @@ export default function EditUserPage() {
               ) : (
                 <>
                   <Save className="mr-2 h-4 w-4" />
-                  Save Changes
+            Save Changes
                 </>
               )}
-            </Button>
-          </div>
+          </Button>
+        </div>
         </form>
       </div>
     </ModuleLayout>

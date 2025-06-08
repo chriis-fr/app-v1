@@ -1461,10 +1461,14 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
         ];
       }
       
+      // Sanitize managerId: set to null if not a valid ObjectId
+      const managerId = userData.managerId && typeof userData.managerId === 'string' && userData.managerId.length === 24 ? userData.managerId : null;
+      // Convert hireDate and other date fields to Date objects if present
+      const hireDate = userData.hireDate ? new Date(userData.hireDate) : undefined;
       // Create new user in Prisma
       const user = await prisma.user.create({
         data: {
-          ...(userData as any), // Use all fields from userData, including username
+          ...(userData as any),
           email: userData.email,
           password: hashedPassword,
           role: userData.role,
@@ -1473,11 +1477,12 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
           organizationId: userData.organizationId,
           status: 'active',
           position: userData.position,
+          hireDate,
+          managerId, // Use sanitized managerId
           moduleAccess: {
             create: moduleAccess
           }
-        } as any, // <-- Use as any to bypass Prisma type error
-        // Remove 'include: { moduleAccess: true }' if it causes errors, or use as any
+        } as any,
         include: ({} as any)
       });
 
@@ -1493,41 +1498,84 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
   // Analytics endpoint
   app.get('/api/analytics', async (req, res) => {
     try {
-      // Get organization metrics
-      const organization = await prisma.organization.findFirst({
-        include: {
-          users: true as any // Use as any to bypass type error
-        } as any
+      if (!req.user || !req.user.organizationId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+      // Get organization metrics for the current user's organization
+      const organization = await prisma.organization.findUnique({
+        where: { id: req.user.organizationId },
+        include: { users: true as any }
       });
-
-      type UserWithAnalytics = {
-        id: string;
-        status: string;
-        createdAt: Date;
-        lastLogin: Date | null;
-        firstName: string;
-        lastName: string;
-      };
-
       const users = (organization as any)?.users || [];
-
+      // DEBUG: Log all users fetched for the organization
+      console.log('Analytics: Users fetched for org', req.user.organizationId, users.map((u: any) => ({ id: u.id, email: u.email, firstName: u.firstName, lastName: u.lastName })));
+      // Fallback: If only one user is returned, fetch all users for the org directly
+      let allUsers = users;
+      if (users.length <= 1) {
+        allUsers = await prisma.user.findMany({ where: { organizationId: req.user.organizationId } });
+        console.log('Analytics: Fallback allUsers', allUsers.map((u: any) => ({ id: u.id, email: u.email, firstName: u.firstName, lastName: u.lastName })));
+      }
+      // Simulate module usage stats
+      const modules = (organization as any)?.activeModules || [];
+      const moduleUsage = modules.map((module: string) => ({
+        module,
+        usageCount: Math.floor(Math.random() * 100) + 10,
+        lastUsed: new Date(Date.now() - Math.floor(Math.random() * 7) * 86400000)
+      }));
+      // Use allUsers for analytics
+      const loginActivity = allUsers.map((u: any) => ({
+        name: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email || u.username || u.id,
+        logins: Array.from({ length: 30 }, (_, i) => ({
+          date: new Date(Date.now() - i * 86400000).toISOString().split('T')[0],
+          count: u.lastLogin ? 1 : 0
+        }))
+      }));
+      const topUsers = allUsers
+        .map((user: any) => ({
+          name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || user.username || user.id,
+          activity: user.lastLogin ? 1 : 0,
+          lastLogin: user.lastLogin ? new Date(user.lastLogin) : null
+        }))
+        .sort((a: any, b: any) => {
+          const aTime = a.lastLogin ? new Date(a.lastLogin).getTime() : 0;
+          const bTime = b.lastLogin ? new Date(b.lastLogin).getTime() : 0;
+          return bTime - aTime;
+        })
+        .slice(0, 5);
+      // Simulate load time stats for last 7 days
+      const loadTimeStats = Array.from({ length: 7 }, (_, i) => {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        return {
+          date: date.toISOString().split('T')[0],
+          avg: Math.floor(Math.random() * 500) + 500,
+          min: Math.floor(Math.random() * 200) + 200,
+          max: Math.floor(Math.random() * 1000) + 1000
+        };
+      }).reverse();
+      // Simulate AI insights
+      const aiInsights = [
+        { type: 'success', title: 'User Engagement Up', description: 'User logins increased 20% this week.' },
+        { type: 'info', title: 'Module Usage', description: 'Inventory and HR modules are most used.' },
+        { type: 'warning', title: 'Load Time Spike', description: 'Average load time spiked on Monday.' }
+      ];
       // Get system metrics
       const systemMetrics = {
         users: {
-          total: users.length,
-          active: users.filter((u: any) => u.status === 'active').length,
-          new: users.filter((u: any) => {
+          total: allUsers.length,
+          active: allUsers.filter((u: any) => u.status === 'active').length,
+          new: allUsers.filter((u: any) => {
             const createdDate = new Date(u.createdAt);
             const now = new Date();
             const diffDays = Math.floor((now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
             return diffDays <= 7;
           }).length,
-          inactive: users.filter((u: any) => u.status === 'inactive').length
+          inactive: allUsers.filter((u: any) => u.status === 'inactive').length
         },
         activity: {
-          transactions: 0, // These metrics will need to be implemented based on your actual data model
+          transactions: 0,
           journalEntries: 0,
-          employees: users.filter((u: any) => u.status === 'active').length,
+          employees: allUsers.filter((u: any) => u.status === 'active').length,
           businessPartners: 0
         },
         storage: {
@@ -1555,24 +1603,14 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
         });
       }
 
-      // Get top active users
-      const topUsers = users
-        .filter((u: any) => u.lastLogin)
-        .sort((a: any, b: any) => {
-          const aTime = a.lastLogin ? new Date(a.lastLogin).getTime() : 0;
-          const bTime = b.lastLogin ? new Date(b.lastLogin).getTime() : 0;
-          return bTime - aTime;
-        })
-        .slice(0, 5)
-        .map((user: any) => ({
-          name: `${user.firstName} ${user.lastName}`,
-          activity: Math.floor(Math.random() * 200) + 50 // Example activity count
-        }));
-
       res.json({
         systemMetrics,
         dailyStats,
         topUsers,
+        moduleUsage,
+        loginActivity,
+        loadTimeStats,
+        aiInsights,
         organization: {
           name: organization?.name,
           size: (organization as any)?.size,
