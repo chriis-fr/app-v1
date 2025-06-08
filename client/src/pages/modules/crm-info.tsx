@@ -121,19 +121,19 @@ export default function CRMInfoPage() {
   const metrics = crmMetrics[role as keyof typeof crmMetrics] || crmMetrics.admin;
 
   const handleExportData = () => {
-    console.log('Exporting CRM data...');
+    // Removed: console.log('Exporting CRM data...');
   };
 
   const handleGenerateReport = () => {
-    console.log('Generating CRM report...');
+    // Removed: console.log('Generating CRM report...');
   };
 
   const handleViewRawData = () => {
-    console.log('Viewing raw CRM data...');
+    // Removed: console.log('Viewing raw CRM data...');
   };
 
   const handleRefreshData = () => {
-    console.log('Refreshing CRM data...');
+    // Removed: console.log('Refreshing CRM data...');
   };
 
   const getInsights = () => {

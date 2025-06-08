@@ -53,7 +53,6 @@ export default function NewEmployeePage() {
     { id: 3, title: 'Review & Confirm' },
   ];
 
-  console.log('currentUser.role', currentUser?.role);
   if (!currentUser || !['owner', 'admin'].includes(currentUser.role?.toLowerCase())) {
     setLocation('/dashboard');
     return null;

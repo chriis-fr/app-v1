@@ -80,7 +80,7 @@ export default function HRMain() {
       setAttendance(attendanceData);
     } catch (error) {
       
-      console.error('Error fetching data:', error.data);
+      console.error('Error fetching data:', error);
       setError(String(error));
       toast({
         title: 'Error',
@@ -177,9 +177,6 @@ export default function HRMain() {
         time: new Date(emp.joinDate).toLocaleDateString()
       }));
   }
-
-  // Debug log
-  console.log('user', user, 'employees', employees, 'payroll', payroll, 'attendance', attendance);
 
   // Only show the unified HR tabbed interface for owner, hr_admin, admin
   if (user?.role === 'owner' || user?.role === 'hr_admin' || user?.role === 'admin') {

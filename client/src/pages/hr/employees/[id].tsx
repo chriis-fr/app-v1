@@ -30,7 +30,6 @@ export default function EmployeeHRDetail() {
           throw new Error('Failed to fetch employee');
         }
         const data = await response.json();
-        console.log("data", data)
         // Set default values for UI fields if they don't exist in the database
         const employeeWithDefaults = {
           ...data,
@@ -90,7 +89,6 @@ export default function EmployeeHRDetail() {
   }
 
   if (error) {
-    console.log(error)
     // return (
     //   <DashboardLayout>
     //     <div className="flex flex-col items-center justify-center h-64">

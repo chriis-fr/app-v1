@@ -161,7 +161,6 @@ export default function CRMPage() {
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="text-lg font-semibold mb-4">Contacts</h2>
               <p className="text-gray-500 mb-4">Manage your contacts and customer information.</p>
-              <Button onClick={() => console.log('View contacts')}>View Contacts</Button>
             </div>
           )}
 
@@ -170,7 +169,6 @@ export default function CRMPage() {
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="text-lg font-semibold mb-4">Leads</h2>
               <p className="text-gray-500 mb-4">Track and manage your sales leads.</p>
-              <Button onClick={() => console.log('View leads')}>View Leads</Button>
             </div>
           )}
 
@@ -179,7 +177,6 @@ export default function CRMPage() {
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="text-lg font-semibold mb-4">CRM Settings</h2>
               <p className="text-gray-500 mb-4">Configure your CRM settings and preferences.</p>
-              <Button onClick={() => console.log('Open settings')}>Open Settings</Button>
             </div>
           )}
         </div>
