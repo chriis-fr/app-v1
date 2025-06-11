@@ -15,7 +15,6 @@ import {
 } from 'lucide-react'
 import Image from "next/image"
 
-import chainsnobg from "../../../assets/chainsnobg.png"
 
 const benefits = [
   {
@@ -84,7 +83,7 @@ export function BlockchainBenefits() {
         <div className="text-center mb-16">
           <div className="flex justify-center">
             <Image
-              src={chainsnobg}
+              src="/chainsnobg.png"
               alt="ChainsERP"
               width={150}
               height={150}
