@@ -23,7 +23,9 @@ import {
   Key,
   Network,
   Activity,
-  Shield
+  Shield,
+  Receipt,
+  Banknote
 } from 'lucide-react';
 
 const accountingConfig = [
@@ -113,28 +115,38 @@ const accountingConfig = [
   }
 ];
 
+// --- Add summary data for demonstration ---
+const summary = {
+  totalRevenue: 120000,
+  totalExpenses: 85000,
+  netProfit: 35000,
+  outstandingInvoices: 12000,
+  payables: 8000,
+  receivables: 15000,
+  taxLiabilities: 4000,
+  payroll: 22000,
+  cashFlow: 18000,
+  health: 'good', // could be 'good', 'warning', 'critical'
+};
+
+// --- Add quick actions ---
 const quickActions = [
-  {
-    id: 'backup',
-    name: 'Backup Data',
-    description: 'Create a backup of accounting data',
-    icon: FileText,
-    href: '/dashboard/accounting/info/backup'
-  },
-  {
-    id: 'audit-logs',
-    name: 'View Audit Logs',
-    description: 'View system and audit logs',
-    icon: Activity,
-    href: '/dashboard/accounting/info/audit-logs'
-  },
-  {
-    id: 'api-keys',
-    name: 'Manage API Keys',
-    description: 'Manage integration API keys',
-    icon: Key,
-    href: '/dashboard/accounting/info/api-keys'
-  }
+  { id: 'create-invoice', name: 'Create Invoice', icon: FileText, href: '/dashboard/accounting/invoice/new' },
+  { id: 'record-expense', name: 'Record Expense', icon:Receipt, href: '/dashboard/accounting/expense/new' },
+  { id: 'run-payroll', name: 'Run Payroll', icon: Banknote, href: '/dashboard/accounting/payroll' },
+  { id: 'export-report', name: 'Export Report', icon: FileText, href: '/dashboard/accounting/reports/export' },
+  { id: 'sync-bank', name: 'Sync Bank Feed', icon: Network, href: '/dashboard/accounting/bank-sync' },
+];
+
+// --- Add extra tabs for accounting aspects ---
+const extraTabs = [
+  { value: 'statements', label: 'Financial Statements' },
+  { value: 'tax', label: 'Tax & Compliance' },
+  { value: 'payroll', label: 'Payroll' },
+  { value: 'b2b', label: 'B2B & Invoicing' },
+  { value: 'assets', label: 'Assets & Liabilities' },
+  { value: 'budget', label: 'Budgeting' },
+  { value: 'integrations', label: 'Integrations' },
 ];
 
 export default function AccountingInfoPage() {
@@ -150,6 +162,106 @@ export default function AccountingInfoPage() {
       setIsLoading(false);
     }
   }, [authLoading]);
+
+  // --- Add summary cards for overview ---
+  const renderSummaryCards = () => (
+    <div className="grid gap-4 md:grid-cols-4 lg:grid-cols-4 mb-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Total Revenue</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold text-green-600">${summary.totalRevenue.toLocaleString()}</div>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Total Expenses</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold text-red-600">${summary.totalExpenses.toLocaleString()}</div>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Net Profit</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold text-blue-600">${summary.netProfit.toLocaleString()}</div>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Cash Flow</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold text-emerald-600">${summary.cashFlow.toLocaleString()}</div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  // --- Render content for each new tab ---
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'statements':
+        return (
+          <div className="grid gap-4 md:grid-cols-3">
+            <Card><CardHeader><CardTitle>Balance Sheet</CardTitle></CardHeader><CardContent>Assets, Liabilities, Equity</CardContent></Card>
+            <Card><CardHeader><CardTitle>Income Statement</CardTitle></CardHeader><CardContent>Revenue, Expenses, Profit</CardContent></Card>
+            <Card><CardHeader><CardTitle>Cash Flow Statement</CardTitle></CardHeader><CardContent>Operating, Investing, Financing</CardContent></Card>
+          </div>
+        );
+      case 'tax':
+        return (
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card><CardHeader><CardTitle>Tax Filings</CardTitle></CardHeader><CardContent>Status: Up to date</CardContent></Card>
+            <Card><CardHeader><CardTitle>Compliance</CardTitle></CardHeader><CardContent>All checks passed</CardContent></Card>
+            <Card><CardHeader><CardTitle>Audit Logs</CardTitle></CardHeader><CardContent>Recent audits available</CardContent></Card>
+          </div>
+        );
+      case 'payroll':
+        return (
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card><CardHeader><CardTitle>Payroll Summary</CardTitle></CardHeader><CardContent>Total: ${summary.payroll.toLocaleString()}</CardContent></Card>
+            <Card><CardHeader><CardTitle>Next Payroll Date</CardTitle></CardHeader><CardContent>{new Date().toLocaleDateString()}</CardContent></Card>
+          </div>
+        );
+      case 'b2b':
+        return (
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card><CardHeader><CardTitle>Outstanding Invoices</CardTitle></CardHeader><CardContent>${summary.outstandingInvoices.toLocaleString()}</CardContent></Card>
+            <Card><CardHeader><CardTitle>Receivables</CardTitle></CardHeader><CardContent>${summary.receivables.toLocaleString()}</CardContent></Card>
+            <Card><CardHeader><CardTitle>Payables</CardTitle></CardHeader><CardContent>${summary.payables.toLocaleString()}</CardContent></Card>
+          </div>
+        );
+      case 'assets':
+        return (
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card><CardHeader><CardTitle>Major Assets</CardTitle></CardHeader><CardContent>Equipment, Vehicles, IP, etc.</CardContent></Card>
+            <Card><CardHeader><CardTitle>Liabilities</CardTitle></CardHeader><CardContent>Loans, Credit, etc.</CardContent></Card>
+            <Card><CardHeader><CardTitle>Depreciation</CardTitle></CardHeader><CardContent>Tracked annually</CardContent></Card>
+          </div>
+        );
+      case 'budget':
+        return (
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card><CardHeader><CardTitle>Budget vs Actual</CardTitle></CardHeader><CardContent>On track</CardContent></Card>
+            <Card><CardHeader><CardTitle>Department Budgets</CardTitle></CardHeader><CardContent>Marketing, HR, R&D, etc.</CardContent></Card>
+          </div>
+        );
+      case 'integrations':
+        return (
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card><CardHeader><CardTitle>Bank Integrations</CardTitle></CardHeader><CardContent>Connected</CardContent></Card>
+            <Card><CardHeader><CardTitle>ERP Integrations</CardTitle></CardHeader><CardContent>Connected</CardContent></Card>
+            <Card><CardHeader><CardTitle>Payment Gateways</CardTitle></CardHeader><CardContent>Connected</CardContent></Card>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
 
   const renderContent = () => {
     if (isLoading) {
@@ -231,33 +343,28 @@ export default function AccountingInfoPage() {
           </div>
         </div>
 
+        {renderSummaryCards()}
+
+        {/* Quick Actions */}
+        <div className="grid gap-4 md:grid-cols-5 mb-8">
+          {quickActions.map((action) => (
+            <Button key={action.id} className="w-full flex flex-col items-center p-4" variant="outline" onClick={() => setLocation(action.href)}>
+              <action.icon className="h-6 w-6 mb-2" />
+              {action.name}
+            </Button>
+          ))}
+        </div>
+
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList>
             <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="config">Configuration</TabsTrigger>
-            <TabsTrigger value="security">Security</TabsTrigger>
+            {extraTabs.map(tab => (
+              <TabsTrigger key={tab.value} value={tab.value}>{tab.label}</TabsTrigger>
+            ))}
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {quickActions.map((action) => (
-                <Card 
-                  key={action.id}
-                  className="cursor-pointer hover:bg-accent/50 transition-colors"
-                  onClick={() => setLocation(action.href)}
-                >
-                  <CardHeader>
-                    <div className="flex items-center gap-2">
-                      <action.icon className="h-5 w-5" />
-                      <CardTitle>{action.name}</CardTitle>
-                    </div>
-                    <CardDescription>{action.description}</CardDescription>
-                  </CardHeader>
-                </Card>
-              ))}
-            </div>
-
             <Card>
               <CardHeader>
                 <CardTitle>Module Status</CardTitle>
@@ -265,91 +372,22 @@ export default function AccountingInfoPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {/* Add module status information here */}
+                  <div className="flex items-center gap-2">
+                    <span className={`h-3 w-3 rounded-full ${summary.health === 'good' ? 'bg-green-500' : summary.health === 'warning' ? 'bg-yellow-500' : 'bg-red-500'}`}></span>
+                    <span className="font-medium">Health: {summary.health.charAt(0).toUpperCase() + summary.health.slice(1)}</span>
+                  </div>
+                  {/* Add more module status info here */}
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="config" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {accountingConfig.map((config) => (
-                <Card 
-                  key={config.id}
-                  className="cursor-pointer hover:bg-accent/50 transition-colors"
-                  onClick={() => setLocation(`/dashboard/accounting/info/${config.id}`)}
-                >
-                  <CardHeader>
-                    <div className="flex items-center gap-2">
-                      <config.icon className="h-5 w-5" />
-                      <CardTitle>{config.name}</CardTitle>
-                    </div>
-                    <CardDescription>{config.description}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-                      {config.features.map((feature, index) => (
-                        <li key={index}>{feature}</li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="security" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Security Settings</CardTitle>
-                <CardDescription>Configure security and access control settings</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-4 md:grid-cols-2">
-                  {[
-                    {
-                      title: "Access Control",
-                      description: "Manage user access and permissions",
-                      icon: Lock,
-                      href: "/dashboard/accounting/info/security/access"
-                    },
-                    {
-                      title: "Encryption",
-                      description: "Configure data encryption settings",
-                      icon: Key,
-                      href: "/dashboard/accounting/info/security/encryption"
-                    },
-                    {
-                      title: "Audit Logs",
-                      description: "View and manage audit logs",
-                      icon: FileCheck,
-                      href: "/dashboard/accounting/info/security/logs"
-                    },
-                    {
-                      title: "Compliance",
-                      description: "Configure compliance settings",
-                      icon: Scale,
-                      href: "/dashboard/accounting/info/security/compliance"
-                    }
-                  ].map((item) => (
-                    <Card 
-                      key={item.href}
-                      className="cursor-pointer hover:bg-accent/50 transition-colors"
-                      onClick={() => setLocation(item.href)}
-                    >
-                      <CardHeader>
-                        <div className="flex items-center gap-2">
-                          <item.icon className="h-5 w-5" />
-                          <CardTitle>{item.title}</CardTitle>
-                        </div>
-                        <CardDescription>{item.description}</CardDescription>
-                      </CardHeader>
-                    </Card>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+          {/* Render new tab content */}
+          {extraTabs.map(tab => (
+            <TabsContent key={tab.value} value={tab.value} className="space-y-4">
+              {renderTabContent()}
+            </TabsContent>
+          ))}
 
           <TabsContent value="settings" className="space-y-4">
             <Card>
@@ -371,7 +409,7 @@ export default function AccountingInfoPage() {
 
   return (
     <div className="flex">
-      {canAccessCompactSidebar() && <CompactSidebar />}
+      {/* {canAccessCompactSidebar() && <CompactSidebar />} */}
       <div className={`flex-1 ${canAccessCompactSidebar() ? 'ml-20' : ''}`}>
         {renderContent()}
       </div>

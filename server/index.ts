@@ -6,6 +6,8 @@ import dotenv from "dotenv"
 import cors from 'cors';
 import mongoose from 'mongoose';
 import reportsRouter from './routes/reports';
+import stellarRouter from './routes/stellar';
+
 
 dotenv.config()
 
@@ -16,6 +18,7 @@ app.use(express.urlencoded({ extended: false }));
 
 // Routes
 app.use('/api/reports', reportsRouter);
+app.use('/api/stellar', stellarRouter);
 
 // Request logging middleware
 app.use((req, res, next) => {

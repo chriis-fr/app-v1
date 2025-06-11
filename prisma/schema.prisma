@@ -373,7 +373,7 @@ model User {
   status           String?       @default("active")
   lastLogin        DateTime?
   employeeId       String?
-  hireDate         String?
+  hireDate         DateTime?
   managerId        String?
   team             String?
   location         Json?

@@ -292,13 +292,152 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
     });
   });
 
-  // Dormant API endpoints for future implementation
-  const httpServer = createServer(app);
-
   // POS endpoints
+  app.get('/api/pos/products', async (_req, res) => {
+    try {
+      // Mock product data for testing
+      const products = [
+        {
+          id: '1',
+          name: 'Premium Coffee',
+          price: 4.99,
+          category: 'Beverages',
+          stock: 50,
+          image: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085',
+          sku: 'COF-001',
+          cost: 2.50,
+          taxRate: 0.08,
+          status: 'available',
+          barcode: '123456789',
+          description: 'Premium Arabica coffee beans',
+          created_at: new Date(),
+          updated_at: new Date()
+        },
+        {
+          id: '2',
+          name: 'Chocolate Croissant',
+          price: 3.99,
+          category: 'Pastries',
+          stock: 25,
+          image: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a',
+          sku: 'PAS-001',
+          cost: 1.75,
+          taxRate: 0.08,
+          status: 'available',
+          barcode: '234567890',
+          description: 'Buttery croissant with chocolate filling',
+          created_at: new Date(),
+          updated_at: new Date()
+        },
+        {
+          id: '3',
+          name: 'Fresh Orange Juice',
+          price: 5.99,
+          category: 'Beverages',
+          stock: 30,
+          image: 'https://images.unsplash.com/photo-1613478223719655c1a0d0f7',
+          sku: 'BEV-001',
+          cost: 3.00,
+          taxRate: 0.08,
+          status: 'available',
+          barcode: '345678901',
+          description: 'Freshly squeezed orange juice',
+          created_at: new Date(),
+          updated_at: new Date()
+        },
+        {
+          id: '4',
+          name: 'Blueberry Muffin',
+          price: 3.49,
+          category: 'Pastries',
+          stock: 20,
+          image: 'https://images.unsplash.com/photo-1607958996333-41aef7caefaa',
+          sku: 'PAS-002',
+          cost: 1.50,
+          taxRate: 0.08,
+          status: 'available',
+          barcode: '456789012',
+          description: 'Moist muffin with fresh blueberries',
+          created_at: new Date(),
+          updated_at: new Date()
+        },
+        {
+          id: '5',
+          name: 'Green Tea',
+          price: 3.99,
+          category: 'Beverages',
+          stock: 40,
+          image: 'https://images.unsplash.com/photo-1627435601361-ec25f5b1d0e5',
+          sku: 'BEV-002',
+          cost: 1.75,
+          taxRate: 0.08,
+          status: 'available',
+          barcode: '567890123',
+          description: 'Premium Japanese green tea',
+          created_at: new Date(),
+          updated_at: new Date()
+        },
+        {
+          id: '6',
+          name: 'Chocolate Chip Cookie',
+          price: 2.49,
+          category: 'Pastries',
+          stock: 35,
+          image: 'https://images.unsplash.com/photo-1499636136210-6f4ee915583e',
+          sku: 'PAS-003',
+          cost: 1.00,
+          taxRate: 0.08,
+          status: 'available',
+          barcode: '678901234',
+          description: 'Classic chocolate chip cookie',
+          created_at: new Date(),
+          updated_at: new Date()
+        }
+      ];
+      
+      res.json(products);
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      res.status(500).json({ message: "Failed to fetch products" });
+    }
+  });
+
+  app.get('/api/pos/customers', async (_req, res) => {
+    try {
+      const customers = [
+        {
+          id: '1',
+          name: 'John Doe',
+          email: 'john@example.com',
+          phone: '+1234567890',
+          loyaltyPoints: 150,
+          membershipLevel: 'silver',
+          discount: 0.05,
+          created_at: new Date(),
+          updated_at: new Date()
+        },
+        {
+          id: '2',
+          name: 'Jane Smith',
+          email: 'jane@example.com',
+          phone: '+1987654321',
+          loyaltyPoints: 500,
+          membershipLevel: 'gold',
+          discount: 0.10,
+          created_at: new Date(),
+          updated_at: new Date()
+        }
+      ];
+      
+      res.json(customers);
+    } catch (error) {
+      console.error('Error fetching customers:', error);
+      res.status(500).json({ message: "Failed to fetch customers" });
+    }
+  });
+
   app.get('/api/pos/orders', async (_req, res) => {
     try {
-      // Mock order data for testing
       const orders = [
         {
           id: '1',
@@ -306,28 +445,30 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
           customer: {
             id: '1',
             name: 'John Doe',
-            email: 'john.doe@example.com',
-            phone: '1234567890'
+            email: 'john@example.com'
           },
           items: [
             {
               id: '1',
-              name: 'Product 1',
+              name: 'Premium Coffee',
               quantity: 2,
-              price: 10.99,
-              total: 21.98
+              price: 4.99,
+              total: 9.98
             },
             {
               id: '2',
-              name: 'Product 2',
+              name: 'Chocolate Croissant',
               quantity: 1,
-              price: 15.99,
-              total: 15.99
+              price: 3.99,
+              total: 3.99
             }
           ],
-          total: 37.97,
+          subtotal: 13.97,
+          tax: 1.12,
+          discount: 0,
+          total: 15.09,
           status: 'completed',
-          paymentMethod: 'credit_card',
+          paymentMethod: 'card',
           createdAt: new Date(),
           updatedAt: new Date()
         },
@@ -337,19 +478,21 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
           customer: {
             id: '2',
             name: 'Jane Smith',
-            email: 'jane.smith@example.com',
-            phone: '0987654321'
+            email: 'jane@example.com'
           },
           items: [
             {
               id: '3',
-              name: 'Product 3',
-              quantity: 3,
+              name: 'Fresh Orange Juice',
+              quantity: 1,
               price: 5.99,
-              total: 17.97
+              total: 5.99
             }
           ],
-          total: 17.97,
+          subtotal: 5.99,
+          tax: 0.48,
+          discount: 0.60,
+          total: 5.87,
           status: 'pending',
           paymentMethod: 'cash',
           createdAt: new Date(),
@@ -364,61 +507,108 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
     }
   });
 
-  app.post('/api/pos/orders', async (req, res) => {
-    try {
-      const orderData = req.body;
-      
-      // Mock order creation response
-      const order = {
-        id: Math.random().toString(36).substring(7),
-        orderNumber: `ORD-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`,
-        ...orderData,
-        status: 'pending',
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-      
-      res.status(201).json(order);
-    } catch (error) {
-      console.error('Error creating order:', error);
-      res.status(500).json({ message: "Failed to create order" });
-    }
-  });
-
   app.get('/api/pos/inventory', async (_req, res) => {
     try {
-      // Mock inventory data for testing
       const inventory = [
         {
           id: '1',
-          name: 'Product 1',
-          sku: 'SKU-001',
-          quantity: 100,
-          price: 10.99,
-          category: 'Electronics',
+          name: 'Premium Coffee',
+          sku: 'COF-001',
+          quantity: 50,
+          price: 4.99,
+          category: 'Beverages',
           status: 'in_stock',
+          reorderPoint: 10,
+          image: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085',
+          cost: 2.50,
+          taxRate: 0.08,
+          barcode: '123456789',
+          description: 'Premium Arabica coffee beans',
           createdAt: new Date(),
           updatedAt: new Date()
         },
         {
           id: '2',
-          name: 'Product 2',
-          sku: 'SKU-002',
-          quantity: 50,
-          price: 15.99,
-          category: 'Clothing',
-          status: 'low_stock',
+          name: 'Chocolate Croissant',
+          sku: 'PAS-001',
+          quantity: 25,
+          price: 3.99,
+          category: 'Pastries',
+          status: 'in_stock',
+          reorderPoint: 5,
+          image: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a',
+          cost: 1.75,
+          taxRate: 0.08,
+          barcode: '234567890',
+          description: 'Buttery croissant with chocolate filling',
           createdAt: new Date(),
           updatedAt: new Date()
         },
         {
           id: '3',
-          name: 'Product 3',
-          sku: 'SKU-003',
-          quantity: 0,
+          name: 'Fresh Orange Juice',
+          sku: 'BEV-001',
+          quantity: 30,
           price: 5.99,
-          category: 'Food',
-          status: 'out_of_stock',
+          category: 'Beverages',
+          status: 'in_stock',
+          reorderPoint: 8,
+          image: 'https://images.unsplash.com/photo-1613478223719655c1a0d0f7',
+          cost: 3.00,
+          taxRate: 0.08,
+          barcode: '345678901',
+          description: 'Freshly squeezed orange juice',
+          createdAt: new Date(),
+          updatedAt: new Date()
+        },
+        {
+          id: '4',
+          name: 'Blueberry Muffin',
+          sku: 'PAS-002',
+          quantity: 20,
+          price: 3.49,
+          category: 'Pastries',
+          status: 'in_stock',
+          reorderPoint: 5,
+          image: 'https://images.unsplash.com/photo-1607958996333-41aef7caefaa',
+          cost: 1.50,
+          taxRate: 0.08,
+          barcode: '456789012',
+          description: 'Moist muffin with fresh blueberries',
+          createdAt: new Date(),
+          updatedAt: new Date()
+        },
+        {
+          id: '5',
+          name: 'Green Tea',
+          sku: 'BEV-002',
+          quantity: 40,
+          price: 3.99,
+          category: 'Beverages',
+          status: 'in_stock',
+          reorderPoint: 10,
+          image: 'https://images.unsplash.com/photo-1627435601361-ec25f5b1d0e5',
+          cost: 1.75,
+          taxRate: 0.08,
+          barcode: '567890123',
+          description: 'Premium Japanese green tea',
+          createdAt: new Date(),
+          updatedAt: new Date()
+        },
+        {
+          id: '6',
+          name: 'Chocolate Chip Cookie',
+          sku: 'PAS-003',
+          quantity: 35,
+          price: 2.49,
+          category: 'Pastries',
+          status: 'in_stock',
+          reorderPoint: 8,
+          image: 'https://images.unsplash.com/photo-1499636136210-6f4ee915583e',
+          cost: 1.00,
+          taxRate: 0.08,
+          barcode: '678901234',
+          description: 'Classic chocolate chip cookie',
           createdAt: new Date(),
           updatedAt: new Date()
         }
@@ -431,24 +621,67 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
     }
   });
 
-  app.post('/api/pos/inventory', async (req, res) => {
+  app.get('/api/pos/users', async (_req, res) => {
     try {
-      const inventoryData = req.body;
+      const users = [
+        {
+          id: '1',
+          name: 'Cashier 1',
+          email: 'cashier1@example.com',
+          role: 'cashier',
+          status: 'active',
+          lastLogin: new Date(),
+          createdAt: new Date(),
+          updatedAt: new Date()
+        },
+        {
+          id: '2',
+          name: 'Manager 1',
+          email: 'manager1@example.com',
+          role: 'manager',
+          status: 'active',
+          lastLogin: new Date(),
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+      ];
       
-      // Mock inventory creation response
-      const inventory = {
-        id: Math.random().toString(36).substring(7),
-        sku: `SKU-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`,
-        ...inventoryData,
-        status: inventoryData.quantity > 0 ? 'in_stock' : 'out_of_stock',
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-      
-      res.status(201).json(inventory);
+      res.json(users);
     } catch (error) {
-      console.error('Error creating inventory item:', error);
-      res.status(500).json({ message: "Failed to create inventory item" });
+      console.error('Error fetching users:', error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  app.get('/api/pos/recent-sales', async (_req, res) => {
+    try {
+      const recentSales = [
+        {
+          id: '1',
+          orderNumber: 'ORD-001',
+          customer: 'John Doe',
+          items: 3,
+          total: 15.09,
+          paymentMethod: 'card',
+          status: 'completed',
+          timestamp: new Date()
+        },
+        {
+          id: '2',
+          orderNumber: 'ORD-002',
+          customer: 'Jane Smith',
+          items: 1,
+          total: 5.87,
+          paymentMethod: 'cash',
+          status: 'pending',
+          timestamp: new Date()
+        }
+      ];
+      
+      res.json(recentSales);
+    } catch (error) {
+      console.error('Error fetching recent sales:', error);
+      res.status(500).json({ message: "Failed to fetch recent sales" });
     }
   });
 
@@ -1488,107 +1721,127 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
       if (!req.user || !req.user.organizationId) {
         return res.status(401).json({ error: 'Not authenticated' });
       }
+
+      const timeRange = req.query.timeRange as string || '7d';
+      const days = parseInt(timeRange.replace(/[^0-9]/g, '')) || 7;
+
       // Get organization metrics for the current user's organization
       const organization = await prisma.organization.findUnique({
         where: { id: req.user.organizationId },
-        include: { users: true as any }
+        include: { users: true }
       });
-      const users = (organization as any)?.users || [];
-      // DEBUG: Log all users fetched for the organization
-      console.log('Analytics: Users fetched for org', req.user.organizationId, users.map((u: any) => ({ id: u.id, email: u.email, firstName: u.firstName, lastName: u.lastName })));
-      // Fallback: If only one user is returned, fetch all users for the org directly
-      let allUsers = users;
-      if (users.length <= 1) {
-        allUsers = await prisma.user.findMany({ where: { organizationId: req.user.organizationId } });
-        console.log('Analytics: Fallback allUsers', allUsers.map((u: any) => ({ id: u.id, email: u.email, firstName: u.firstName, lastName: u.lastName })));
+
+      if (!organization) {
+        return res.status(404).json({ error: 'Organization not found' });
       }
-      // Simulate module usage stats
-      const modules = (organization as any)?.activeModules || [];
-      const moduleUsage = modules.map((module: string) => ({
-        module,
-        usageCount: Math.floor(Math.random() * 100) + 10,
-        lastUsed: new Date(Date.now() - Math.floor(Math.random() * 7) * 86400000)
-      }));
-      // Use allUsers for analytics
-      const loginActivity = allUsers.map((u: any) => ({
-        name: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email || u.username || u.id,
-        logins: Array.from({ length: 30 }, (_, i) => ({
-          date: new Date(Date.now() - i * 86400000).toISOString().split('T')[0],
-          count: u.lastLogin ? 1 : 0
-        }))
-      }));
-      const topUsers = allUsers
-        .map((user: any) => ({
-          name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || user.username || user.id,
-          activity: user.lastLogin ? 1 : 0,
-          lastLogin: user.lastLogin ? new Date(user.lastLogin) : null
-        }))
-        .sort((a: any, b: any) => {
-          const aTime = a.lastLogin ? new Date(a.lastLogin).getTime() : 0;
-          const bTime = b.lastLogin ? new Date(b.lastLogin).getTime() : 0;
-          return bTime - aTime;
-        })
-        .slice(0, 5);
-      // Simulate load time stats for last 7 days
-      const loadTimeStats = Array.from({ length: 7 }, (_, i) => {
+
+      // Safely fetch and transform users
+      const users = organization.users || [];
+      const safeUsers = users.map(user => {
+        const safeUser = { ...user } as any;
+        
+        // Safely convert date fields
+        const dateFields = ['hireDate', 'lastLogin', 'createdAt', 'updatedAt'] as const;
+        dateFields.forEach(field => {
+          if (safeUser[field]) {
+            try {
+              safeUser[field] = new Date(safeUser[field]).toISOString();
+            } catch (e) {
+              safeUser[field] = null;
+            }
+          } else {
+            safeUser[field] = null;
+          }
+        });
+
+        return safeUser;
+      });
+
+      // Calculate metrics using safeUsers
+      const activeUsers = safeUsers.filter(u => u.status === 'active');
+      const newUsers = safeUsers.filter(u => {
+        if (!u.createdAt) return false;
+        const createdDate = new Date(u.createdAt);
+        const now = new Date();
+        const diffDays = Math.floor((now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
+        return diffDays <= days;
+      });
+
+      // System metrics
+      const systemMetrics = {
+        users: {
+          total: safeUsers.length,
+          active: activeUsers.length,
+          new: newUsers.length,
+          inactive: safeUsers.filter(u => u.status === 'inactive').length
+        },
+        activity: {
+          transactions: 0,
+          journalEntries: 0,
+          employees: activeUsers.length,
+          businessPartners: 0
+        },
+        storage: {
+          total: 1024 * 1024 * 1024 * 10,
+          used: 1024 * 1024 * 1024 * 4,
+          free: 1024 * 1024 * 1024 * 6
+        },
+        performance: {
+          cpu: Math.floor(Math.random() * 100),
+          memory: Math.floor(Math.random() * 100),
+          uptime: 99.9
+        }
+      };
+
+      // Daily stats for the specified time range
+      const dailyStats = Array.from({ length: days }, (_, i) => {
         const date = new Date();
         date.setDate(date.getDate() - i);
         return {
           date: date.toISOString().split('T')[0],
-          avg: Math.floor(Math.random() * 500) + 500,
-          min: Math.floor(Math.random() * 200) + 200,
-          max: Math.floor(Math.random() * 1000) + 1000
+          transactions: Math.floor(Math.random() * 100) + 50,
+          errors: Math.floor(Math.random() * 5),
+          latency: Math.floor(Math.random() * 50) + 100
         };
       }).reverse();
-      // Simulate AI insights
+
+      // Top users based on last login
+      const topUsers = safeUsers
+        .map(user => ({
+          name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || user.username || user.id,
+          activity: user.lastLogin ? 1 : 0,
+          lastLogin: user.lastLogin
+        }))
+        .sort((a, b) => {
+          if (!a.lastLogin) return 1;
+          if (!b.lastLogin) return -1;
+          return new Date(b.lastLogin).getTime() - new Date(a.lastLogin).getTime();
+        })
+        .slice(0, 5);
+
+      // Module usage stats
+      const modules = organization.activeModules || [];
+      const moduleUsage = modules.map(module => ({
+        module,
+        usageCount: Math.floor(Math.random() * 100) + 10,
+        lastUsed: new Date(Date.now() - Math.floor(Math.random() * days) * 86400000).toISOString()
+      }));
+
+      // Login activity
+      const loginActivity = safeUsers.map(user => ({
+        name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || user.username || user.id,
+        logins: Array.from({ length: days }, (_, i) => ({
+          date: new Date(Date.now() - i * 86400000).toISOString().split('T')[0],
+          count: user.lastLogin ? 1 : 0
+        }))
+      }));
+
+      // AI insights
       const aiInsights = [
         { type: 'success', title: 'User Engagement Up', description: 'User logins increased 20% this week.' },
         { type: 'info', title: 'Module Usage', description: 'Inventory and HR modules are most used.' },
         { type: 'warning', title: 'Load Time Spike', description: 'Average load time spiked on Monday.' }
       ];
-      // Get system metrics
-      const systemMetrics = {
-        users: {
-          total: allUsers.length,
-          active: allUsers.filter((u: any) => u.status === 'active').length,
-          new: allUsers.filter((u: any) => {
-            const createdDate = new Date(u.createdAt);
-            const now = new Date();
-            const diffDays = Math.floor((now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
-            return diffDays <= 7;
-          }).length,
-          inactive: allUsers.filter((u: any) => u.status === 'inactive').length
-        },
-        activity: {
-          transactions: 0,
-          journalEntries: 0,
-          employees: allUsers.filter((u: any) => u.status === 'active').length,
-          businessPartners: 0
-        },
-        storage: {
-          total: 1024 * 1024 * 1024 * 10, // 10GB example
-          used: 1024 * 1024 * 1024 * 4, // 4GB example
-          free: 1024 * 1024 * 1024 * 6 // 6GB example
-        },
-        performance: {
-          cpu: Math.floor(Math.random() * 100), // Example CPU usage
-          memory: Math.floor(Math.random() * 100), // Example memory usage
-          uptime: 99.9 // Example uptime
-        }
-      };
-
-      // Get daily stats for the last 7 days
-      const dailyStats = [];
-      for (let i = 6; i >= 0; i--) {
-        const date = new Date();
-        date.setDate(date.getDate() - i);
-        dailyStats.push({
-          date: date.toISOString().split('T')[0],
-          transactions: Math.floor(Math.random() * 100) + 50,
-          errors: Math.floor(Math.random() * 5),
-          latency: Math.floor(Math.random() * 50) + 100
-        });
-      }
 
       res.json({
         systemMetrics,
@@ -1596,18 +1849,20 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
         topUsers,
         moduleUsage,
         loginActivity,
-        loadTimeStats,
         aiInsights,
         organization: {
-          name: organization?.name,
-          size: (organization as any)?.size,
-          createdAt: organization?.createdAt,
-          activeModules: (organization as any)?.activeModules
+          name: organization.name,
+          size: organization.size,
+          createdAt: organization.createdAt?.toISOString(),
+          activeModules: organization.activeModules
         }
       });
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error fetching analytics:', error);
-      res.status(500).json({ error: 'Failed to fetch analytics data' });
+      res.status(500).json({
+        error: 'Failed to fetch analytics data',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   });
 
@@ -1678,5 +1933,227 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
     }
   });
 
-  return httpServer;
+  // Financial Metrics endpoint
+  app.get('/api/financial/metrics', async (req, res) => {
+    // Always return data, even if there's an error
+    const financialData = {
+      overview: {
+        revenue: {
+          current: 125000,
+          previous: 100000,
+          growth: 25,
+          trend: 'up'
+        },
+        expenses: {
+          current: 75000,
+          previous: 80000,
+          growth: -6.25,
+          trend: 'down'
+        },
+        profit: {
+          current: 50000,
+          previous: 20000,
+          growth: 150,
+          trend: 'up'
+        },
+        cashFlow: {
+          current: 45000,
+          previous: 15000,
+          growth: 200,
+          trend: 'up'
+        }
+      },
+      accounts: {
+        receivable: {
+          current: 35000,
+          previous: 30000,
+          growth: 16.67,
+          trend: 'up'
+        },
+        payable: {
+          current: 25000,
+          previous: 28000,
+          growth: -10.71,
+          trend: 'down'
+        }
+      },
+      monthlyMetrics: Array.from({ length: 12 }, (_, i) => ({
+        month: new Date(2024, i, 1).toLocaleString('default', { month: 'short' }),
+        revenue: Math.floor(Math.random() * 50000) + 50000,
+        expenses: Math.floor(Math.random() * 30000) + 20000,
+        profit: Math.floor(Math.random() * 20000) + 10000
+      })),
+      topExpenses: [
+        { category: 'Payroll', amount: 35000, percentage: 46.67 },
+        { category: 'Rent', amount: 12000, percentage: 16 },
+        { category: 'Utilities', amount: 8000, percentage: 10.67 },
+        { category: 'Marketing', amount: 7000, percentage: 9.33 },
+        { category: 'Supplies', amount: 5000, percentage: 6.67 }
+      ],
+      revenueByCategory: [
+        { category: 'Product Sales', amount: 75000, percentage: 60 },
+        { category: 'Services', amount: 30000, percentage: 24 },
+        { category: 'Subscriptions', amount: 15000, percentage: 12 },
+        { category: 'Other', amount: 5000, percentage: 4 }
+      ],
+      cashFlow: {
+        operating: 45000,
+        investing: -15000,
+        financing: 5000,
+        net: 35000
+      },
+      ratios: {
+        currentRatio: 2.5,
+        quickRatio: 1.8,
+        debtToEquity: 0.4,
+        returnOnEquity: 0.15
+      },
+      forecasts: {
+        nextMonth: {
+          revenue: 130000,
+          expenses: 78000,
+          profit: 52000
+        },
+        nextQuarter: {
+          revenue: 400000,
+          expenses: 240000,
+          profit: 160000
+        }
+      }
+    };
+
+    res.json(financialData);
+  });
+
+  // Blockchain Data endpoint
+  app.get('/api/blockchain/data', async (req, res) => {
+    try {
+      if (!req.user || !req.user.organizationId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      // Dummy blockchain data
+      const blockchainData = {
+        // Ethereum data
+        ethereum: {
+          balance: {
+            eth: 15.5,
+            usdc: 5000,
+            usdt: 3000
+          },
+          recentTransactions: Array.from({ length: 10 }, (_, i) => ({
+            hash: `0x${Math.random().toString(16).substr(2, 64)}`,
+            type: ['transfer', 'swap', 'contract'][Math.floor(Math.random() * 3)],
+            amount: (Math.random() * 2).toFixed(4),
+            timestamp: new Date(Date.now() - i * 3600000).toISOString(),
+            status: ['success', 'pending'][Math.floor(Math.random() * 2)],
+            from: `0x${Math.random().toString(16).substr(2, 40)}`,
+            to: `0x${Math.random().toString(16).substr(2, 40)}`,
+            gasUsed: Math.floor(Math.random() * 100000) + 21000,
+            gasPrice: (Math.random() * 50 + 20).toFixed(2)
+          })),
+          tokenHoldings: [
+            { symbol: 'ETH', amount: 15.5, value: 31000 },
+            { symbol: 'USDT', amount: 5000, value: 5000 },
+            { symbol: 'USDC', amount: 3000, value: 3000 }
+          ],
+          networkStats: {
+            gasPrice: {
+              current: 25,
+              previous: 30,
+              trend: 'down'
+            },
+            networkLoad: {
+              current: 65,
+              previous: 70,
+              trend: 'down'
+            },
+            blockTime: {
+              current: 12,
+              previous: 15,
+              trend: 'down'
+            }
+          },
+          smartContracts: [
+            {
+              name: 'Payment Processor',
+              address: `0x${Math.random().toString(16).substr(2, 40)}`,
+              type: 'payment',
+              status: 'active',
+              transactions: Math.floor(Math.random() * 1000)
+            },
+            {
+              name: 'Token Swap',
+              address: `0x${Math.random().toString(16).substr(2, 40)}`,
+              type: 'swap',
+              status: 'active',
+              transactions: Math.floor(Math.random() * 500)
+            }
+          ],
+          monthlyMetrics: Array.from({ length: 12 }, (_, i) => ({
+            month: new Date(2024, i, 1).toLocaleString('default', { month: 'short' }),
+            transactions: Math.floor(Math.random() * 100) + 50,
+            volume: Math.floor(Math.random() * 100000) + 10000,
+            gasUsed: Math.floor(Math.random() * 1000) + 500
+          }))
+        },
+
+        // Stellar data
+        stellar: {
+          balance: {
+            xlm: 5000,
+            usdc: 2500,
+            eur: 1800
+          },
+          recentTransactions: Array.from({ length: 10 }, (_, i) => ({
+            id: `stellar_${Math.random().toString(36).substr(2, 9)}`,
+            type: ['payment', 'trustline', 'offer'][Math.floor(Math.random() * 3)],
+            amount: (Math.random() * 1000).toFixed(2),
+            asset: ['XLM', 'USDC', 'EUR'][Math.floor(Math.random() * 3)],
+            timestamp: new Date(Date.now() - i * 3600000).toISOString(),
+            status: ['success', 'pending'][Math.floor(Math.random() * 2)],
+            from: `G${Math.random().toString(36).substr(2, 56)}`,
+            to: `G${Math.random().toString(36).substr(2, 56)}`,
+            memo: ['Payment for services', 'Monthly subscription', 'Refund'][Math.floor(Math.random() * 3)]
+          })),
+          trustlines: [
+            { asset: 'USDC', limit: '10000', balance: '2500' },
+            { asset: 'EUR', limit: '5000', balance: '1800' }
+          ],
+          offers: [
+            { selling: 'XLM', buying: 'USDC', amount: '1000', price: '0.25' },
+            { selling: 'USDC', buying: 'EUR', amount: '500', price: '0.85' }
+          ],
+          payments: {
+            total: 150,
+            pending: 3,
+            completed: 147,
+            failed: 0
+          },
+          networkStats: {
+            ledgerCount: 45000000,
+            operationCount: 150000000,
+            transactionCount: 75000000,
+            averageFee: '0.00001'
+          },
+          monthlyMetrics: Array.from({ length: 12 }, (_, i) => ({
+            month: new Date(2024, i, 1).toLocaleString('default', { month: 'short' }),
+            transactions: Math.floor(Math.random() * 1000) + 500,
+            volume: Math.floor(Math.random() * 1000000) + 100000,
+            operations: Math.floor(Math.random() * 2000) + 1000
+          }))
+        }
+      };
+
+      res.json(blockchainData);
+    } catch (error: unknown) {
+      console.error('Error fetching blockchain data:', error);
+      res.status(500).json({
+        error: 'Failed to fetch blockchain data',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  return createServer(app);
 }

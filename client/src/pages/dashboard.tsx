@@ -4,7 +4,7 @@ import { staticData } from '@/data/static';
 import { useAuth } from '@/hooks/use-auth';
 import { useRoleAccess } from '@/hooks/use-role-access';
 import { useLocation } from 'wouter';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { AIInsights } from '@/components/dashboard/AIInsights';
 import { BusinessHealth } from '@/components/dashboard/BusinessHealth';
 import { AIAnalytics } from '@/components/dashboard/AIAnalytics';
@@ -16,11 +16,16 @@ import HRMain from '@/components/modules/hr/HRMain';
 import AccountingMain from '@/components/modules/accounting/AccountingMain';
 import BlockchainMain from '@/components/modules/blockchain/BlockchainMain';
 import CRMMain from '@/components/modules/crm/CRMMain';
+import { BarChart3, Users, DollarSign, Package, AlertTriangle, CheckCircle, TrendingUp, TrendingDown } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@/lib/api';
 
 export default function Dashboard() {
   const { user } = useAuth();
   const { canAccessDashboard } = useRoleAccess();
   const [, setLocation] = useLocation();
+  const [companyLogo, setCompanyLogo] = useState<string | null>(null);
+  const modules = user?.organization?.activeModules || [];
 
   useEffect(() => {
     if (!canAccessDashboard()) {
@@ -28,6 +33,40 @@ export default function Dashboard() {
       return;
     }
   }, [canAccessDashboard, setLocation]);
+
+  // Fetch organization analytics and stats
+  const { data: analytics, isLoading: isLoadingAnalytics } = useQuery({
+    queryKey: ['org-analytics'],
+    queryFn: () => api.get('/analytics/organization/metrics'),
+  });
+
+  // Fetch HR stats (employees)
+  const { data: employees = [] } = useQuery({
+    queryKey: ['hr-employees'],
+    queryFn: () => api.get('/hr/employees'),
+    enabled: modules.includes('hr'),
+  });
+
+  // Fetch POS stats (sales/orders)
+  const { data: posOrders = [] } = useQuery({
+    queryKey: ['pos-orders'],
+    queryFn: () => api.get('/pos/orders'),
+    enabled: modules.includes('pos'),
+  });
+
+  // Fetch inventory
+  const { data: inventory = [] } = useQuery({
+    queryKey: ['pos-inventory'],
+    queryFn: () => api.get('/pos/inventory'),
+    enabled: modules.includes('pos'),
+  });
+
+  // Fetch customers
+  const { data: customers = [] } = useQuery({
+    queryKey: ['pos-customers'],
+    queryFn: () => api.get('/pos/customers'),
+    enabled: modules.includes('pos'),
+  });
 
   if (!canAccessDashboard()) {
     return null;
@@ -55,6 +94,80 @@ export default function Dashboard() {
       const { businessMetrics } = company;
       const modules = company.modules.map(m => m.toLowerCase());
 
+      // Company Overview Section
+      const companyOverview = (
+        <Card className="mb-6">
+          <CardHeader className="flex flex-row items-center gap-4">
+            {companyLogo && <img src={companyLogo} alt="Logo" className="h-12 w-12 rounded-full border" />}
+            <div>
+              <CardTitle className="text-2xl font-bold">{user?.organization?.name || 'Your Organization'}</CardTitle>
+              <div className="text-sm text-muted-foreground">
+                Industry: {user?.organization?.industry || 'N/A'} | Founded: {user?.organization?.createdAt ? new Date(user.organization.createdAt).toLocaleDateString() : 'N/A'}
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">
+                Modules: {modules.join(', ')}
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="flex gap-8 flex-wrap">
+            <div className="flex flex-col items-center">
+              <Users className="text-blue-600 mb-1" />
+              <span className="font-bold text-lg">{employees.length}</span>
+              <span className="text-xs text-muted-foreground">Employees</span>
+            </div>
+            <div className="flex flex-col items-center">
+              <Package className="text-green-600 mb-1" />
+              <span className="font-bold text-lg">{inventory.length}</span>
+              <span className="text-xs text-muted-foreground">Products</span>
+            </div>
+            <div className="flex flex-col items-center">
+              <DollarSign className="text-yellow-600 mb-1" />
+              <span className="font-bold text-lg">{posOrders.length}</span>
+              <span className="text-xs text-muted-foreground">Orders</span>
+            </div>
+            <div className="flex flex-col items-center">
+              <BarChart3 className="text-purple-600 mb-1" />
+              <span className="font-bold text-lg">{customers.length}</span>
+              <span className="text-xs text-muted-foreground">Customers</span>
+            </div>
+          </CardContent>
+        </Card>
+      );
+
+      // Quick Stats Section
+      const quickStats = (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <Card>
+            <CardContent className="flex flex-col items-center py-6">
+              <TrendingUp className="text-green-600 mb-1" />
+              <span className="font-bold text-lg">{analytics?.systemMetrics?.activity?.transactions ?? '--'}</span>
+              <span className="text-xs text-muted-foreground">Transactions</span>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="flex flex-col items-center py-6">
+              <CheckCircle className="text-blue-600 mb-1" />
+              <span className="font-bold text-lg">{analytics?.systemMetrics?.users?.active ?? '--'}</span>
+              <span className="text-xs text-muted-foreground">Active Users</span>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="flex flex-col items-center py-6">
+              <AlertTriangle className="text-red-600 mb-1" />
+              <span className="font-bold text-lg">{inventory.filter((item: any) => item.quantity <= (item.reorderPoint || 10)).length}</span>
+              <span className="text-xs text-muted-foreground">Low Stock</span>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="flex flex-col items-center py-6">
+              <TrendingDown className="text-orange-600 mb-1" />
+              <span className="font-bold text-lg">{analytics?.systemMetrics?.users?.inactive ?? '--'}</span>
+              <span className="text-xs text-muted-foreground">Inactive Users</span>
+            </CardContent>
+          </Card>
+        </div>
+      );
+
       return (
         <DashboardLayout>
           <div className="space-y-8 p-6 bg-gradient-to-br from-gray-50 to-white min-h-screen">
@@ -66,6 +179,8 @@ export default function Dashboard() {
                 Last updated: {new Date().toLocaleDateString()}
               </div>
             </div>
+            {companyOverview}
+            {quickStats}
 
             {/* Business Health Section */}
             {['pos','hr','accounting','blockchain'].some(m => modules.includes(m)) && (
