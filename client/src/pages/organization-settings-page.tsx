@@ -10,12 +10,14 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { organizationSettingsSchema, OrganizationSettings } from '../../../shared/schema';
 import { getAvailableCountries } from '@/config/countries';
 import { Camera, Upload, X } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BackButton } from '@/components/ui/back-button';
 import CompactSidebar from '@/components/layout/CompactSidebar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { toast } from '@/components/ui/use-toast';
+import { hasFullAccess } from '@/utils/access';
 
 interface OrganizationFormData {
   name: string;
@@ -26,6 +28,64 @@ interface OrganizationFormData {
   country?: string;
   taxId?: string;
   website?: string;
+}
+
+const MODULES = ['hr', 'inventory', 'accounting', 'crm', 'pos'];
+
+function CustomFieldManager() {
+  const { user } = useAuth();
+  const [selectedModule, setSelectedModule] = useState('hr');
+  const [fields, setFields] = useState(((user?.organization?.settings as any)?.customFields?.[selectedModule]) || []);
+
+  useEffect(() => {
+    setFields(((user?.organization?.settings as any)?.customFields?.[selectedModule]) || []);
+  }, [selectedModule, user]);
+
+  const handleAddField = () => setFields([...fields, { name: '', type: 'string', required: false }]);
+  const handleFieldChange = (idx: number, key: string, value: any) => {
+    const updated = [...fields];
+    updated[idx][key] = value;
+    setFields(updated);
+  };
+  const handleRemoveField = (idx: number) => setFields(fields.filter((_: any, i: number) => i !== idx));
+
+  const handleSave = async () => {
+    await fetch(`/api/organization/custom-fields/${selectedModule}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ customFields: fields }),
+    });
+    toast({ title: 'Custom fields updated!' });
+  };
+
+  return (
+    <div className="my-8 p-4 border rounded bg-gray-50">
+      <h2 className="text-lg font-bold mb-2">Custom Fields</h2>
+      <select value={selectedModule} onChange={e => setSelectedModule(e.target.value)} className="mb-4">
+        {MODULES.map(m => <option key={m} value={m}>{m.toUpperCase()}</option>)}
+      </select>
+      <ul>
+        {fields.map((field: any, idx: number) => (
+          <li key={idx} className="flex gap-2 items-center mb-2">
+            <input value={field.name} onChange={e => handleFieldChange(idx, 'name', e.target.value)} placeholder="Field Name" className="border p-1 rounded" />
+            <select value={field.type} onChange={e => handleFieldChange(idx, 'type', e.target.value)} className="border p-1 rounded">
+              <option value="string">Text</option>
+              <option value="number">Number</option>
+              <option value="boolean">Checkbox</option>
+            </select>
+            <label className="flex items-center gap-1">
+              <input type="checkbox" checked={field.required} onChange={e => handleFieldChange(idx, 'required', e.target.checked)} /> Required
+            </label>
+            <button type="button" onClick={() => handleRemoveField(idx)} className="text-red-500">Remove</button>
+          </li>
+        ))}
+      </ul>
+      <div className="flex gap-2 mt-2">
+        <button type="button" onClick={handleAddField} className="bg-blue-100 px-2 py-1 rounded">Add Field</button>
+        <button type="button" onClick={handleSave} className="bg-green-100 px-2 py-1 rounded">Save</button>
+      </div>
+    </div>
+  );
 }
 
 export default function OrganizationSettingsPage() {
@@ -225,13 +285,7 @@ export default function OrganizationSettingsPage() {
     }
   };
 
-  if (!user) {
-    setLocation('/auth');
-    return <div>Redirecting...</div>;
-  }
-
-  if (user.role !== 'admin' && user.role !== 'owner') {
-    setLocation('/dashboard');
+  if (!user || !hasFullAccess(user)) {
     return <div>Access denied. Redirecting...</div>;
   }
 
@@ -538,7 +592,7 @@ export default function OrganizationSettingsPage() {
                     <div className="space-y-4">
                       <h3 className="text-lg font-medium">Tax Jurisdictions</h3>
                       <div className="space-y-4">
-                        {settingsForm.watch('accounting.taxJurisdictions')?.map((jurisdiction, index) => (
+                        {settingsForm.watch('accounting.taxJurisdictions')?.map((jurisdiction: any, index: number) => (
                           <div key={index} className="p-4 border rounded-lg space-y-4">
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                               <div className="space-y-2">
@@ -570,7 +624,7 @@ export default function OrganizationSettingsPage() {
                                 const jurisdictions = settingsForm.watch('accounting.taxJurisdictions') || [];
                                 settingsForm.setValue(
                                   'accounting.taxJurisdictions',
-                                  jurisdictions.filter((_, i) => i !== index)
+                                  jurisdictions.filter((_: any, i: number) => i !== index)
                                 );
                               }}
                             >
@@ -652,7 +706,7 @@ export default function OrganizationSettingsPage() {
                     <div className="space-y-4">
                       <h3 className="text-lg font-medium">Deductions</h3>
                       <div className="space-y-2">
-                        {settingsForm.watch('payroll.deductions')?.map((deduction, index) => (
+                        {settingsForm.watch('payroll.deductions')?.map((deduction: any, index: number) => (
                           <div key={index} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div className="space-y-2">
                               <Label>Type</Label>
@@ -718,7 +772,7 @@ export default function OrganizationSettingsPage() {
                     <div className="space-y-4">
                       <h3 className="text-lg font-medium">Mandatory Benefits</h3>
                       <div className="space-y-4">
-                        {settingsForm.watch('benefits.mandatory')?.map((benefit, index) => (
+                        {settingsForm.watch('benefits.mandatory')?.map((benefit: any, index: number) => (
                           <div key={index} className="p-4 border rounded-lg space-y-4">
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                               <div className="space-y-2">
@@ -795,7 +849,7 @@ export default function OrganizationSettingsPage() {
                                 const benefits = settingsForm.watch('benefits.mandatory') || [];
                                 settingsForm.setValue(
                                   'benefits.mandatory',
-                                  benefits.filter((_, i) => i !== index)
+                                  benefits.filter((_: any, i: number) => i !== index)
                                 );
                               }}
                             >
@@ -820,7 +874,7 @@ export default function OrganizationSettingsPage() {
                     <div className="space-y-4">
                       <h3 className="text-lg font-medium">Optional Benefits</h3>
                       <div className="space-y-4">
-                        {settingsForm.watch('benefits.optional')?.map((benefit, index) => (
+                        {settingsForm.watch('benefits.optional')?.map((benefit: any, index: number) => (
                           <div key={index} className="p-4 border rounded-lg space-y-4">
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                               <div className="space-y-2">
@@ -897,7 +951,7 @@ export default function OrganizationSettingsPage() {
                                 const benefits = settingsForm.watch('benefits.optional') || [];
                                 settingsForm.setValue(
                                   'benefits.optional',
-                                  benefits.filter((_, i) => i !== index)
+                                  benefits.filter((_: any, i: number) => i !== index)
                                 );
                               }}
                             >
@@ -932,7 +986,7 @@ export default function OrganizationSettingsPage() {
                       <div className="space-y-2">
                         <Label>Required Reports</Label>
                         <div className="space-y-2">
-                          {settingsForm.watch('accounting.compliance.requiredReports')?.map((report, index) => (
+                          {settingsForm.watch('accounting.compliance.requiredReports')?.map((report: string, index: number) => (
                             <div key={index} className="flex items-center space-x-2">
                               <Input
                                 value={report}
@@ -976,7 +1030,7 @@ export default function OrganizationSettingsPage() {
                       <div className="space-y-2">
                         <Label>Filing Deadlines</Label>
                         <div className="space-y-2">
-                          {Object.entries(settingsForm.watch('accounting.compliance.filingDeadlines') || {}).map(([report, deadlines], index) => (
+                          {Object.entries(settingsForm.watch('accounting.compliance.filingDeadlines') || {} as Record<string, string[]>).map(([report, deadlines], index: number) => (
                             <div key={index} className="space-y-2">
                               <div className="flex items-center space-x-2">
                                 <Input
@@ -1003,7 +1057,7 @@ export default function OrganizationSettingsPage() {
                                 </Button>
                               </div>
                               <div className="pl-4 space-y-2">
-                                {deadlines.map((deadline, deadlineIndex) => (
+                                {deadlines.map((deadline: string, deadlineIndex: number) => (
                                   <div key={deadlineIndex} className="flex items-center space-x-2">
                                     <Input
                                       value={deadline}
@@ -1073,7 +1127,7 @@ export default function OrganizationSettingsPage() {
                       <div className="space-y-2">
                         <Label>Required Documentation</Label>
                         <div className="space-y-2">
-                          {settingsForm.watch('accounting.compliance.documentation')?.map((doc, index) => (
+                          {settingsForm.watch('accounting.compliance.documentation')?.map((doc: string, index: number) => (
                             <div key={index} className="flex items-center space-x-2">
                               <Input
                                 value={doc}
@@ -1164,6 +1218,8 @@ export default function OrganizationSettingsPage() {
               </div>
             </Card>
           )}
+
+          <CustomFieldManager />
         </div>
       </div>
     </div>

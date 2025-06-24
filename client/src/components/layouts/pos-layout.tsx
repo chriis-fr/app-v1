@@ -56,7 +56,7 @@ export default function POSLayout({ children }: POSLayoutProps) {
   // Logout function
   const handleLogout = () => {
     logout();
-    setLocation('/login');
+    setLocation('/auth');
   };
   
   // Redirect cashiers to POS page if they try to access restricted pages

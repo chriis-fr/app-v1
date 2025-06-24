@@ -35,7 +35,14 @@ export const availableModules = [
 // ---------------------------------
 // Organization types
 // ---------------------------------
-export const organizationTypes = ["business", "ngo"] as const;
+export const industries = [
+  "retail", "healthcare", "finance", "manufacturing", "education", "technology", "logistics", "agriculture", "energy", "hospitality", "real_estate", "media", "transportation", "construction", "government", "nonprofit", "professional_services", "food_beverage", "telecommunications", "automotive", "pharmaceuticals"
+] as const;
+export type Industry = typeof industries[number];
+
+export const organizationTypes = [
+  "sme", "startup", "corporate", "enterprise", "ngo", "government", "business"
+] as const;
 export type OrganizationType = typeof organizationTypes[number];
 
 // ---------------------------------
@@ -205,7 +212,7 @@ export const organizationSchema = z.object({
   id: z.string(),
   name: z.string().min(2),
   type: z.enum(organizationTypes),
-  industry: z.string().min(2),
+  industry: z.enum(industries),
   size: z.string().optional(),
   walletAddress: z.string().optional(),
   activeModules: z.array(z.enum(availableModules)).default(["accounting"]), // Make finance default
@@ -275,7 +282,7 @@ export const registerOrganizationSchema = z.object({
   phoneNumber: z.string().min(10),
   type: z.enum(organizationTypes),
   name: z.string().min(2),
-  industry: z.string().min(2),
+  industry: z.enum(industries),
   selectedModules: z.array(z.enum(availableModules)).max(2),
   country: z.string().optional(),
   address: z.string().optional(),

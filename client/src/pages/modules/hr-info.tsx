@@ -33,6 +33,7 @@ import { SkillMatching } from '@/components/hr/SkillMatching';
 import { DataTable } from '@/components/ui/data-table';
 import { columns, Employee, Credential } from '@/pages/hr/columns';
 import { Payroll } from '@/components/hr/Payroll';
+import { hasFullAccess, hasModuleAccess } from '@/utils/access';
 
 // Dummy data for HR metrics
 const hrData = {
@@ -94,8 +95,7 @@ export default function HRInfoPage() {
     }
 
     // Check if user is owner or in executive department
-    const isAuthorized = user.role === 'owner' || 
-                        (user.department?.toLowerCase() === 'executive' && user.moduleAccess?.includes('hr'));
+    const isAuthorized = hasFullAccess(user) || hasModuleAccess(user, 'hr');
 
     if (!isAuthorized) {
       toast({

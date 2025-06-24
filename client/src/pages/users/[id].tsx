@@ -28,7 +28,8 @@ import {
   Key,
   Copy,
   Trash,
-  Wallet
+  Wallet,
+  Cpu
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { CredentialVerification } from '@/components/hr/CredentialVerification';
@@ -195,6 +196,7 @@ const steps = [
   'Basic & Professional Info',
   'Location, Work & Emergency',
   'Compensation, Benefits & Wallet',
+  'Wallet & Legal',
   'Skills, Certifications, Education & Equipment',
   'Address & Documents',
   'Status, Verification & Executive Info',
@@ -781,19 +783,25 @@ export default function EditUserPage() {
 
   const documentsList = Array.isArray(user?.documents) ? user.documents : [];
 
+  // Fix for accessLevels (step 4)
+  const safeAccessLevels = user.accessLevels || { systems: [], buildings: [], rooms: [] };
+
+  // Fix for documents (step 5)
+  const safeDocuments = Array.isArray(user.documents) ? user.documents : [];
+
   return (
     <ModuleLayout>
       <div className="container mx-auto py-6">
         {/* Modern Stepper Navigation */}
         <div className="sticky top-0 z-10 bg-white pb-4 mb-6 border-b border-gray-200 shadow-sm">
-          <div className="overflow-hidden max-w-full  hide-scrollbar">
-            <div className="flex flex-wrap md:flex-nowrap items-center justify-between gap-x-7 max-w-screen-lg mx-auto px-2 md:px-6">
+          <div className="overflow-x-auto hide-scrollbar w-full">
+            <div className="flex items-center gap-x-2 md:gap-x-4 lg:gap-x-6 whitespace-nowrap px-2 md:px-6">
               {steps.map((label: string, idx: number) => {
                 const Icon = stepIcons[idx] || User;
                 const isActive = step === idx;
                 const isCompleted = step > idx;
                 return (
-                  <div key={label} className="flex-shrink-0 flex flex-col items-center min-w-[90px] md:min-w-[110px] max-w-[140px] px-2 md:px-4 relative">
+                  <div key={label} className="flex-shrink-0 flex flex-col items-center min-w-[110px] max-w-[140px] px-1 md:px-2 relative">
                     <button
                       className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-colors duration-200
                         ${isActive ? 'bg-primary text-white border-primary shadow-lg' : isCompleted ? 'bg-primary/10 text-primary border-primary/50' : 'bg-gray-100 text-gray-400 border-gray-200 hover:bg-primary/10 hover:text-primary'}
@@ -803,7 +811,12 @@ export default function EditUserPage() {
                     >
                       <Icon className="w-5 h-5" />
                     </button>
-                    <span className={`mt-2 text-xs font-medium text-center break-words ${isActive ? 'text-primary' : 'text-gray-500'}`}>{label}</span>
+                    <span
+                      className={`mt-2 text-xs font-medium text-center break-words truncate max-w-[100px] md:max-w-[120px] ${isActive ? 'text-primary' : 'text-gray-500'}`}
+                      title={label}
+                    >
+                      {label}
+                    </span>
                     {/* Progress bar */}
                     {idx < steps.length - 1 && (
                       <div className={`absolute top-5 left-full w-full h-1 z-0 ${isCompleted ? 'bg-primary' : 'bg-gray-200'}`} style={{ right: '-50%', left: '50%' }} />
@@ -1379,7 +1392,7 @@ export default function EditUserPage() {
                 <div className="space-y-2">
                   <Label htmlFor="accessLevels">Access Levels</Label>
                   <div className="flex flex-wrap gap-2">
-                    {user.accessLevels?.systems?.map((system, index) => (
+                    {(safeAccessLevels.systems ?? []).map((system, index) => (
                       <div key={index} className="bg-gray-100 px-3 py-1 rounded-full text-sm">
                         {system}
                       </div>
@@ -1389,7 +1402,7 @@ export default function EditUserPage() {
                 <div className="space-y-2">
                   <Label htmlFor="buildings">Building Access</Label>
                   <div className="flex flex-wrap gap-2">
-                    {user.accessLevels?.buildings?.map((building, index) => (
+                    {(safeAccessLevels.buildings ?? []).map((building, index) => (
                       <div key={index} className="bg-gray-100 px-3 py-1 rounded-full text-sm">
                         {building}
                       </div>
@@ -1399,11 +1412,164 @@ export default function EditUserPage() {
                 <div className="space-y-2">
                   <Label htmlFor="rooms">Room Access</Label>
                   <div className="flex flex-wrap gap-2">
-                    {user.accessLevels?.rooms?.map((room, index) => (
+                    {(safeAccessLevels.rooms ?? []).map((room, index) => (
                       <div key={index} className="bg-gray-100 px-3 py-1 rounded-full text-sm">
                         {room}
                       </div>
                     ))}
+                  </div>
+                </div>
+              </div>
+              {/* Performance Section */}
+              <div className="mt-8">
+                <h3 className="text-md font-semibold mb-2">Performance</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="lastReviewDate">Last Review Date</Label>
+                    <Input
+                      id="lastReviewDate"
+                      type="date"
+                      value={user.performance?.lastReviewDate || ''}
+                      onChange={e => setUser({
+                        ...user,
+                        performance: { ...user.performance, lastReviewDate: e.target.value }
+                      })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="nextReviewDate">Next Review Date</Label>
+                    <Input
+                      id="nextReviewDate"
+                      type="date"
+                      value={user.performance?.nextReviewDate || ''}
+                      onChange={e => setUser({
+                        ...user,
+                        performance: { ...user.performance, nextReviewDate: e.target.value }
+                      })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="rating">Rating</Label>
+                    <Input
+                      id="rating"
+                      type="number"
+                      min={0}
+                      max={10}
+                      value={user.performance?.rating || ''}
+                      onChange={e => setUser({
+                        ...user,
+                        performance: { ...user.performance, rating: Number(e.target.value) }
+                      })}
+                    />
+                  </div>
+                </div>
+              </div>
+              {/* Access Levels Section */}
+              <div className="mt-8">
+                <h3 className="text-md font-semibold mb-2">Access Levels</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Systems */}
+                  <div className="space-y-2">
+                    <Label>Systems</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {(safeAccessLevels.systems ?? []).map((system, idx) => (
+                        <div key={idx} className="flex items-center bg-gray-100 px-2 py-1 rounded-full">
+                          <span>{system}</span>
+                          <Button type="button" size="icon" variant="ghost" className="ml-1" onClick={() => setUser({
+                            ...user,
+                            accessLevels: {
+                              ...user.accessLevels,
+                              systems: (safeAccessLevels.systems ?? []).filter((_, i) => i !== idx)
+                            }
+                          })}><Trash className="h-3 w-3" /></Button>
+                        </div>
+                      ))}
+                      <Input
+                        className="w-24"
+                        placeholder="Add system"
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+                            setUser({
+                              ...user,
+                              accessLevels: {
+                                ...user.accessLevels,
+                                systems: [...(safeAccessLevels.systems ?? []), e.currentTarget.value.trim()]
+                              }
+                            });
+                            e.currentTarget.value = '';
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+                  {/* Buildings */}
+                  <div className="space-y-2">
+                    <Label>Buildings</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {(safeAccessLevels.buildings ?? []).map((building, idx) => (
+                        <div key={idx} className="flex items-center bg-gray-100 px-2 py-1 rounded-full">
+                          <span>{building}</span>
+                          <Button type="button" size="icon" variant="ghost" className="ml-1" onClick={() => setUser({
+                            ...user,
+                            accessLevels: {
+                              ...user.accessLevels,
+                              buildings: (safeAccessLevels.buildings ?? []).filter((_, i) => i !== idx)
+                            }
+                          })}><Trash className="h-3 w-3" /></Button>
+                        </div>
+                      ))}
+                      <Input
+                        className="w-24"
+                        placeholder="Add building"
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+                            setUser({
+                              ...user,
+                              accessLevels: {
+                                ...user.accessLevels,
+                                buildings: [...(safeAccessLevels.buildings ?? []), e.currentTarget.value.trim()]
+                              }
+                            });
+                            e.currentTarget.value = '';
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+                  {/* Rooms */}
+                  <div className="space-y-2">
+                    <Label>Rooms</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {(safeAccessLevels.rooms ?? []).map((room, idx) => (
+                        <div key={idx} className="flex items-center bg-gray-100 px-2 py-1 rounded-full">
+                          <span>{room}</span>
+                          <Button type="button" size="icon" variant="ghost" className="ml-1" onClick={() => setUser({
+                            ...user,
+                            accessLevels: {
+                              ...user.accessLevels,
+                              rooms: (safeAccessLevels.rooms ?? []).filter((_, i) => i !== idx)
+                            }
+                          })}><Trash className="h-3 w-3" /></Button>
+                        </div>
+                      ))}
+                      <Input
+                        className="w-24"
+                        placeholder="Add room"
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+                            setUser({
+                              ...user,
+                              accessLevels: {
+                                ...user.accessLevels,
+                                rooms: [...(safeAccessLevels.rooms ?? []), e.currentTarget.value.trim()]
+                              }
+                            });
+                            e.currentTarget.value = '';
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
                   </div>
               </div>
             </div>
@@ -1414,7 +1580,6 @@ export default function EditUserPage() {
                 <Button type="button" onClick={() => setStep(step + 1)}>
                   Next
                 </Button>
-            </div>
           </div>
         </Card>
         )}
@@ -1422,7 +1587,7 @@ export default function EditUserPage() {
           <Card>
             <div className="p-6 space-y-4">
               <h2 className="text-lg font-semibold flex items-center">
-                <FileText className="mr-2 h-5 w-5" />
+                <MapPin className="mr-2 h-5 w-5" />
                 Address & Documents
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1485,6 +1650,71 @@ export default function EditUserPage() {
                   />
                 </div>
               </div>
+              {/* Editable Documents Section */}
+              <div className="mt-8">
+                <h3 className="text-md font-semibold mb-2">Documents</h3>
+                <div className="space-y-4">
+                  {safeDocuments.map((doc, idx) => (
+                    <div key={idx} className="flex flex-wrap items-end gap-2 bg-gray-50 p-3 rounded-lg border">
+                      <div className="flex-1 min-w-[120px]">
+                        <Label>ID</Label>
+                        <Input
+                          value={doc.id || ''}
+                          onChange={e => {
+                            const docs = [...safeDocuments];
+                            docs[idx].id = e.target.value;
+                            setUser({ ...user, documents: docs });
+                          }}
+                        />
+                      </div>
+                      <div className="flex-1 min-w-[120px]">
+                        <Label>Type</Label>
+                        <Input
+                          value={doc.type || ''}
+                          onChange={e => {
+                            const docs = [...safeDocuments];
+                            docs[idx].type = e.target.value;
+                            setUser({ ...user, documents: docs });
+                          }}
+                        />
+                      </div>
+                      <div className="flex-1 min-w-[120px]">
+                        <Label>URL</Label>
+                        <Input
+                          value={doc.url || ''}
+                          onChange={e => {
+                            const docs = [...safeDocuments];
+                            docs[idx].url = e.target.value;
+                            setUser({ ...user, documents: docs });
+                          }}
+                        />
+                      </div>
+                      <div className="flex-1 min-w-[120px]">
+                        <Label>Expiry Date</Label>
+                        <Input
+                          type="date"
+                          value={doc.expiryDate || ''}
+                          onChange={e => {
+                            const docs = [...safeDocuments];
+                            docs[idx].expiryDate = e.target.value;
+                            setUser({ ...user, documents: docs });
+                          }}
+                        />
+                      </div>
+                      <Button type="button" size="icon" variant="destructive" className="ml-2" onClick={() => {
+                        setUser({ ...user, documents: safeDocuments.filter((_, i) => i !== idx) });
+                      }}><Trash className="h-4 w-4" /></Button>
+                    </div>
+                  ))}
+                  <Button type="button" variant="outline" onClick={() => setUser({
+                    ...user,
+                    documents: [...safeDocuments, { id: '', type: '', url: '', expiryDate: '' }]
+                  })}>
+                    Add Document
+                  </Button>
+                </div>
+                </div>
+              </div>
               <div className="flex justify-between pt-4">
                 <Button type="button" onClick={() => setStep(step - 1)}>
                   Back
@@ -1492,7 +1722,6 @@ export default function EditUserPage() {
                 <Button type="button" onClick={() => setStep(step + 1)}>
                   Next
                 </Button>
-              </div>
             </div>
           </Card>
         )}
@@ -1579,46 +1808,163 @@ export default function EditUserPage() {
           <Card>
             <div className="p-6 space-y-4">
               <h2 className="text-lg font-semibold flex items-center">
-                <Users className="mr-2 h-5 w-5" />
+                <Cpu className="mr-2 h-5 w-5" />
                 Blockchain & AI
               </h2>
-          <CredentialVerification
-            credentials={user.credentials || []}
-            onVerify={async (credentialId) => {
-              try {
-                const response = await fetch('/api/hr/verify-credential', {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify({
-                    credentialId,
-                    userId: user.id
-                  }),
-                });
-                const data = await response.json();
-                if (data.success) {
-                  // Update the local state with the verified credential
-                  setUser({
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="lastReviewDate">Last Review Date</Label>
+                  <Input
+                    id="lastReviewDate"
+                    type="date"
+                    value={user.performance?.lastReviewDate || ''}
+                    onChange={e => setUser({
                     ...user,
-                    credentials: user.credentials?.map(cred => 
-                      cred.id === credentialId 
-                        ? { ...cred, verified: true, blockchainHash: data.blockchainHash }
-                        : cred
-                    )
-                  });
-                }
-              } catch (error) {
-                console.error('Error verifying credential:', error);
-              }
-            }}
-          />
-          <SkillMatching
-            projectRequirements={{
-              skills: ['javascript', 'typescript', 'react', 'node.js'],
-              experience: 3
-            }}
-          />
+                      performance: { ...user.performance, lastReviewDate: e.target.value }
+                    })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="nextReviewDate">Next Review Date</Label>
+                  <Input
+                    id="nextReviewDate"
+                    type="date"
+                    value={user.performance?.nextReviewDate || ''}
+                    onChange={e => setUser({
+                      ...user,
+                      performance: { ...user.performance, nextReviewDate: e.target.value }
+                    })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="rating">Rating</Label>
+                  <Input
+                    id="rating"
+                    type="number"
+                    min={0}
+                    max={10}
+                    value={user.performance?.rating || ''}
+                    onChange={e => setUser({
+                      ...user,
+                      performance: { ...user.performance, rating: Number(e.target.value) }
+                    })}
+                  />
+                </div>
+              </div>
+              {/* Editable Credentials Section */}
+              <div className="mt-8">
+                <h3 className="text-md font-semibold mb-2">Credentials</h3>
+                <div className="space-y-4">
+                  {(user.credentials ?? []).map((cred, idx) => (
+                    <div key={idx} className="flex flex-wrap items-end gap-2 bg-gray-50 p-3 rounded-lg border">
+                      <div className="flex-1 min-w-[100px]">
+                        <Label>ID</Label>
+                        <Input
+                          value={cred.id || ''}
+                          onChange={e => {
+                            const creds = [...(user.credentials ?? [])];
+                            creds[idx].id = e.target.value;
+                            setUser({ ...user, credentials: creds });
+                          }}
+                        />
+                      </div>
+                      <div className="flex-1 min-w-[100px]">
+                        <Label>Type</Label>
+                        <select
+                          className="input"
+                          value={cred.type}
+                          onChange={e => {
+                            const creds = [...(user.credentials ?? [])];
+                            creds[idx].type = e.target.value as 'education' | 'certification' | 'experience';
+                            setUser({ ...user, credentials: creds });
+                          }}
+                        >
+                          <option value="education">Education</option>
+                          <option value="certification">Certification</option>
+                          <option value="experience">Experience</option>
+                        </select>
+                      </div>
+                      <div className="flex-1 min-w-[120px]">
+                        <Label>Title</Label>
+                        <Input
+                          value={cred.title || ''}
+                          onChange={e => {
+                            const creds = [...(user.credentials ?? [])];
+                            creds[idx].title = e.target.value;
+                            setUser({ ...user, credentials: creds });
+                          }}
+                        />
+                      </div>
+                      <div className="flex-1 min-w-[120px]">
+                        <Label>Issuer</Label>
+                        <Input
+                          value={cred.issuer || ''}
+                          onChange={e => {
+                            const creds = [...(user.credentials ?? [])];
+                            creds[idx].issuer = e.target.value;
+                            setUser({ ...user, credentials: creds });
+                          }}
+                        />
+                      </div>
+                      <div className="flex-1 min-w-[120px]">
+                        <Label>Date</Label>
+                        <Input
+                          type="date"
+                          value={cred.date || ''}
+                          onChange={e => {
+                            const creds = [...(user.credentials ?? [])];
+                            creds[idx].date = e.target.value;
+                            setUser({ ...user, credentials: creds });
+                          }}
+                        />
+                      </div>
+                      <div className="flex-1 min-w-[100px]">
+                        <Label>Verified</Label>
+                        <select
+                          className="input"
+                          value={cred.verified ? 'true' : 'false'}
+                          onChange={e => {
+                            const creds = [...(user.credentials ?? [])];
+                            creds[idx].verified = e.target.value === 'true';
+                            setUser({ ...user, credentials: creds });
+                          }}
+                        >
+                          <option value="false">No</option>
+                          <option value="true">Yes</option>
+                        </select>
+                      </div>
+                      <div className="flex-1 min-w-[160px]">
+                        <Label>Blockchain Hash</Label>
+                        <Input
+                          value={cred.blockchainHash || ''}
+                          onChange={e => {
+                            const creds = [...(user.credentials ?? [])];
+                            creds[idx].blockchainHash = e.target.value;
+                            setUser({ ...user, credentials: creds });
+                          }}
+                        />
+                      </div>
+                      <Button type="button" size="icon" variant="destructive" className="ml-2" onClick={() => {
+                        setUser({ ...user, credentials: (user.credentials ?? []).filter((_, i) => i !== idx) });
+                      }}><Trash className="h-4 w-4" /></Button>
+                    </div>
+                  ))}
+                  <Button type="button" variant="outline" onClick={() => setUser({
+                    ...user,
+                    credentials: [...(user.credentials ?? []), { id: '', type: 'education', title: '', issuer: '', date: '', verified: false, blockchainHash: '' }]
+                  })}>
+                    Add Credential
+                  </Button>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-between pt-4">
+              <Button type="button" onClick={() => setStep(step - 1)}>
+                Back
+              </Button>
+              <Button type="button" onClick={() => setStep(step + 1)}>
+                Next
+              </Button>
               </div>
             </Card>
           )}

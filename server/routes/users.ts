@@ -151,12 +151,14 @@ router.get('/', isAuthenticated, async (req: Request, res: Response, next: NextF
     // Sync with HR data
     const usersWithHRData = await Promise.all(users.map(async (user) => {
       // Derive moduleAccess and permissions for frontend
-      const modulePermissions = user.modulePermissions || [];
-      const moduleAccess = modulePermissions.map(mp => mp.module);
-      const permissions = modulePermissions.map(mp => ({
-        module: mp.module,
-        actions: mp.permissions
-      }));
+      const isOwner = user.role === 'owner' || user.isOwner === true;
+      let moduleAccess = (user.modulePermissions || []).map(mp => mp.module);
+      if (isOwner && (!moduleAccess || moduleAccess.length === 0)) {
+        moduleAccess = [
+          'accounting', 'procurement', 'manufacturing', 'inventory', 'order_management', 'warehouse', 'supply_chain', 'crm', 'project_service', 'workforce', 'hr', 'ecommerce', 'marketing', 'pos', 'quality', 'maintenance', 'project', 'analytics', 'global_finance', 'international_trade', 'customer_experience', 'vendor_management', 'ai_analytics', 'ecommerce_global', 'localization', 'digital_currency'
+        ];
+      }
+      const permissions = (user.modulePermissions || []).map(mp => ({ module: mp.module, actions: mp.permissions })) || [];
 
       const hrData = await Employee.findOne({ 
         employeeNumber: user.employeeId,
@@ -164,6 +166,7 @@ router.get('/', isAuthenticated, async (req: Request, res: Response, next: NextF
       });
       return {
         ...user,
+        isOwner,
         moduleAccess,
         permissions,
         hrData: hrData ? {
@@ -553,12 +556,14 @@ router.get('/:id', isAuthenticated, async (req: Request, res) => {
     }
 
     // Derive moduleAccess and permissions for frontend
-    const modulePermissions = user.modulePermissions || [];
-    const moduleAccess = modulePermissions.map(mp => mp.module);
-    const permissions = modulePermissions.map(mp => ({
-      module: mp.module,
-      actions: mp.permissions
-    }));
+    const isOwner = user.role === 'owner' || user.isOwner === true;
+    let moduleAccess = (user.modulePermissions || []).map(mp => mp.module);
+    if (isOwner && (!moduleAccess || moduleAccess.length === 0)) {
+      moduleAccess = [
+        'accounting', 'procurement', 'manufacturing', 'inventory', 'order_management', 'warehouse', 'supply_chain', 'crm', 'project_service', 'workforce', 'hr', 'ecommerce', 'marketing', 'pos', 'quality', 'maintenance', 'project', 'analytics', 'global_finance', 'international_trade', 'customer_experience', 'vendor_management', 'ai_analytics', 'ecommerce_global', 'localization', 'digital_currency'
+      ];
+    }
+    const permissions = (user.modulePermissions || []).map(mp => ({ module: mp.module, actions: mp.permissions })) || [];
 
     // Sync with HR data
     const hrData = await Employee.findOne({ 
@@ -567,6 +572,7 @@ router.get('/:id', isAuthenticated, async (req: Request, res) => {
     });
     const userWithHRData = {
       ...user,
+      isOwner,
       moduleAccess,
       permissions,
       hrData: hrData ? {

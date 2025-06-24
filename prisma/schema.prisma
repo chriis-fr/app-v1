@@ -313,6 +313,7 @@ model Organization {
   settings      Json?
   roles         Json?
   accountingSettings Json?
+  waitlistedModules String[]
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   users         User[]   @relation("OrgUsers")

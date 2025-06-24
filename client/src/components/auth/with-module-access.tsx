@@ -11,7 +11,7 @@ export function withModuleAccess(WrappedComponent: React.ComponentType, moduleNa
 
     useEffect(() => {
       if (!user) {
-        router.push('/login');
+        router.push('/auth');
         return;
       }
 

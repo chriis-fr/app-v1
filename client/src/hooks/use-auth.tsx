@@ -39,6 +39,7 @@ interface RegisterData {
     name: string;
     type: string;
     industry: string;
+    settings?: OrganizationSettings & { tier?: string };
   };
   owner: {
     username: string;
@@ -47,6 +48,7 @@ interface RegisterData {
     firstName: string;
     lastName: string;
   };
+  waitlistedModules?: string[];
 }
 
 interface AuthContextType {

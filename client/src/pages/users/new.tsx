@@ -188,6 +188,14 @@ export default function NewUserPage() {
   // Add state for module permissions
   const [modulePermissions, setModulePermissions] = useState<ModulePermission[]>([]);
 
+  // Keep formData.moduleAccess in sync with modulePermissions
+  useEffect(() => {
+    setFormData(prev => ({
+      ...prev,
+      moduleAccess: modulePermissions.map(p => p.module)
+    }));
+  }, [modulePermissions]);
+
   // Only owner and admin can access this page
   if (!currentUser || (currentUser.role !== 'owner' && currentUser.role !== 'admin')) {
     setLocation('/dashboard');

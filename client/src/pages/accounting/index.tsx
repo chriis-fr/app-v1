@@ -24,6 +24,7 @@ import {
   FileCheck,
   DollarSign
 } from 'lucide-react';
+import { hasFullAccess, hasModuleAccess } from '@/utils/access';
 
 const accountingModules = [
   {
@@ -171,7 +172,7 @@ export default function AccountingPage() {
       );
     }
 
-    if (!(user?.isOwner || user?.role === 'owner' || user?.moduleAccess?.includes('accounting'))) {
+    if (!(hasFullAccess(user) || hasModuleAccess(user, 'accounting'))) {
       return (
         <div className="flex flex-col items-center justify-center min-h-[60vh]">
           <h1 className="text-2xl font-bold mb-4">Access Denied</h1>

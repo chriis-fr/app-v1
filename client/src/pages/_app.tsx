@@ -2,6 +2,7 @@ import { AuthProvider } from '@/hooks/use-auth';
 import type { AppProps } from 'next/app';
 import '../styles/globals.css';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Toaster } from '@/components/ui/toaster';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -18,6 +19,7 @@ export default function App({ Component, pageProps }: AppProps) {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <Component {...pageProps} />
+        <Toaster />
       </AuthProvider>
     </QueryClientProvider>
   );

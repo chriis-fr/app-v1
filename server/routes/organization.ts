@@ -576,4 +576,46 @@ router.get('/:id', isAuthenticated, async (req: AuthRequest, res) => {
   }
 });
 
+// Get custom field definitions for a module
+router.get('/custom-fields/:module', isAuthenticated, async (req: AuthRequest, res) => {
+  try {
+    const orgId = req.user?.organizationId;
+    if (!orgId) return res.status(401).json({ message: 'No organization found' });
+    const org = await Business.findOne({ _id: orgId });
+    if (!org) return res.status(404).json({ message: 'Organization not found' });
+    const module = req.params.module;
+    const customFields = org.settings?.customFields?.[module] || [];
+    res.json(customFields);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching custom fields' });
+  }
+});
+
+// Set custom field definitions for a module
+router.post('/custom-fields/:module', isAuthenticated, isAdmin, async (req: AuthRequest, res) => {
+  try {
+    const orgId = req.user?.organizationId;
+    if (!orgId) return res.status(401).json({ message: 'No organization found' });
+    const org = await Business.findOne({ _id: orgId });
+    if (!org) return res.status(404).json({ message: 'Organization not found' });
+    const module = req.params.module;
+    const customFields = req.body.customFields || [];
+    if (!org.settings) org.settings = {
+      customFields: {},
+      currency: 'USD',
+      theme: 'light',
+      timezone: 'UTC',
+      modules: [] as any,
+      notifications: { email: false, slack: false, webhook: '' }
+    };
+    org.settings = org.settings as NonNullable<typeof org.settings>;
+    if (!org.settings.customFields) org.settings.customFields = {};
+    org.settings.customFields[module] = customFields;
+    await org.save();
+    res.json({ success: true, customFields });
+  } catch (error) {
+    res.status(500).json({ message: 'Error saving custom fields' });
+  }
+});
+
 export default router; 

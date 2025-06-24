@@ -22,6 +22,7 @@ import { CountryConfig } from './types';
 import { isAuthenticated } from './middleware/auth';
 import { UserDocument } from './models/User';
 import cookieParser from 'cookie-parser';
+import { availableModules } from '../shared/schema';
 
 // Add type declarations for organization document
 interface IOrganizationDocument {
@@ -156,7 +157,7 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
       } = req.body;
       
       // Get the current user ID from the request or use the provided one
-      const userToUpdate = userId || '65f8a1b2c3d4e5f6a7b8c9d0'; // Replace with actual user ID from auth
+      const userToUpdate = userId || ''; // Replace with actual user ID from auth
       
       // Update the user in MongoDB
       const updatedUser = await UserModel.findByIdAndUpdate(
@@ -1442,8 +1443,11 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
         .filter(module => module.recommended)
         .map(module => module.id);
       
-      // Use recommended modules or default to core modules
-      const activeModules = recommendedModules.length > 0 ? recommendedModules : ["accounting", "hr", "ai_analytics"];
+      // Use user-selected modules if present, otherwise recommended modules or default
+      const selectedModules = orgData.selectedModules || [];
+      const activeModules = selectedModules.length > 0
+        ? selectedModules
+        : (recommendedModules.length > 0 ? recommendedModules : ["accounting", "hr", "ai_analytics"]);
       
       // Get country configuration
       const countryConfig = getCountryConfig(orgData.organization.country) as CountryConfig;
@@ -1530,7 +1534,7 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
             description: 'Full access to all features',
             permissions: ['all'],
             isSystem: true,
-            moduleAccess: activeModules.map(module => ({
+            moduleAccess: activeModules.map((module: string) => ({
               module,
               access: 'read_write'
             }))
@@ -1540,7 +1544,7 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
             description: 'Access to most features except sensitive data',
             permissions: ['dashboard', 'order_management', 'inventory', 'hr'],
             isSystem: true,
-            moduleAccess: activeModules.map(module => ({
+            moduleAccess: activeModules.map((module: string) => ({
               module,
               access: 'read_write'
             }))
@@ -1550,12 +1554,13 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
             description: 'Basic access to required features',
             permissions: ['dashboard', 'order_management'],
             isSystem: true,
-            moduleAccess: activeModules.map(module => ({
+            moduleAccess: activeModules.map((module: string) => ({
               module,
               access: 'read'
             }))
           }
-        ])
+        ]),
+        waitlistedModules: orgData.waitlistedModules || []
       };
 
       const organization = await prisma.organization.create({
@@ -1587,12 +1592,12 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
           status: 'active',
           position: 'Owner',
           moduleAccess: {
-            create: activeModules.map(module => ({
+            create: activeModules.map((module: string) => ({
               module: module,
               access: 'read_write'
             }))
           },
-          permissions: JSON.stringify(activeModules.map(module => ({
+          permissions: JSON.stringify(activeModules.map((module: string) => ({
             module,
             actions: ['read', 'write', 'delete', 'create']
           })))
@@ -1620,6 +1625,12 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
         owner,
         token
       });
+
+      if (orgData.waitlistedModules && orgData.waitlistedModules.length > 0) {
+        // Notify owner and system admin (for now, just log)
+        console.log(`Organization ${organization.name} joined waitlist for modules:`, orgData.waitlistedModules);
+        // TODO: Integrate with notification system (email, in-app, etc.)
+      }
     } catch (error: any) {
       console.error('Error creating organization:', error);
       
@@ -1671,15 +1682,20 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
       
       // If moduleAccess is missing or empty, derive it from permissions
       let moduleAccess = userData.moduleAccess;
-      if ((!moduleAccess || moduleAccess.length === 0) && userData.permissions) {
+      if (userData.role === 'owner') {
+        // Owners get all modules
+        moduleAccess = Array.isArray(moduleAccess) && moduleAccess.length > 0 ? moduleAccess : availableModules;
+      } else if ((!moduleAccess || moduleAccess.length === 0) && userData.permissions) {
         moduleAccess = userData.permissions.map((p: any) =>
           typeof p === 'string'
             ? p
             : p.module
-              ? { module: p.module, access: p.access || 'read_write' }
+              ? p.module
               : null
         ).filter(Boolean);
       }
+      // Ensure moduleAccess is always an array of strings
+      moduleAccess = Array.isArray(moduleAccess) ? moduleAccess.map((m: any) => typeof m === 'string' ? m : m.module) : [];
       
       // Sanitize managerId: set to null if not a valid ObjectId
       const managerId = userData.managerId && typeof userData.managerId === 'string' && userData.managerId.length === 24 ? userData.managerId : null;
@@ -1699,9 +1715,7 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
           position: userData.position,
           hireDate,
           managerId,
-          moduleAccess: {
-            create: Array.isArray(moduleAccess) && typeof moduleAccess[0] === 'object' ? moduleAccess : (moduleAccess || []).map((m: any) => ({ module: typeof m === 'string' ? m : m.module, access: m.access || 'read_write' }))
-          },
+          moduleAccess,
         } as any,
         include: ({} as any)
       });

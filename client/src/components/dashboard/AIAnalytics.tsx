@@ -1,8 +1,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Brain, TrendingUp, Users, Wallet, Package, Building2 } from 'lucide-react';
 import { staticData } from '@/data/static';
+import { useOrganization } from '@/contexts/OrganizationContext';
 
 export function AIAnalytics() {
+  const { organization } = useOrganization();
+  if (!organization?.aiEnabled) return null;
   const company = staticData.companies[0];
   const { aiAnalytics } = company;
 

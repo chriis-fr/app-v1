@@ -30,6 +30,7 @@ import {
   ArrowLeft
 } from 'lucide-react';
 import { useRoleAccess } from '@/hooks/use-role-access';
+import { hasFullAccess } from '@/utils/access';
 
 interface ModuleInfo {
   id: string;
@@ -39,6 +40,7 @@ interface ModuleInfo {
   features: string[];
   benefits: string[];
   category: string;
+  industry?: string[];
 }
 
 const allModules: ModuleInfo[] = [
@@ -446,11 +448,13 @@ const allModules: ModuleInfo[] = [
 
 export default function ModulesPage() {
   const { user } = useAuth();
+  const organization = user?.organization;
+  const currentUser = user;
   const { canAccessCompactSidebar } = useRoleAccess();
   const [, setLocation] = useLocation();
   
-  // Check if user is admin
-  const isAdmin = user?.role === 'admin' || user?.role === 'owner' || user?.isOwner;
+  // Check if user is admin or owner (case-insensitive, or isOwner flag)
+  const isAdmin = hasFullAccess(currentUser);
   
   if (!isAdmin) {
     return (
@@ -466,16 +470,26 @@ export default function ModulesPage() {
     );
   }
   
-  // Always use organization activeModules for all users, including owners
-  const activeModules = user?.organization?.activeModules || [];
-  
-  const subscribedModules = allModules.filter(module => 
-    activeModules.includes(module.id as any)
-  );
-  
-  const unsubscribedModules = allModules.filter(module => 
-    !activeModules.includes(module.id as any)
-  );
+  // Use enabledModules and industry from org context
+  const enabledModules = organization?.activeModules || [];
+  const orgIndustry = organization?.industry || '';
+  const orgTier = (organization as any)?.tier;
+  const aiEnabled = (organization as any)?.aiEnabled ?? false;
+
+  // Filter modules by enabledModules and industry (if specified)
+  const industryModules = allModules.filter(module => {
+    // If module has industry restriction, check it
+    if (module.industry && Array.isArray(module.industry)) {
+      return module.industry.includes(orgIndustry);
+    }
+    return true;
+  });
+  const subscribedModules = industryModules.filter(module => enabledModules.includes(module.id));
+  const unsubscribedModules = industryModules.filter(module => !enabledModules.includes(module.id));
+
+  // Optionally, filter out AI modules if AI is disabled
+  const finalSubscribedModules = aiEnabled ? subscribedModules : subscribedModules.filter(m => m.id !== 'ai_analytics');
+  const finalUnsubscribedModules = aiEnabled ? unsubscribedModules : unsubscribedModules.filter(m => m.id !== 'ai_analytics');
 
   const handleModuleClick = (moduleId: string) => {
     setLocation(`/dashboard/${moduleId}/info`);
@@ -495,7 +509,7 @@ export default function ModulesPage() {
             
           </Button>
           <div>
-            <h1 className="text-2xl font-bold mb-2">Available Modules for {user?.organization?.name}</h1>
+            <h1 className="text-2xl font-bold mb-2">Available Modules for {organization?.name}</h1>
             <p className="text-gray-600">Explore and manage your organization's modules</p>
           </div>
         </div>
@@ -504,7 +518,7 @@ export default function ModulesPage() {
         <div className="mb-12">
           <h2 className="text-xl font-semibold mb-6">Your Active Modules</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {subscribedModules.map((module) => (
+            {finalSubscribedModules.map((module) => (
               <Card 
                 key={module.id}
                 className="p-6 cursor-pointer hover:shadow-lg transition-shadow"
@@ -549,7 +563,7 @@ export default function ModulesPage() {
         <div>
           <h2 className="text-xl font-semibold mb-6">Available Modules</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {unsubscribedModules.map((module) => (
+            {finalUnsubscribedModules.map((module) => (
               <Card 
                 key={module.id}
                 className="p-6 opacity-75 cursor-not-allowed"

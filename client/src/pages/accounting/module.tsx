@@ -2,6 +2,7 @@ import { useParams, useLocation } from 'wouter';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import GeneralLedger from './general-ledger';
+import { hasFullAccess, hasModuleAccess } from '@/utils/access';
 
 export default function AccountingModulePage() {
   const { module } = useParams();
@@ -9,7 +10,7 @@ export default function AccountingModulePage() {
   const [, setLocation] = useLocation();
 
   // Check if user has access to accounting module
-  if (!user || !(user.role === 'owner' || user.isOwner || user.role === 'admin' || user.moduleAccess?.includes('accounting') || (user.permissions && user.permissions.some((p: any) => p.module === 'accounting' && p.actions.length > 0)))) {
+  if (!user || !(hasFullAccess(user) || hasModuleAccess(user, 'accounting'))) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh]">
         <h1 className="text-2xl font-bold mb-4">Access Denied</h1>

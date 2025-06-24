@@ -169,9 +169,14 @@ router.put('/:id/compensation', async (req: Request, res: Response) => {
 
 // When fetching users for HR, exclude owners
 router.get('/employees', async (req: Request, res: Response) => {
+  console.log('Fetching employees----------------------------------');
   try {
-    // Exclude owners from employee list
-    const employees = await UserModel.find({ role: { $ne: 'owner' } });
+    // Exclude owners from employee list and filter by organizationId
+    const orgId = req.user?.organizationId;
+    if (!orgId) {
+      return res.status(401).json({ message: 'No organization context' });
+    }
+    const employees = await UserModel.find({ role: { $ne: 'owner' }, organizationId: orgId });
     res.json(employees);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching employees' });
