@@ -23,6 +23,8 @@ import { isAuthenticated } from './middleware/auth';
 import { UserDocument } from './models/User';
 import cookieParser from 'cookie-parser';
 import { availableModules } from '../shared/schema';
+import cors from 'cors';
+import { sendActivationEmail, testEmailConnection, sendTestEmail } from './services/emailService';
 
 const prisma = new PrismaClient();
 
@@ -2755,6 +2757,533 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
     } catch (error) {
       console.error('Error fetching vendors:', error);
       res.status(500).json({ error: 'Failed to fetch vendors' });
+    }
+  });
+
+  // Send activation token endpoint
+  app.post('/api/users/:id/send-activation', async (req, res) => {
+    try {
+      if (!req.user || !req.user.organizationId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const { id } = req.params;
+
+      // Check if user has permission to activate users
+      const canActivate = req.user.role === 'owner' || req.user.role === 'admin';
+      if (!canActivate) {
+        return res.status(403).json({ error: 'Insufficient permissions to activate users' });
+      }
+
+      // Find the user to activate
+      const userToActivate = await prisma.user.findFirst({
+        where: {
+          id,
+          organizationId: req.user.organizationId
+        }
+      });
+
+      if (!userToActivate) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      if (userToActivate.isActive) {
+        return res.status(400).json({ error: 'User is already active' });
+      }
+
+      // Check if user already has a valid activation token
+      const now = new Date();
+      const hasValidToken = userToActivate.activationToken && 
+                           userToActivate.tokenExpiresAt && 
+                           userToActivate.tokenExpiresAt > now;
+
+      if (hasValidToken) {
+        return res.status(400).json({ 
+          error: 'User already has a valid activation token',
+          tokenExpiresAt: userToActivate.tokenExpiresAt,
+          canResendAfter: userToActivate.tokenExpiresAt
+        });
+      }
+
+      // Generate activation token
+      const activationToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      const tokenExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+      console.log('=== TOKEN GENERATION ===');
+      console.log('Generated Token:', activationToken);
+      console.log('Token Expires:', tokenExpiresAt);
+      console.log('User ID to update:', id);
+      console.log('=======================');
+
+      // Update user with activation token
+      try {
+        const updatedUser = await prisma.user.update({
+          where: { id },
+          data: {
+            activationToken,
+            tokenExpiresAt
+          }
+        });
+
+        console.log('=== TOKEN SAVE SUCCESS ===');
+        console.log('Updated User ID:', updatedUser.id);
+        console.log('Updated User Email:', updatedUser.email);
+        console.log('Saved Token:', updatedUser.activationToken);
+        console.log('Saved Expiry:', updatedUser.tokenExpiresAt);
+        console.log('Token Match:', updatedUser.activationToken === activationToken);
+        console.log('==========================');
+      } catch (updateError) {
+        console.error('=== TOKEN SAVE ERROR ===');
+        console.error('Error updating user with token:', updateError);
+        console.error('User ID:', id);
+        console.error('Generated Token:', activationToken);
+        console.error('Token Expires:', tokenExpiresAt);
+        console.error('========================');
+        
+        // Try to get more info about the user
+        try {
+          const userInfo = await prisma.user.findUnique({
+            where: { id },
+            select: { id: true, email: true, activationToken: true, tokenExpiresAt: true }
+          });
+          console.log('Current user state:', userInfo);
+        } catch (infoError) {
+          console.error('Could not get user info:', infoError);
+        }
+        
+        return res.status(500).json({ error: 'Failed to save activation token' });
+      }
+
+      // Verify the token was saved
+      const updatedUser = await prisma.user.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          email: true,
+          activationToken: true,
+          tokenExpiresAt: true
+        }
+      });
+
+      console.log('=== TOKEN SAVE VERIFICATION ===');
+      console.log('Updated User ID:', updatedUser?.id);
+      console.log('Updated User Email:', updatedUser?.email);
+      console.log('Saved Token:', updatedUser?.activationToken);
+      console.log('Saved Expiry:', updatedUser?.tokenExpiresAt);
+      console.log('Token Match:', updatedUser?.activationToken === activationToken);
+      console.log('================================');
+
+      // Get organization name for email
+      const organization = await prisma.organization.findUnique({
+        where: { id: req.user.organizationId },
+        select: { name: true }
+      });
+
+      const organizationName = organization?.name || 'Your Organization';
+
+      // Send activation email
+      const emailResult = await sendActivationEmail(
+        userToActivate.email,
+        `${userToActivate.firstName} ${userToActivate.lastName}`,
+        activationToken,
+        organizationName
+      );
+
+      // Log the activation attempt
+      console.log('=== ACTIVATION TOKEN GENERATED ===');
+      console.log('User ID:', userToActivate.id);
+      console.log('User Email:', userToActivate.email);
+      console.log('User Name:', `${userToActivate.firstName} ${userToActivate.lastName}`);
+      console.log('Activation Token:', activationToken);
+      console.log('Token Expires:', tokenExpiresAt);
+      console.log('Organization:', req.user.organizationId);
+      console.log('Activated by:', req.user.email);
+      console.log('Current User Role:', req.user.role);
+      console.log('User was inactive:', !userToActivate.isActive);
+      console.log('Email sent:', emailResult.success);
+      if (emailResult.success) {
+        console.log('Email Message ID:', emailResult.messageId);
+      } else {
+        console.log('Email Error:', emailResult.error);
+      }
+      console.log('================================');
+
+      res.json({ 
+        message: emailResult.success 
+          ? 'Activation email sent successfully' 
+          : 'Activation token generated but email failed to send',
+        userId: userToActivate.id,
+        userEmail: userToActivate.email,
+        tokenGenerated: true,
+        emailSent: emailResult.success,
+        emailError: emailResult.error
+      });
+
+    } catch (error) {
+      console.error('Error sending activation token:', error);
+      res.status(500).json({ error: 'Failed to send activation token' });
+    }
+  });
+
+  // Activation endpoint
+  app.post('/api/users/activate', async (req, res) => {
+    try {
+      console.log('🔐 Activation endpoint called');
+      console.log('📧 Request body:', req.body);
+      
+      const { token, password, email } = req.body;
+      
+      if (!token || !password || !email) {
+        console.log('❌ Missing token, password, or email');
+        return res.status(400).json({ error: 'Token, password, and email are required' });
+      }
+      
+      console.log('🔍 Searching for user by email:', email);
+      
+      // First, find the user by email
+      const user = await prisma.user.findFirst({
+        where: {
+          email: email
+        },
+        include: {
+          organization: true
+        }
+      });
+      
+      if (!user) {
+        console.log('❌ User not found with email:', email);
+        return res.status(400).json({ error: 'User not found' });
+      }
+      
+      console.log('✅ User found:', user.email);
+      console.log('🔍 Checking activation token...');
+      
+      // Check if user has the correct activation token and it's not expired
+      if (!user.activationToken || user.activationToken !== token) {
+        console.log('❌ Invalid activation token');
+        return res.status(400).json({ error: 'Invalid activation token' });
+      }
+      
+      if (!user.tokenExpiresAt || user.tokenExpiresAt < new Date()) {
+        console.log('❌ Activation token expired');
+        return res.status(400).json({ error: 'Activation token has expired' });
+      }
+      
+      console.log('✅ Token is valid and not expired');
+      
+      // Hash the new password
+      const hashedPassword = await bcrypt.hash(password, 10);
+      
+      // Update user with new password and activation status using Prisma
+      const updatedUser = await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          password: hashedPassword,
+          isActive: true,
+          emailVerified: true,
+          activationToken: null,
+          tokenExpiresAt: null
+        },
+        include: {
+          organization: true
+        }
+      });
+      
+      // Also sync to MongoDB for consistency
+      try {
+        await UserModel.findOneAndUpdate(
+          { email: user.email },
+          {
+            password: hashedPassword,
+            isActive: true,
+            emailVerified: true,
+            activationToken: null,
+            tokenExpiresAt: null
+          }
+        );
+        console.log('✅ MongoDB user also updated');
+      } catch (mongoError) {
+        console.log('⚠️ MongoDB sync failed (non-critical):', mongoError);
+      }
+      
+      console.log('✅ User activated successfully');
+
+      // Generate JWT token for automatic login
+      const tokenPayload = {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        organizationId: user.organizationId,
+        isOwner: user.role === 'owner'
+      };
+
+      const jwtToken = jwt.sign(
+        tokenPayload,
+        process.env.JWT_SECRET || 'your-secret-key',
+        { expiresIn: '24h' }
+      );
+
+      // Set the token in cookies
+      res.cookie('token', jwtToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+      });
+
+      res.cookie('auth_token', jwtToken, {
+        httpOnly: false,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 24 * 60 * 60 * 1000
+      });
+
+      // Return success with user data and token
+      const { password: userPassword, ...userWithoutPassword } = updatedUser;
+      console.log('🎉 Activation completed successfully');
+      res.json({ 
+        message: 'Account activated successfully',
+        user: userWithoutPassword,
+        token: jwtToken
+      });
+    } catch (error) {
+      console.error('❌ Activation error:', error);
+      res.status(500).json({ error: 'Activation failed' });
+    }
+  });
+
+  // Check activation token endpoint (for debugging)
+  app.get('/api/users/:id/activation-status', async (req, res) => {
+    try {
+      if (!req.user || !req.user.organizationId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const { id } = req.params;
+
+      // Check if user has permission
+      const canCheck = req.user.role === 'owner' || req.user.role === 'admin';
+      if (!canCheck) {
+        return res.status(403).json({ error: 'Insufficient permissions' });
+      }
+
+      // Find the user in Prisma
+      const user = await prisma.user.findFirst({
+        where: {
+          id,
+          organizationId: req.user.organizationId
+        },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          isActive: true,
+          emailVerified: true,
+          activationToken: true,
+          tokenExpiresAt: true
+        }
+      });
+
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      const now = new Date();
+      const tokenExpired = user.tokenExpiresAt ? user.tokenExpiresAt < now : true;
+      const hasValidToken = user.activationToken && !tokenExpired;
+
+      res.json({
+        user: {
+          id: user.id,
+          email: user.email,
+          name: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
+          isActive: user.isActive,
+          emailVerified: user.emailVerified
+        },
+        activation: {
+          hasToken: !!user.activationToken,
+          tokenExpired,
+          hasValidToken,
+          expiresAt: user.tokenExpiresAt,
+          canSendNewToken: !hasValidToken
+        }
+      });
+
+    } catch (error) {
+      console.error('Error checking activation status:', error);
+      res.status(500).json({ error: 'Failed to check activation status' });
+    }
+  });
+
+  // Check user in Prisma by email (for debugging)
+  app.get('/api/users/check-prisma/:email', async (req, res) => {
+    try {
+      if (!req.user || !req.user.organizationId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const { email } = req.params;
+
+      // Check if user has permission
+      const canCheck = req.user.role === 'owner' || req.user.role === 'admin';
+      if (!canCheck) {
+        return res.status(403).json({ error: 'Insufficient permissions' });
+      }
+
+      // Find the user in Prisma by email
+      const user = await prisma.user.findFirst({
+        where: {
+          email: decodeURIComponent(email),
+          organizationId: req.user.organizationId
+        },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          isActive: true,
+          emailVerified: true,
+          activationToken: true,
+          tokenExpiresAt: true
+        }
+      });
+
+      if (!user) {
+        return res.status(404).json({ error: 'User not found in Prisma' });
+      }
+
+      res.json({
+        user: {
+          id: user.id,
+          email: user.email,
+          name: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
+          isActive: user.isActive,
+          emailVerified: user.emailVerified
+        },
+        activation: {
+          hasToken: !!user.activationToken,
+          tokenExpired: user.tokenExpiresAt ? user.tokenExpiresAt < new Date() : true,
+          hasValidToken: user.activationToken && user.tokenExpiresAt && user.tokenExpiresAt > new Date(),
+          expiresAt: user.tokenExpiresAt
+        }
+      });
+
+    } catch (error) {
+      console.error('Error checking user in Prisma:', error);
+      res.status(500).json({ error: 'Failed to check user in Prisma' });
+    }
+  });
+
+  // Test email connection endpoint
+  app.get('/api/test-email-connection', async (req, res) => {
+    try {
+      const isConnected = await testEmailConnection();
+      res.json({ 
+        success: isConnected, 
+        message: isConnected ? 'Email service is ready' : 'Email service failed to connect' 
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to test email connection' 
+      });
+    }
+  });
+
+  // Send test email endpoint
+  app.post('/api/test-email', async (req, res) => {
+    try {
+      const { email } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ error: 'Email is required' });
+      }
+
+      const result = await sendTestEmail(email);
+      
+      if (result.success) {
+        res.json({ 
+          success: true, 
+          message: 'Test email sent successfully',
+          messageId: result.messageId 
+        });
+      } else {
+        res.status(500).json({ 
+          success: false, 
+          error: result.error 
+        });
+      }
+    } catch (error) {
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to send test email' 
+      });
+    }
+  });
+
+  // Manual check activation token (for debugging)
+  app.get('/api/users/:id/check-token', async (req, res) => {
+    try {
+      if (!req.user || !req.user.organizationId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const { id } = req.params;
+
+      // Check if user has permission
+      const canCheck = req.user.role === 'owner' || req.user.role === 'admin';
+      if (!canCheck) {
+        return res.status(403).json({ error: 'Insufficient permissions' });
+      }
+
+      // Find the user in Prisma
+      const user = await prisma.user.findFirst({
+        where: {
+          id,
+          organizationId: req.user.organizationId
+        },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          isActive: true,
+          emailVerified: true,
+          activationToken: true,
+          tokenExpiresAt: true
+        }
+      });
+
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      const now = new Date();
+      const tokenExpired = user.tokenExpiresAt ? user.tokenExpiresAt < now : true;
+      const hasValidToken = user.activationToken && !tokenExpired;
+
+      res.json({
+        user: {
+          id: user.id,
+          email: user.email,
+          name: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
+          isActive: user.isActive,
+          emailVerified: user.emailVerified
+        },
+        token: {
+          hasToken: !!user.activationToken,
+          tokenValue: user.activationToken,
+          tokenExpired,
+          hasValidToken,
+          expiresAt: user.tokenExpiresAt,
+          currentTime: now
+        }
+      });
+
+    } catch (error) {
+      console.error('Error checking token:', error);
+      res.status(500).json({ error: 'Failed to check token' });
     }
   });
 

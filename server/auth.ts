@@ -348,6 +348,16 @@ export function setupAuth(app: Express) {
         return res.status(401).json({ message: 'User not found' });
       }
 
+      // Check if user is activated and email verified
+      if (!fullUser.isActive || !fullUser.emailVerified) {
+        return res.status(403).json({ 
+          message: 'Account not activated', 
+          requiresActivation: true,
+          userEmail: fullUser.email,
+          userId: fullUser.id
+        });
+      }
+
       req.login(user, (err) => {
         if (err) {
           console.error('Session error:', err);

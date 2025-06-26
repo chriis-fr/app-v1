@@ -6,6 +6,7 @@ import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from './lib/protected-route';
 import LandingPage from '@/pages/landing-page';
 import AuthPage from '@/pages/auth-page';
+import ActivatePage from '@/pages/activate';
 import Dashboard from '@/pages/dashboard';
 import SettingsPage from '@/pages/settings-page';
 import NotFound from '@/pages/not-found';
@@ -65,6 +66,7 @@ function App() {
           <Switch>
             <Route path="/" component={LandingPage} />
             <Route path="/auth" component={AuthPage} />
+            <Route path="/activate" component={ActivatePage} />
             <Route path="/support" component={SupportPage} />
             <ProtectedRoute path="/dashboard" component={Dashboard} />
             <ProtectedRoute path="/settings" component={SettingsPage} />

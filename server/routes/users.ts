@@ -296,24 +296,6 @@ router.post('/', isAuthenticated, checkModulePermission('create_user'), checkDep
   }
 });
 
-// Activation endpoint
-router.post('/activate', async (req: Request, res: Response) => {
-  try {
-    const { token, password } = req.body;
-    const user = await User.findOne({ activationToken: token, tokenExpiresAt: { $gt: new Date() } });
-    if (!user) return res.status(400).json({ error: 'Invalid or expired token' });
-    user.password = await bcrypt.hash(password, 10);
-    user.isActive = true;
-    user.emailVerified = true;
-    user.activationToken = null;
-    user.tokenExpiresAt = null;
-    await user.save();
-    res.json({ message: 'Account activated' });
-  } catch (error) {
-    res.status(500).json({ error: 'Activation failed' });
-  }
-});
-
 // Update user with change tracking
 router.put('/:id', isAuthenticated, checkModulePermission('update_user'), checkDepartmentAccess, async (req: Request, res: Response, next: NextFunction) => {
   try {

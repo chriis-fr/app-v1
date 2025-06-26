@@ -58,7 +58,9 @@ import {
   Globe,
   ShoppingBag,
   Languages,
-  Bitcoin
+  Bitcoin,
+  Settings,
+  Zap
 } from 'lucide-react';
 import type { RegisterOrganization, OrganizationSettings, AvailableModule } from '@shared/schema';
 import { useState, useEffect } from 'react';
@@ -192,6 +194,7 @@ export default function AuthPage() {
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [confirmationText, setConfirmationText] = useState("");
+  const [activationError, setActivationError] = useState<string | null>(null);
 
   // Move registerForm declaration up
   const registerForm = useForm<RegisterOrganization>({
@@ -248,9 +251,32 @@ export default function AuthPage() {
     resolver: zodResolver(insertUserSchema.pick({ email: true, password: true })),
     defaultValues: {
       email: '',
-      password: ''
-    }
+      password: '',
+    },
   });
+
+  // Add effect to clear activation error when switching tabs
+  useEffect(() => {
+    const subscription = loginForm.watch(() => {
+      if (activationError) setActivationError(null);
+    });
+    return () => subscription.unsubscribe();
+  }, [loginForm, activationError]);
+
+  // Custom login submit handler to catch activation errors
+  const handleLoginSubmit = async (data: LoginData) => {
+    setActivationError(null);
+    try {
+      await loginMutation.mutateAsync({ email: data.email, password: data.password });
+    } catch (error: any) {
+      // Check for activation error from backend
+      if (error instanceof Error && error.message === 'Account not activated') {
+        setActivationError('Your account is not activated. Please check your email for the activation link.');
+      } else {
+        setActivationError(error.message || 'Login failed');
+      }
+    }
+  };
 
   const handleNext = () => {
     switch (currentStep) {
@@ -800,26 +826,66 @@ export default function AuthPage() {
   const renderContent = () => {
     if (isLoading) {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-background to-muted">
-          <div className="text-center space-y-8">
-            <div className="relative w-32 h-32 mx-auto">
-              <div className="absolute inset-0 border-4 border-primary/20 rounded-full animate-pulse" />
-              <div className="absolute inset-4 border-4 border-primary/40 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }} />
-              <div className="absolute inset-8 border-4 border-primary/60 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }} />
-              <div className="absolute inset-12 border-4 border-primary rounded-full animate-pulse" style={{ animationDelay: '0.6s' }} />
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 relative overflow-hidden">
+          {/* Background Icons */}
+          <div className="absolute inset-0 overflow-hidden">
+            <div className="absolute top-20 left-10 text-blue-200/30">
+              <Database size={60} />
             </div>
-            <div className="space-y-4">
-              <h2 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-                Welcome to Chains ERP
-              </h2>
-              <p className="text-muted-foreground">
-                Loading your personalized dashboard...
-              </p>
+            <div className="absolute top-40 right-20 text-indigo-200/30">
+              <BarChart size={50} />
             </div>
-            <div className="flex justify-center space-x-2">
-              <div className="w-3 h-3 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
-              <div className="w-3 h-3 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
-              <div className="w-3 h-3 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.4s' }} />
+            <div className="absolute bottom-40 left-20 text-purple-200/30">
+              <Users size={70} />
+            </div>
+            <div className="absolute bottom-20 right-10 text-blue-200/30">
+              <Settings size={40} />
+            </div>
+            <div className="absolute top-1/2 left-1/4 text-indigo-200/20">
+              <Globe size={80} />
+            </div>
+            <div className="absolute top-1/3 right-1/3 text-purple-200/20">
+              <Zap size={45} />
+            </div>
+          </div>
+
+          <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
+            <div className="text-center space-y-8">
+              {/* Logo */}
+              <div className="mb-6">
+                <div className="mx-auto w-20 h-20 bg-white rounded-2xl flex items-center justify-center mb-4 shadow-lg">
+                  <img src="https://chains-erp.com/chainsnobg.png" 
+                      alt="Chains ERP Logo" 
+                      className='border rounded-2xl'
+                     />
+                </div>
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
+                  Chains ERP&trade;
+                </h1>
+                <p className="text-gray-600 text-sm">Enterprise Resource Planning</p>
+              </div>
+
+              <div className="relative w-32 h-32 mx-auto">
+                <div className="absolute inset-0 border-4 border-blue-500/20 rounded-full animate-pulse" />
+                <div className="absolute inset-4 border-4 border-blue-500/40 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }} />
+                <div className="absolute inset-8 border-4 border-blue-500/60 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }} />
+                <div className="absolute inset-12 border-4 border-blue-500 rounded-full animate-pulse" style={{ animationDelay: '0.6s' }} />
+              </div>
+              
+              <div className="space-y-4">
+                <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  Welcome to Chains ERP
+                </h2>
+                <p className="text-gray-600">
+                  Loading your personalized dashboard...
+                </p>
+              </div>
+              
+              <div className="flex justify-center space-x-2">
+                <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
+                <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }} />
+              </div>
             </div>
           </div>
         </div>
@@ -856,7 +922,12 @@ export default function AuthPage() {
                     <TabsTrigger value="register">Register</TabsTrigger>
                   </TabsList>
                   <TabsContent value="login">
-                    <form onSubmit={loginForm.handleSubmit((data) => loginMutation.mutate({ email: data.email, password: data.password }))} className="space-y-4">
+                    {activationError && (
+                      <div className="mb-2 p-2 rounded bg-yellow-100 border border-yellow-400 text-yellow-800 text-sm">
+                        {activationError}
+                      </div>
+                    )}
+                    <form onSubmit={loginForm.handleSubmit(handleLoginSubmit)} className="space-y-4">
                       <div className="space-y-2">
                         <Label>Email</Label>
                         <Input type="email" placeholder="Email" {...loginForm.register('email')} />
