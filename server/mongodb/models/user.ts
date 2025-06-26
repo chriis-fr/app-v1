@@ -5,7 +5,7 @@ export interface IUser extends Document {
   password: string;
   firstName: string;
   lastName: string;
-  role: 'owner' | 'admin' | 'manager' | 'employee' | 'contractor';
+  role: 'owner' | 'admin' | 'manager' | 'employee' | 'contractor' | 'vendor_admin' | 'vendor_manager' | 'vendor_employee';
   organizationId: mongoose.Types.ObjectId;
   department: string;
   position: string;
@@ -17,6 +17,7 @@ export interface IUser extends Document {
   moduleAccess: string[];
   permissions: { module: string; actions: string[] }[];
   modulePermissions: Record<string, string[]>;
+  vendorId?: mongoose.Types.ObjectId;
 }
 
 const userSchema = new Schema<IUser>({
@@ -43,7 +44,7 @@ const userSchema = new Schema<IUser>({
   },
   role: {
     type: String,
-    enum: ['owner', 'admin', 'manager', 'employee', 'contractor'],
+    enum: ['owner', 'admin', 'manager', 'employee', 'contractor', 'vendor_admin', 'vendor_manager', 'vendor_employee'],
     default: 'employee'
   },
   organizationId: {
@@ -82,6 +83,11 @@ const userSchema = new Schema<IUser>({
     type: Map,
     of: [String],
     default: {}
+  },
+  vendorId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Vendor',
+    required: false
   }
 }, {
   timestamps: true

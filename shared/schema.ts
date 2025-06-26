@@ -53,7 +53,10 @@ export const userRoles = [
   'admin',
   'manager',
   'employee',
-  'contractor'
+  'contractor',
+  'vendor_admin',
+  'vendor_manager',
+  'vendor_employee'
 ] as const;
 
 // ---------------------------------
@@ -81,7 +84,36 @@ export const partnerTypes = [
   "client",
   "supplier",
   "distributor",
+  "contractor",
+  "service_provider",
+  "manufacturer",
+  "wholesaler",
+  "retailer"
+] as const;
+
+// ---------------------------------
+// Vendor Types (for determining UI and operations)
+// ---------------------------------
+export const vendorTypes = [
+  "supplier",
+  "service_provider",
+  "manufacturer",
+  "distributor",
+  "wholesaler",
+  "retailer",
+  "logistics",
+  "consultant",
   "contractor"
+] as const;
+
+// ---------------------------------
+// Vendor Access Levels
+// ---------------------------------
+export const vendorAccessLevels = [
+  "basic",      // Basic access to their own data
+  "standard",   // Standard access with some organization data
+  "premium",    // Premium access with full integration
+  "enterprise"  // Enterprise access with custom integrations
 ] as const;
 
 // ---------------------------------
@@ -205,6 +237,7 @@ export const userSchema = z.object({
   updatedAt: z.date().default(() => new Date()),
   emailVerified: z.boolean().optional(),
   isActive: z.boolean().optional(),
+  vendorId: z.string().optional(),
 });
 
 // Define a schema for an Organization document.
@@ -267,6 +300,127 @@ export const businessPartnerSchema = z.object({
     postalCode: z.string(),
     isBillingAddress: z.boolean(),
     isShippingAddress: z.boolean()
+  }).optional(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+// Define a schema for a Vendor document (extends Business Partner)
+export const vendorSchema = z.object({
+  id: z.string(),
+  vendorId: z.string(), // Unique vendor ID for the organization
+  name: z.string(),
+  email: z.string().email(),
+  phone: z.string(),
+  website: z.string(),
+  type: z.enum(vendorTypes),
+  status: z.enum(["active", "inactive", "pending", "suspended"]).default("active"),
+  organizationId: z.string(), // The organization this vendor belongs to
+  clientOrganizations: z.array(z.string()), // Organizations this vendor can work with
+  accessLevel: z.enum(vendorAccessLevels).default("basic"),
+  vendorCode: z.string(), // Unique code for this vendor
+  businessCategory: z.string(),
+  specialties: z.array(z.string()),
+  certifications: z.array(z.object({
+    name: z.string(),
+    issuer: z.string(),
+    issueDate: z.string(),
+    expiryDate: z.string(),
+    documentUrl: z.string().optional()
+  })).optional(),
+  insurance: z.object({
+    provider: z.string(),
+    policyNumber: z.string(),
+    coverage: z.number(),
+    expiryDate: z.string()
+  }).optional(),
+  performance: z.object({
+    rating: z.number().min(0).max(5),
+    totalOrders: z.number(),
+    onTimeDelivery: z.number(), // percentage
+    qualityScore: z.number().min(0).max(100),
+    lastReviewDate: z.string()
+  }).optional(),
+  paymentTerms: z.object({
+    netDays: z.number(),
+    earlyPaymentDiscount: z.number().optional(),
+    latePaymentPenalty: z.number().optional()
+  }).optional(),
+  contactPersons: z.array(z.object({
+    name: z.string(),
+    position: z.string(),
+    email: z.string(),
+    phone: z.string(),
+    isPrimary: z.boolean()
+  })).optional(),
+  services: z.array(z.object({
+    name: z.string(),
+    description: z.string(),
+    category: z.string(),
+    pricing: z.object({
+      type: z.enum(["fixed", "hourly", "per_unit", "percentage"]),
+      amount: z.number(),
+      currency: z.string()
+    })
+  })).optional(),
+  products: z.array(z.object({
+    name: z.string(),
+    sku: z.string(),
+    category: z.string(),
+    price: z.number(),
+    currency: z.string(),
+    minOrderQuantity: z.number(),
+    leadTime: z.number() // in days
+  })).optional(),
+  documents: z.array(z.object({
+    type: z.string(),
+    name: z.string(),
+    url: z.string(),
+    uploadedAt: z.string(),
+    expiryDate: z.string().optional()
+  })).optional(),
+  wallet: z.object({
+    balance: z.number(),
+    currency: z.string(),
+    bankAccounts: z.array(z.object({
+      id: z.string(),
+      bankName: z.string(),
+      accountNumber: z.string(),
+      accountType: z.string(),
+      isDefault: z.boolean()
+    }))
+  }).optional(),
+  legalDetails: z.object({
+    taxId: z.string(),
+    businessType: z.string(),
+    registrationNumber: z.string(),
+    incorporationDate: z.string(),
+    vatNumber: z.string().optional(),
+    businessLicense: z.string().optional()
+  }).optional(),
+  address: z.object({
+    street: z.string(),
+    city: z.string(),
+    state: z.string(),
+    country: z.string(),
+    postalCode: z.string(),
+    isBillingAddress: z.boolean(),
+    isShippingAddress: z.boolean()
+  }).optional(),
+  settings: z.object({
+    autoApproveOrders: z.boolean().default(false),
+    requireApproval: z.boolean().default(true),
+    allowDirectPurchase: z.boolean().default(false),
+    notificationPreferences: z.object({
+      email: z.boolean().default(true),
+      sms: z.boolean().default(false),
+      push: z.boolean().default(true)
+    }),
+    integrationSettings: z.object({
+      apiEnabled: z.boolean().default(false),
+      webhookUrl: z.string().optional(),
+      syncFrequency: z.enum(["realtime", "hourly", "daily"]).default("daily")
+    })
   }).optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
@@ -508,6 +662,7 @@ export type User = Omit<z.infer<typeof userSchema>, "role" | "createdAt" | "upda
   modulePermissions?: any[];
   emailVerified?: boolean;
   isActive?: boolean;
+  vendorId?: string;
 };
 
 // ---------------------------------
@@ -520,6 +675,16 @@ export type BusinessPartner = Omit<z.infer<typeof businessPartnerSchema>, "creat
 };
 
 // ---------------------------------
+// Merged "Vendor" Type
+// ---------------------------------
+export type Vendor = Omit<z.infer<typeof vendorSchema>, "createdAt" | "updatedAt"> & {
+  createdAt: string;
+  updatedAt: string;
+  organization?: Organization;
+  clientOrganizations?: Organization[];
+};
+
+// ---------------------------------
 // Other Types
 // ---------------------------------
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -527,6 +692,9 @@ export type RegisterOrganization = z.infer<typeof registerOrganizationSchema>;
 export type AvailableModule = typeof availableModules[number];
 export type UserRole = typeof userRoles[number];
 export type Department = typeof departments[number];
+export type VendorType = typeof vendorTypes[number];
+export type VendorAccessLevel = typeof vendorAccessLevels[number];
+export type PartnerType = typeof partnerTypes[number];
 
 export interface LoginData {
   username: string;

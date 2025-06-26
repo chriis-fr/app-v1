@@ -347,12 +347,20 @@ export default function AccountingInfoPage() {
         {renderSummaryCards()}
 
         {/* Quick Actions */}
-        <div className="grid gap-4 md:grid-cols-5 mb-8">
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-3 lg:grid-cols-5 mb-8">
           {quickActions.map((action) => (
-            <Button key={action.id} className="w-full flex flex-col items-center p-4" variant="outline" onClick={() => setLocation(action.href)}>
-              <action.icon className="h-6 w-6 mb-2" />
-              {action.name}
-            </Button>
+            <Card
+              key={action.id}
+              role="button"
+              tabIndex={0}
+              aria-label={action.name}
+              className="flex flex-col items-center justify-center p-6 cursor-pointer transition-transform hover:shadow-lg hover:scale-[1.03] focus:ring-2 focus:ring-primary outline-none"
+              onClick={() => setLocation(action.href)}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setLocation(action.href); }}
+            >
+              <action.icon className="h-8 w-8 mb-3 text-primary" />
+              <span className="font-semibold text-center text-base">{action.name}</span>
+            </Card>
           ))}
         </div>
 

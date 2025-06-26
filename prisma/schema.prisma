@@ -363,6 +363,7 @@ model User {
   phoneNumber      String?
   organizationId   String        @db.ObjectId
   organization     Organization? @relation("OrgUsers", fields: [organizationId], references: [id])
+  vendorId         String?       @db.ObjectId
   isOwner          Boolean?      @default(false)
   isActive         Boolean?      @default(false)
   emailVerified    Boolean?      @default(false)

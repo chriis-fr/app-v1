@@ -1677,6 +1677,12 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
       const userData = req.body;
       console.log('Creating user with data:', userData);
 
+      // Validate vendor roles require vendorId
+      const vendorRoles = ['vendor_admin', 'vendor_manager', 'vendor_employee'];
+      if (vendorRoles.includes(userData.role) && !userData.vendorId) {
+        return res.status(400).json({ message: 'Vendor ID is required for vendor roles' });
+      }
+
       // Hash the password before saving
       const hashedPassword = await hashPassword(userData.password);
       
@@ -1685,6 +1691,9 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
       if (userData.role === 'owner') {
         // Owners get all modules
         moduleAccess = Array.isArray(moduleAccess) && moduleAccess.length > 0 ? moduleAccess : availableModules;
+      } else if (vendorRoles.includes(userData.role)) {
+        // Vendor roles get limited access
+        moduleAccess = ['inventory', 'pos'];
       } else if ((!moduleAccess || moduleAccess.length === 0) && userData.permissions) {
         moduleAccess = userData.permissions.map((p: any) =>
           typeof p === 'string'
@@ -1701,22 +1710,28 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
       const managerId = userData.managerId && typeof userData.managerId === 'string' && userData.managerId.length === 24 ? userData.managerId : null;
       // Convert hireDate and other date fields to Date objects if present
       const hireDate = userData.hireDate ? new Date(userData.hireDate) : undefined;
+      
+      // Prepare user data for creation
+      const userCreateData = {
+        ...(userData as any),
+        email: userData.email,
+        password: hashedPassword,
+        role: userData.role,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        organizationId: userData.organizationId,
+        status: 'active',
+        position: userData.position,
+        hireDate,
+        managerId,
+        moduleAccess,
+        // Include vendorId if provided
+        ...(userData.vendorId && { vendorId: userData.vendorId }),
+      } as any;
+
       // Create new user in Prisma
       const user = await prisma.user.create({
-        data: {
-          ...(userData as any),
-          email: userData.email,
-          password: hashedPassword,
-          role: userData.role,
-          firstName: userData.firstName,
-          lastName: userData.lastName,
-          organizationId: userData.organizationId,
-          status: 'active',
-          position: userData.position,
-          hireDate,
-          managerId,
-          moduleAccess,
-        } as any,
+        data: userCreateData,
         include: ({} as any)
       });
 

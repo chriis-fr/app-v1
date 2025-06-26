@@ -24,7 +24,7 @@
     "@mui/material": "^7.1.0",
     "@mui/x-date-pickers": "^8.4.0",
     "@neondatabase/serverless": "^0.10.4",
-    "@prisma/client": "^6.5.0",
+    "@prisma/client": "^6.10.1",
     "@radix-ui/react-accordion": "^1.2.1",
     "@radix-ui/react-alert-dialog": "^1.1.2",
     "@radix-ui/react-aspect-ratio": "^1.1.0",
@@ -138,7 +138,7 @@
     "@vitejs/plugin-react": "^4.3.2",
     "autoprefixer": "^10.4.20",
     "drizzle-kit": "^0.30.4",
-    "prisma": "^6.8.2"
+    "prisma": "^6.10.1"
   },
   "optionalDependencies": {
     "bufferutil": "^4.0.8"

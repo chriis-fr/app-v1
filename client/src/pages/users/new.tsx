@@ -59,7 +59,7 @@ interface FormData {
   email: string;
   phoneNumber: string;
   password: string;
-  role: 'owner' | 'admin' | 'manager' | 'employee' | 'contractor';
+  role: 'owner' | 'admin' | 'manager' | 'employee' | 'contractor' | 'vendor_admin' | 'vendor_manager' | 'vendor_employee';
   department: typeof departments[number];
   position: string;
   status: 'active' | 'inactive';
@@ -67,6 +67,7 @@ interface FormData {
   hireDate?: string;
   managerId?: string;
   team?: string;
+  vendorId?: string; // For vendor users
 
   // Location
   location?: {
@@ -170,6 +171,7 @@ export default function NewUserPage() {
   const { user: currentUser } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
+  const [vendors, setVendors] = useState<Array<{ id: string; name: string; vendorCode: string }>>([]);
   const [formData, setFormData] = useState<FormData>({
     username: '',
     firstName: '',
@@ -196,11 +198,55 @@ export default function NewUserPage() {
     }));
   }, [modulePermissions]);
 
+  // Fetch vendors when component mounts
+  useEffect(() => {
+    const fetchVendors = async () => {
+      try {
+        const response = await fetch('/api/vendors');
+        if (response.ok) {
+          const data = await response.json();
+          setVendors(data);
+        }
+      } catch (error) {
+        console.error('Error fetching vendors:', error);
+      }
+    };
+    fetchVendors();
+  }, []);
+
   // Only owner and admin can access this page
   if (!currentUser || (currentUser.role !== 'owner' && currentUser.role !== 'admin')) {
     setLocation('/dashboard');
     return null;
   }
+
+  // Check if the selected role is a vendor role
+  const isVendorRole = (role: string) => {
+    return role === 'vendor_admin' || role === 'vendor_manager' || role === 'vendor_employee';
+  };
+
+  // Update validation function for module access
+  const validateModuleAccess = (role: string, modules: typeof availableModules[number][]) => {
+    if (role === 'owner') {
+      return [...availableModules];
+    }
+    
+    // Vendor roles get limited access
+    if (isVendorRole(role)) {
+      return ['inventory', 'pos'] as typeof availableModules[number][];
+    }
+    
+    const requiredModules: Record<string, typeof availableModules[number][]> = {
+      'admin': ['hr', 'inventory', 'pos', 'reports', 'settings'] as typeof availableModules[number][],
+      'manager': ['hr', 'inventory', 'pos', 'reports'] as typeof availableModules[number][],
+      'employee': ['pos'] as typeof availableModules[number][],
+      'contractor': ['pos'] as typeof availableModules[number][]
+    };
+
+    // For other roles, ensure they have access to required modules
+    const roleModules = requiredModules[role] || [];
+    return roleModules.filter(module => availableModules.includes(module));
+  };
 
   const steps = [
     { 
@@ -241,29 +287,17 @@ export default function NewUserPage() {
     }
   ];
 
-  // Add validation function for module access
-  const validateModuleAccess = (role: string, modules: typeof availableModules[number][]) => {
-    if (role === 'owner') {
-      return [...availableModules];
-    }
-    const requiredModules: Record<string, typeof availableModules[number][]> = {
-      'admin': ['hr', 'inventory', 'pos', 'reports', 'settings'] as typeof availableModules[number][],
-      'manager': ['hr', 'inventory', 'pos', 'reports'] as typeof availableModules[number][],
-      'employee': ['pos'] as typeof availableModules[number][],
-      'contractor': ['pos'] as typeof availableModules[number][]
-    };
-
-    // For other roles, ensure they have access to required modules
-    const roleModules = requiredModules[role] || [];
-    return roleModules.filter(module => availableModules.includes(module));
-  };
-
   // Update handleSubmit to ensure proper module access
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
+      // Validate vendor selection for vendor roles
+      if (isVendorRole(formData.role) && !formData.vendorId) {
+        throw new Error('Vendor selection is required for vendor roles');
+      }
+
       // Get the current user's organization ID
       const userResponse = await fetch('/api/auth/me');
       if (!userResponse.ok) {
@@ -276,12 +310,15 @@ export default function NewUserPage() {
         throw new Error('No organization ID found for current user');
       }
 
+      // Validate and set module access based on role
+      const validatedModuleAccess = validateModuleAccess(formData.role, formData.moduleAccess);
+
       // Create the user with the current organization ID and module permissions
       const newUserData = {
         ...formData,
         organizationId,
         isOwner: formData.role === 'owner',
-        moduleAccess: modulePermissions.map(p => p.module),
+        moduleAccess: validatedModuleAccess,
         permissions: modulePermissions.map(p => ({
           module: p.module,
           role: p.role,
@@ -289,6 +326,8 @@ export default function NewUserPage() {
             .filter(([_, value]) => value)
             .map(([key]) => key)
         })),
+        // Include vendorId if it's a vendor role
+        ...(isVendorRole(formData.role) && formData.vendorId && { vendorId: formData.vendorId }),
       };
 
       console.log('Creating user with data:', newUserData);
@@ -479,7 +518,7 @@ export default function NewUserPage() {
                   <Label htmlFor="role">Role</Label>
                   <Select
                     value={formData.role}
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, role: value as 'owner' | 'admin' | 'manager' | 'employee' | 'contractor' }))}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, role: value as 'owner' | 'admin' | 'manager' | 'employee' | 'contractor' | 'vendor_admin' | 'vendor_manager' | 'vendor_employee' }))}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select role" />
@@ -493,6 +532,31 @@ export default function NewUserPage() {
                     </SelectContent>
                   </Select>
                 </div>
+
+                {/* Vendor selection - only show for vendor roles */}
+                {isVendorRole(formData.role) && (
+                  <div className="space-y-2">
+                    <Label htmlFor="vendorId">Vendor</Label>
+                    <Select
+                      value={formData.vendorId || ''}
+                      onValueChange={(value) => setFormData(prev => ({ ...prev, vendorId: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select vendor" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {vendors.map((vendor) => (
+                          <SelectItem key={vendor.id} value={vendor.id}>
+                            {vendor.name} ({vendor.vendorCode})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {isVendorRole(formData.role) && !formData.vendorId && (
+                      <p className="text-sm text-red-500">Vendor selection is required for vendor roles</p>
+                    )}
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <Label htmlFor="department">Department</Label>
@@ -921,6 +985,12 @@ export default function NewUserPage() {
                     <p className="text-sm font-medium text-gray-500">Department</p>
                     <p>{formData.department}</p>
                   </div>
+                  {isVendorRole(formData.role) && formData.vendorId && (
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Vendor</p>
+                      <p>{vendors.find(v => v.id === formData.vendorId)?.name || 'Unknown Vendor'}</p>
+                    </div>
+                  )}
                 </div>
 
                 <h3 className="text-lg font-semibold mt-6">Module Access</h3>
