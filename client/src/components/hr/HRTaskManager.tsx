@@ -1,0 +1,1 @@
+import React from "react"; interface HRTaskManagerProps { organizationId: string; } export default function HRTaskManager({ organizationId }: HRTaskManagerProps) { return <div className="p-4"><h2 className="text-2xl font-bold mb-4">Task Management</h2><p className="text-gray-600">Task management functionality for organization: {organizationId}</p></div>; }

@@ -49,6 +49,13 @@ import AnalyticsPage from '@/pages/analytics';
 import EmployeeHRDetail from '@/pages/hr/employees/[id]';
 import NewEmployeePage from '@/pages/hr/new';
 import HRSettingsPage from '@/pages/hr/settings';
+import NotificationsPage from '@/pages/notifications';
+
+// New timezone-aware features
+import TimeTrackingPage from '@/pages/app/time-tracking';
+import MeetingsPage from '@/pages/app/meetings';
+import TasksPage from '@/pages/app/tasks';
+import DashboardPage from '@/pages/app/dashboard';
 
 function App() {
   return (
@@ -62,8 +69,15 @@ function App() {
             <ProtectedRoute path="/dashboard" component={Dashboard} />
             <ProtectedRoute path="/settings" component={SettingsPage} />
             <ProtectedRoute path="/organization-settings" component={OrganizationSettingsPage} />
+            <ProtectedRoute path="/notifications" component={NotificationsPage} />
             <Route path="/book" component={Book} />
             <ProtectedRoute path="/dashboard/modules" component={ModulesPage} />
+            
+            {/* New App Routes */}
+            <ProtectedRoute path="/app/dashboard" component={DashboardPage} />
+            <ProtectedRoute path="/app/time-tracking" component={TimeTrackingPage} />
+            <ProtectedRoute path="/meetings" component={MeetingsPage} />
+            <ProtectedRoute path="/app/tasks" component={TasksPage} />
             
             {/* POS Routes */}
             <ProtectedRoute path="/pos" component={POSPage} />
@@ -83,6 +97,11 @@ function App() {
             <ProtectedRoute path="/dashboard/hr/reports" component={HRReports} requiredModule="hr" />
             <Route path="/hr/employees/:id" component={EmployeeHRDetail} />
             <ProtectedRoute path="/hr/new" component={NewEmployeePage} requiredModule="hr" />
+            
+            {/* HR Task Management Routes */}
+            <ProtectedRoute path="/hr/tasks" component={TasksPage} requiredModule="hr" />
+            <ProtectedRoute path="/hr/tasks/new" component={TasksPage} requiredModule="hr" />
+            <ProtectedRoute path="/hr/tasks/:id" component={TasksPage} requiredModule="hr" />
             
             {/* Inventory Routes */}
             <ProtectedRoute path="/inventory" component={InventoryPage} />

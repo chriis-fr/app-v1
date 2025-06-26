@@ -10,8 +10,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { UserModel } from "./models/user.model";
 import { Organization } from "./mongodb/models";
 import usersRouter from './src/routes/users';
-import prisma from './prisma';
-import type { User as PrismaUser, Prisma } from '@prisma/client';
+import { PrismaClient } from '../node_modules/.prisma/client';
+import type { User as PrismaUser, Prisma } from '../node_modules/.prisma/client';
 import type { User as SharedUser } from '@shared/schema';
 import bcrypt from 'bcryptjs';
 import hrRouter from './src/routes/hr';
@@ -23,6 +23,8 @@ import { isAuthenticated } from './middleware/auth';
 import { UserDocument } from './models/User';
 import cookieParser from 'cookie-parser';
 import { availableModules } from '../shared/schema';
+
+const prisma = new PrismaClient();
 
 // Add type declarations for organization document
 interface IOrganizationDocument {
@@ -687,41 +689,56 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
   });
 
   // HR endpoints
-  app.get('/api/hr/employees', async (_req, res) => {
+  app.get('/api/hr/employees', async (req, res) => {
     try {
-      // Mock employee data for testing
-      const employees = [
-        {
-          id: '1',
-          firstName: 'John',
-          lastName: 'Doe',
-          email: 'john.doe@example.com',
-          phone: '1234567890',
-          department: 'IT',
-          position: 'Manager',
-          salary: 75000,
-          startDate: new Date('2020-01-01'),
-          status: 'active',
-          createdAt: new Date(),
-          updatedAt: new Date()
+      if (!req.user || !req.user.organizationId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      // Fetch real employees from database
+      const employees = await prisma.user.findMany({
+        where: {
+          organizationId: req.user.organizationId,
+          role: {
+            in: ['employee', 'manager', 'admin']
+          }
         },
-        {
-          id: '2',
-          firstName: 'Jane',
-          lastName: 'Smith',
-          email: 'jane.smith@example.com',
-          phone: '0987654321',
-          department: 'Sales',
-          position: 'Representative',
-          salary: 55000,
-          startDate: new Date('2021-03-15'),
-          status: 'active',
-          createdAt: new Date(),
-          updatedAt: new Date()
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          phoneNumber: true,
+          department: true,
+          position: true,
+          role: true,
+          status: true,
+          hireDate: true,
+          createdAt: true,
+          updatedAt: true
+        },
+        orderBy: {
+          createdAt: 'desc'
         }
-      ];
+      });
+
+      // Transform to match expected format
+      const formattedEmployees = employees.map(employee => ({
+        id: employee.id,
+        firstName: employee.firstName || '',
+        lastName: employee.lastName || '',
+        email: employee.email,
+        phone: employee.phoneNumber || '',
+        department: employee.department || '',
+        position: employee.position || '',
+        salary: 0, // This would need to come from a separate payroll/compensation table
+        startDate: employee.hireDate || employee.createdAt,
+        status: employee.status || 'active',
+        createdAt: employee.createdAt,
+        updatedAt: employee.updatedAt
+      }));
       
-      res.json(employees);
+      res.json(formattedEmployees);
     } catch (error) {
       console.error('Error fetching employees:', error);
       res.status(500).json({ message: "Failed to fetch employees" });
@@ -1724,7 +1741,13 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
         position: userData.position,
         hireDate,
         managerId,
-        moduleAccess,
+        // Handle moduleAccess as nested relation
+        moduleAccess: {
+          create: moduleAccess.map((module: string) => ({
+            module,
+            access: 'read_write'
+          }))
+        },
         // Include vendorId if provided
         ...(userData.vendorId && { vendorId: userData.vendorId }),
       } as any;
@@ -1734,6 +1757,27 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
         data: userCreateData,
         include: ({} as any)
       });
+
+      // Send notification to admins about new user
+      const admins = await prisma.user.findMany({
+        where: {
+          organizationId: userData.organizationId,
+          role: { in: ['admin', 'owner', 'executive', 'board'] }
+        }
+      });
+
+      for (const admin of admins) {
+        await createNotification({
+          type: 'user',
+          title: 'New User Registration',
+          message: `${userData.firstName || userData.email} joined the organization as ${userData.role}`,
+          userId: admin.id,
+          organizationId: userData.organizationId,
+          priority: 'low',
+          actionUrl: '/users',
+          metadata: { userId: user.id, userName: userData.firstName || userData.email }
+        });
+      }
 
       // Return user without sensitive data
       const { password, ...userWithoutPassword } = user;
@@ -1881,7 +1925,7 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
         aiInsights,
         organization: {
           name: organization.name,
-          size: organization.size,
+          size: (organization as any)?.size ?? null,
           createdAt: organization.createdAt?.toISOString(),
           activeModules: organization.activeModules
         }
@@ -2181,6 +2225,536 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
         error: 'Failed to fetch blockchain data',
         details: error instanceof Error ? error.message : 'Unknown error'
       });
+    }
+  });
+
+  // Meeting API endpoints
+  app.post('/api/meetings', async (req, res) => {
+    try {
+      if (!req.user || !req.user.organizationId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const { title, description, type, startTime, endTime, timezone, location, isVirtual, meetingUrl, attendees } = req.body;
+      
+      if (!title || !type || !startTime || !endTime || !timezone) {
+        return res.status(400).json({ error: 'Missing required fields' });
+      }
+
+      // Check if user has permission to schedule meetings
+      const canSchedule = req.user.role === 'owner' || req.user.role === 'executive' || req.user.role === 'board' || req.user.role === 'admin';
+      if (!canSchedule) {
+        return res.status(403).json({ error: 'Insufficient permissions to schedule meetings' });
+      }
+
+      const meeting = await prisma.meeting.create({
+        data: {
+          title,
+          description,
+          organizerId: req.user.id,
+          organizationId: req.user.organizationId,
+          type,
+          status: 'pending_approval', // Requires approval for high-rank meetings
+          startTime: new Date(startTime),
+          endTime: new Date(endTime),
+          timezone,
+          location,
+          isVirtual: isVirtual || false,
+          meetingUrl
+        }
+      });
+
+      // Create meeting attendees
+      if (attendees && attendees.length > 0) {
+        const attendeeData = attendees.map((attendee: any) => ({
+          meetingId: meeting.id,
+          userId: attendee.userId,
+          timezone: attendee.timezone || 'UTC',
+          status: 'pending'
+        }));
+
+        await prisma.meetingAttendee.createMany({
+          data: attendeeData
+        });
+
+        // Send notifications to attendees
+        for (const attendee of attendees) {
+          await createNotification({
+            type: 'meeting',
+            title: 'Meeting Invitation',
+            message: `You have been invited to "${title}" on ${new Date(startTime).toLocaleDateString()}`,
+            userId: attendee.userId,
+            organizationId: req.user.organizationId,
+            priority: 'medium',
+            actionUrl: `/meetings`,
+            metadata: { meetingId: meeting.id }
+          });
+        }
+      }
+
+      // Send notification to higher ranks for approval if needed
+      if (['owner', 'executive', 'board'].includes(req.user.role)) {
+        const admins = await prisma.user.findMany({
+          where: {
+            organizationId: req.user.organizationId,
+            role: 'admin'
+          }
+        });
+
+        for (const admin of admins) {
+          await createNotification({
+            type: 'approval',
+            title: 'Meeting Approval Required',
+            message: `${req.user.email} scheduled a meeting: "${title}"`,
+            userId: admin.id,
+            organizationId: req.user.organizationId,
+            priority: 'high',
+            actionUrl: `/meetings`,
+            metadata: { meetingId: meeting.id, organizerId: req.user.id }
+          });
+        }
+      }
+
+      res.status(201).json(meeting);
+    } catch (error) {
+      console.error('Error creating meeting:', error);
+      res.status(500).json({ error: 'Failed to create meeting' });
+    }
+  });
+
+  app.get('/api/meetings', async (req, res) => {
+    try {
+      if (!req.user || !req.user.organizationId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const { timezone, startDate, endDate, status } = req.query;
+      
+      let whereClause: any = {
+        organizationId: req.user.organizationId
+      };
+
+      // Filter by user's role - owners/executives see all, others see only their meetings
+      if (!['owner', 'executive', 'board', 'admin'].includes(req.user.role)) {
+        whereClause.OR = [
+          { organizerId: req.user.id },
+          { attendees: { some: { userId: req.user.id } } }
+        ];
+      }
+
+      if (startDate && endDate) {
+        whereClause.startTime = {
+          gte: new Date(startDate as string),
+          lte: new Date(endDate as string)
+        };
+      }
+
+      if (status) {
+        whereClause.status = status;
+      }
+
+      const meetings = await prisma.meeting.findMany({
+        where: whereClause,
+        include: {
+          attendees: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true
+                }
+              }
+            }
+          },
+          organizer: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true
+            }
+          }
+        },
+        orderBy: { startTime: 'asc' }
+      });
+
+      res.json(meetings);
+    } catch (error) {
+      console.error('Error fetching meetings:', error);
+      res.status(500).json({ error: 'Failed to fetch meetings' });
+    }
+  });
+
+  app.patch('/api/meetings/:id/approve', async (req, res) => {
+    try {
+      if (!req.user || !req.user.organizationId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const { id } = req.params;
+      
+      // Only higher ranks can approve meetings
+      const canApprove = req.user.role === 'owner' || req.user.role === 'executive' || req.user.role === 'board';
+      if (!canApprove) {
+        return res.status(403).json({ error: 'Insufficient permissions to approve meetings' });
+      }
+
+      const meeting = await prisma.meeting.findFirst({
+        where: {
+          id,
+          organizationId: req.user.organizationId
+        }
+      });
+
+      if (!meeting) {
+        return res.status(404).json({ error: 'Meeting not found' });
+      }
+
+      const updatedMeeting = await prisma.meeting.update({
+        where: { id },
+        data: {
+          status: 'approved'
+        },
+        include: {
+          attendees: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true
+                }
+              }
+            }
+          }
+        }
+      });
+
+      res.json(updatedMeeting);
+    } catch (error) {
+      console.error('Error approving meeting:', error);
+      res.status(500).json({ error: 'Failed to approve meeting' });
+    }
+  });
+
+  app.patch('/api/meetings/:id', async (req, res) => {
+    try {
+      if (!req.user || !req.user.organizationId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const { id } = req.params;
+      const updateData = req.body;
+
+      const meeting = await prisma.meeting.findFirst({
+        where: {
+          id,
+          organizationId: req.user.organizationId
+        }
+      });
+
+      if (!meeting) {
+        return res.status(404).json({ error: 'Meeting not found' });
+      }
+
+      // Only organizer or higher ranks can update
+      const canUpdate = req.user.id === meeting.organizerId || ['owner', 'executive', 'board', 'admin'].includes(req.user.role);
+      if (!canUpdate) {
+        return res.status(403).json({ error: 'Insufficient permissions to update meeting' });
+      }
+
+      const updatedMeeting = await prisma.meeting.update({
+        where: { id },
+        data: updateData,
+        include: {
+          attendees: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true
+                }
+              }
+            }
+          }
+        }
+      });
+
+      res.json(updatedMeeting);
+    } catch (error) {
+      console.error('Error updating meeting:', error);
+      res.status(500).json({ error: 'Failed to update meeting' });
+    }
+  });
+
+  app.delete('/api/meetings/:id', async (req, res) => {
+    try {
+      if (!req.user || !req.user.organizationId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const { id } = req.params;
+
+      const meeting = await prisma.meeting.findFirst({
+        where: {
+          id,
+          organizationId: req.user.organizationId
+        }
+      });
+
+      if (!meeting) {
+        return res.status(404).json({ error: 'Meeting not found' });
+      }
+
+      // Only organizer or higher ranks can delete
+      const canDelete = req.user.id === meeting.organizerId || ['owner', 'executive', 'board'].includes(req.user.role);
+      if (!canDelete) {
+        return res.status(403).json({ error: 'Insufficient permissions to delete meeting' });
+      }
+
+      // Delete attendees first
+      await prisma.meetingAttendee.deleteMany({
+        where: { meetingId: id }
+      });
+
+      // Delete meeting
+      await prisma.meeting.delete({
+        where: { id }
+      });
+
+      res.json({ message: 'Meeting deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting meeting:', error);
+      res.status(500).json({ error: 'Failed to delete meeting' });
+    }
+  });
+
+  // Notifications endpoints
+  app.get('/api/notifications', async (req, res) => {
+    try {
+      if (!req.user || !req.user.organizationId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      // Return mock notifications for now
+      const mockNotifications = [
+        {
+          id: '1',
+          type: 'meeting',
+          title: 'Upcoming Team Meeting',
+          message: 'Team standup meeting starts in 15 minutes',
+          timestamp: new Date(Date.now() - 5 * 60 * 1000),
+          isRead: false,
+          priority: 'high',
+          actionUrl: '/meetings',
+          metadata: { meetingId: 'meeting-1' }
+        },
+        {
+          id: '2',
+          type: 'task',
+          title: 'Task Assignment',
+          message: 'New task assigned: Review Q4 financial reports',
+          timestamp: new Date(Date.now() - 30 * 60 * 1000),
+          isRead: false,
+          priority: 'medium',
+          actionUrl: '/hr/tasks',
+          metadata: { taskId: 'task-1' }
+        },
+        {
+          id: '3',
+          type: 'approval',
+          title: 'Approval Required',
+          message: 'Invoice #INV-2024-001 requires your approval',
+          timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
+          isRead: false,
+          priority: 'high',
+          actionUrl: '/finance',
+          metadata: { amount: 2500 }
+        }
+      ];
+
+      res.json(mockNotifications);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+      res.status(500).json({ message: "Failed to fetch notifications" });
+    }
+  });
+
+  app.post('/api/notifications/:id/read', async (req, res) => {
+    try {
+      if (!req.user || !req.user.organizationId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      // Mock implementation - just return success
+      res.json({ message: 'Notification marked as read' });
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+      res.status(500).json({ message: "Failed to mark notification as read" });
+    }
+  });
+
+  app.post('/api/notifications/read-all', async (req, res) => {
+    try {
+      if (!req.user || !req.user.organizationId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      // Mock implementation - just return success
+      res.json({ message: 'All notifications marked as read' });
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+      res.status(500).json({ message: "Failed to mark all notifications as read" });
+    }
+  });
+
+  // Mock notification creation function
+  const createNotification = async (data: {
+    type: string;
+    title: string;
+    message: string;
+    userId: string;
+    organizationId: string;
+    priority?: string;
+    actionUrl?: string;
+    metadata?: any;
+  }) => {
+    // Mock implementation - just log the notification
+    console.log('Notification created:', data);
+  };
+
+  // Organization user creation data endpoint
+  app.get('/api/organization/user-creation-data', async (req, res) => {
+    try {
+      if (!req.user || !req.user.organizationId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      // Get organization data
+      const organization = await prisma.organization.findUnique({
+        where: { id: req.user.organizationId }
+      });
+
+      if (!organization) {
+        return res.status(404).json({ error: 'Organization not found' });
+      }
+
+      // Get all users in the organization
+      const users = await prisma.user.findMany({
+        where: { organizationId: req.user.organizationId },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          role: true,
+          department: true,
+          position: true
+        }
+      });
+
+      // Define comprehensive list of departments
+      const allDepartments = [
+        'Executive', 'Engineering', 'Design', 'Product', 'Marketing', 'Sales', 
+        'Customer Success', 'HR', 'Finance', 'Operations', 'Legal', 'IT',
+        'Research & Development', 'Quality Assurance', 'Business Development',
+        'Communications', 'Strategy', 'Compliance', 'Security', 'Facilities'
+      ];
+
+      // Define department-specific positions
+      const departmentSpecificPositions: Record<string, string[]> = {
+        'Executive': ['CEO', 'CTO', 'CFO', 'COO', 'VP', 'Director', 'Senior Director'],
+        'Engineering': ['Software Engineer', 'Senior Engineer', 'Lead Engineer', 'Architect', 'DevOps Engineer', 'QA Engineer', 'System Administrator'],
+        'Design': ['UX Designer', 'UI Designer', 'Product Designer', 'Visual Designer', 'Design Lead', 'Creative Director'],
+        'Product': ['Product Manager', 'Senior Product Manager', 'Product Owner', 'Product Analyst', 'Product Director'],
+        'Marketing': ['Marketing Manager', 'Marketing Specialist', 'Content Creator', 'Social Media Manager', 'Brand Manager', 'Marketing Director'],
+        'Sales': ['Sales Representative', 'Account Manager', 'Sales Manager', 'Business Development', 'Sales Director'],
+        'Customer Success': ['Customer Success Manager', 'Customer Support', 'Account Executive', 'Customer Success Director'],
+        'HR': ['HR Manager', 'HR Specialist', 'Recruiter', 'Talent Acquisition', 'HR Director', 'People Operations'],
+        'Finance': ['Finance Analyst', 'Accountant', 'Controller', 'Finance Manager', 'CFO', 'Financial Analyst'],
+        'Operations': ['Operations Manager', 'Operations Analyst', 'Process Manager', 'Operations Director'],
+        'Legal': ['Legal Counsel', 'Legal Assistant', 'Compliance Officer', 'Legal Director'],
+        'IT': ['IT Manager', 'System Administrator', 'Network Engineer', 'IT Support', 'IT Director'],
+        'Research & Development': ['Research Scientist', 'R&D Manager', 'Research Analyst', 'R&D Director'],
+        'Quality Assurance': ['QA Engineer', 'QA Manager', 'Test Lead', 'QA Director'],
+        'Business Development': ['Business Development Manager', 'Partnership Manager', 'BD Director'],
+        'Communications': ['Communications Manager', 'PR Specialist', 'Internal Communications', 'Communications Director'],
+        'Strategy': ['Strategy Manager', 'Strategic Analyst', 'Strategy Director'],
+        'Compliance': ['Compliance Officer', 'Compliance Manager', 'Compliance Director'],
+        'Security': ['Security Engineer', 'Security Manager', 'CISO', 'Security Director'],
+        'Facilities': ['Facilities Manager', 'Facilities Coordinator', 'Facilities Director']
+      };
+
+      // Group users by department
+      const departmentManagers: Record<string, any[]> = {};
+      const departmentPositions: Record<string, string[]> = {};
+      const departments = new Set<string>();
+
+      // Always include all departments
+      allDepartments.forEach(dept => {
+        departments.add(dept);
+        departmentManagers[dept] = [];
+        // Initialize with department-specific positions
+        departmentPositions[dept] = departmentSpecificPositions[dept] || [];
+      });
+
+      // Group existing users by department and add their positions
+      users.forEach(user => {
+        if (user.department) {
+          if (!departmentManagers[user.department]) {
+            departmentManagers[user.department] = [];
+          }
+          departmentManagers[user.department].push(user);
+
+          if (!departmentPositions[user.department]) {
+            departmentPositions[user.department] = [];
+          }
+          if (user.position && !departmentPositions[user.department].includes(user.position)) {
+            departmentPositions[user.department].push(user.position);
+          }
+        }
+      });
+
+      res.json({
+        departments: Array.from(departments),
+        departmentPositions,
+        departmentManagers,
+        activeModules: organization.activeModules || [],
+        organizationName: organization.name
+      });
+    } catch (error) {
+      console.error('Error fetching organization user creation data:', error);
+      res.status(500).json({ error: 'Failed to fetch organization data' });
+    }
+  });
+
+  // Vendors endpoint
+  app.get('/api/vendors', async (req, res) => {
+    try {
+      if (!req.user || !req.user.organizationId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const vendors = await prisma.vendor.findMany({
+        where: { organizationId: req.user.organizationId },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          status: true
+        }
+      });
+
+      res.json(vendors);
+    } catch (error) {
+      console.error('Error fetching vendors:', error);
+      res.status(500).json({ error: 'Failed to fetch vendors' });
     }
   });
 

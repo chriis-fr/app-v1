@@ -18,7 +18,8 @@ import {
   Plus,
   Search,
   UserPlus,
-  Clock
+  Clock,
+  CheckSquare
 } from 'lucide-react';
 import { CredentialVerification } from '@/components/hr/CredentialVerification';
 import { SkillMatching } from '@/components/hr/SkillMatching';
@@ -26,6 +27,8 @@ import { DataTable } from '@/components/ui/data-table';
 import { columns, Employee } from './columns';
 import { Payroll } from '@/components/hr/Payroll';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import TaskManager from '@/components/tasks/TaskManager';
+import HRTaskManager from '@/components/hr/HRTaskManager';
 
 export default function HRPage() {
   const [, setLocation] = useLocation();
@@ -35,12 +38,22 @@ export default function HRPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [loginAccessFilter, setLoginAccessFilter] = useState<'all' | 'login' | 'no-login'>('all');
+  const [activeTab, setActiveTab] = useState('employees');
+  const organizationId = user?.organizationId || '';
 
   useEffect(() => {
     if (!user || !(user.role === 'owner' || user.role === 'hr_admin')) {
       setLocation('/dashboard');
       return;
     }
+    
+    // Check for tab parameter in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabParam = urlParams.get('tab');
+    if (tabParam && ['employees', 'skills', 'credentials', 'payroll', 'timeoff', 'performance', 'attendance', 'documents', 'leave', 'tasks'].includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+    
     fetchEmployees();
   }, [user]);
 
@@ -166,7 +179,7 @@ export default function HRPage() {
           </div>
         </div>
 
-        <Tabs defaultValue="employees" className="space-y-4">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList>
             <TabsTrigger value="employees">
               <Users className="mr-2 h-4 w-4" />
@@ -203,6 +216,10 @@ export default function HRPage() {
             <TabsTrigger value="leave">
               <Calendar className="mr-2 h-4 w-4" />
               Leave Management
+            </TabsTrigger>
+            <TabsTrigger value="tasks">
+              <CheckSquare className="mr-2 h-4 w-4" />
+              Tasks
             </TabsTrigger>
           </TabsList>
 
@@ -332,6 +349,17 @@ export default function HRPage() {
                 <p className="text-muted-foreground">
                   View and manage employee leave requests
                 </p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="tasks">
+            <Card>
+              <CardHeader>
+                <CardTitle>Task Management</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <HRTaskManager organizationId={organizationId} />
               </CardContent>
             </Card>
           </TabsContent>

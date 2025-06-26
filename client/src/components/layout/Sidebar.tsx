@@ -31,7 +31,12 @@ import {
   Clock,
   AlertCircle,
   Info,
-  ChevronDown
+  ChevronDown,
+  Home,
+  CheckSquare,
+  UserPlus,
+  CreditCard,
+  BarChart3
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useAuth } from '@/hooks/use-auth';
@@ -182,6 +187,18 @@ export default function Sidebar() {
     }
     setLocation('/organization-settings');
   };
+
+  const navigation = [
+    { name: 'Dashboard', href: '/app/dashboard', icon: Home },
+    { name: 'Time Tracking', href: '/app/time-tracking', icon: Clock },
+    { name: 'Meetings', href: '/meetings', icon: Calendar },
+    { name: 'HR', href: '/app/hr', icon: Users },
+    { name: 'Inventory', href: '/app/inventory', icon: Package },
+    { name: 'CRM', href: '/app/crm', icon: UserPlus },
+    { name: 'POS', href: '/app/pos', icon: CreditCard },
+    { name: 'Accounting', href: '/app/accounting', icon: DollarSign },
+    { name: 'Analytics', href: '/app/analytics', icon: BarChart3 },
+  ];
 
   return (
     <div className="w-64 bg-white h-screen left-20 border-r overflow-y-auto flex flex-col">
@@ -475,6 +492,19 @@ export default function Sidebar() {
           </div>
         )}
       </div>
+
+      {/* Schedule Meeting button for high-rank users */}
+      {(user?.role === 'owner' || user?.role === 'executive' || user?.role === 'board' || user?.role === 'admin') && (
+        <div className="p-5">
+          <div
+            className="flex items-center gap-3 px-3 py-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold cursor-pointer"
+            onClick={() => setLocation('/meetings?schedule=1')}
+          >
+            <Calendar className="h-5 w-5 text-blue-500" />
+            <span className="text-sm">Schedule Meeting</span>
+          </div>
+        </div>
+      )}
 
       <div className="border-t p-5">
         <div className="text-xs text-gray-400 mb-3">SYSTEM</div>

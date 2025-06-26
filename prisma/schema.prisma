@@ -237,7 +237,33 @@ model BlockchainTransaction {
 }
 
 model BusinessPartner {
-  id String @id @default(auto()) @map("_id") @db.ObjectId
+  id             String        @id @default(auto()) @map("_id") @db.ObjectId
+  organizationId String        @db.ObjectId
+  organization   Organization  @relation(fields: [organizationId], references: [id])
+  name           String
+  type           String
+  contactPerson  String?
+  email          String?
+  phone          String?
+  address        Json?
+  status         String   @default("active")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Vendor {
+  id             String        @id @default(auto()) @map("_id") @db.ObjectId
+  organizationId String        @db.ObjectId
+  organization   Organization  @relation(fields: [organizationId], references: [id])
+  name           String
+  type           String
+  contactPerson  String?
+  email          String?
+  phone          String?
+  address        Json?
+  status         String   @default("active")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
 model Category {
@@ -298,25 +324,29 @@ model ModuleAccess {
 }
 
 model Organization {
-  id            String   @id @default(auto()) @map("_id") @db.ObjectId
-  name          String
-  type          String // Organization type: e.g., business, SME, NGO, large, etc.
-  industry      String
-  size          String?
-  walletAddress String?
-  activeModules String[]
-  maxModules    Int      @default(3)
-  address       String?
-  country       String?
-  taxId         String?
-  website       String?
-  settings      Json?
-  roles         Json?
-  accountingSettings Json?
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  name           String
+  description    String?
+  type           String
+  industry       String?
+  status         String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  settings       Json?
+  modules        Json?
+  logoUrl        String?
+  address        Json?
+  phoneNumber    String?
+  email          String?
+  website        String?
+  walletAddress  String?
+  activeModules  String[]
+  maxModules     Int      @default(3)
   waitlistedModules String[]
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  users         User[]   @relation("OrgUsers")
+  users          User[]   @relation("OrgUsers")
+  businessPartners BusinessPartner[]
+  vendors        Vendor[]
+  notifications  Notification[] @relation("OrgNotifications")
 
   @@map("organizations")
 }
@@ -396,6 +426,15 @@ model User {
   avatarUrl        String?
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
+
+  // Relations
+  timeTrackingEntries TimeTrackingEntry[]
+  meetings            Meeting[]
+  meetingAttendees    MeetingAttendee[]
+  assignedTasks       Task[] @relation("TaskAssignee")
+  createdTasks        Task[] @relation("TaskCreator")
+  taskComments        TaskComment[]
+  notifications       Notification[] @relation("UserNotifications")
 
   @@map("users")
 }
@@ -610,4 +649,162 @@ model units {
 
 model verifications {
   id String @id @default(auto()) @map("_id") @db.ObjectId
+}
+
+model TimeTrackingEntry {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId         String   @db.ObjectId
+  organizationId String   @db.ObjectId
+  projectId      String?  @db.ObjectId
+  taskId         String?  @db.ObjectId
+  description    String
+  type           String
+  status         String
+  startTime      DateTime
+  endTime        DateTime?
+  duration       Int?     // in minutes
+  timezone       String
+  location       String?
+  tags           String[]
+  notes          String?
+  billable       Boolean  @default(false)
+  hourlyRate     Float?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  user    User @relation(fields: [userId], references: [id])
+  project Project? @relation(fields: [projectId], references: [id])
+  task    Task? @relation(fields: [taskId], references: [id])
+
+  @@map("time_tracking_entries")
+}
+
+model Meeting {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  title          String
+  description    String?
+  organizerId    String   @db.ObjectId
+  organizationId String   @db.ObjectId
+  type           String
+  status         String
+  startTime      DateTime
+  endTime        DateTime
+  timezone       String
+  location       String?
+  isVirtual      Boolean  @default(false)
+  meetingUrl     String?
+  recurring      Json?
+  reminders      Json?
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  organizer User @relation(fields: [organizerId], references: [id])
+  attendees MeetingAttendee[]
+
+  @@map("meetings")
+}
+
+model MeetingAttendee {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  meetingId  String   @db.ObjectId
+  userId     String   @db.ObjectId
+  timezone   String
+  status     String
+  responseTime DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  meeting Meeting @relation(fields: [meetingId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@map("meeting_attendees")
+}
+
+model Task {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  title          String
+  description    String?
+  assigneeId     String   @db.ObjectId
+  assignerId     String   @db.ObjectId
+  organizationId String   @db.ObjectId
+  projectId      String?  @db.ObjectId
+  status         String
+  priority       String
+  estimatedHours Float?
+  actualHours    Float?
+  dueDate        DateTime?
+  timezone       String
+  tags           String[]
+  attachments    Json?
+  dependencies   String[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  assignee        User @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  assigner        User @relation("TaskCreator", fields: [assignerId], references: [id])
+  project         Project? @relation(fields: [projectId], references: [id])
+  timeTracking    TimeTrackingEntry[]
+  comments        TaskComment[]
+
+  @@map("tasks")
+}
+
+model TaskComment {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  taskId    String   @db.ObjectId
+  userId    String   @db.ObjectId
+  content   String
+  timestamp DateTime
+  timezone  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  task Task @relation(fields: [taskId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("task_comments")
+}
+
+model Project {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  name           String
+  description    String?
+  organizationId String   @db.ObjectId
+  status         String
+  startDate      DateTime?
+  endDate        DateTime?
+  timezone       String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  timeTracking TimeTrackingEntry[]
+  tasks        Task[]
+
+  @@map("projects")
+}
+
+model Notification {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  type           String   // meeting, task, approval, system, user, finance, inventory
+  title          String
+  message        String
+  userId         String   @db.ObjectId
+  user           User     @relation("UserNotifications", fields: [userId], references: [id])
+  organizationId String   @db.ObjectId
+  organization   Organization @relation("OrgNotifications", fields: [organizationId], references: [id])
+  priority       String   @default("medium") // low, medium, high
+  isRead         Boolean  @default(false)
+  actionUrl      String?
+  metadata       String?  // JSON string for additional data
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("notifications")
 }

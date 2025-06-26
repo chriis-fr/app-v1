@@ -77,6 +77,184 @@ export const departments = [
 ] as const;
 
 // ---------------------------------
+// Department Positions (organized by department)
+// ---------------------------------
+export const departmentPositions = {
+  'Executive': [
+    'CEO',
+    'CTO',
+    'CFO',
+    'COO',
+    'VP of Operations',
+    'VP of Technology',
+    'VP of Sales',
+    'VP of Marketing'
+  ],
+  'Engineering': [
+    'Engineering Manager',
+    'Senior Software Engineer',
+    'Software Engineer',
+    'Frontend Developer',
+    'Backend Developer',
+    'Full Stack Developer',
+    'DevOps Engineer',
+    'QA Engineer',
+    'Technical Lead',
+    'Architect'
+  ],
+  'Sales': [
+    'Sales Manager',
+    'Sales Director',
+    'Account Executive',
+    'Sales Representative',
+    'Sales Development Representative',
+    'Customer Success Manager',
+    'Sales Operations Manager'
+  ],
+  'Marketing': [
+    'Marketing Manager',
+    'Marketing Director',
+    'Digital Marketing Specialist',
+    'Content Marketing Manager',
+    'SEO Specialist',
+    'Social Media Manager',
+    'Brand Manager',
+    'Marketing Analyst'
+  ],
+  'Finance': [
+    'Finance Manager',
+    'Financial Controller',
+    'Accountant',
+    'Financial Analyst',
+    'Accounts Payable Specialist',
+    'Accounts Receivable Specialist',
+    'Payroll Specialist'
+  ],
+  'HR': [
+    'HR Manager',
+    'HR Director',
+    'HR Generalist',
+    'Recruiter',
+    'Talent Acquisition Specialist',
+    'Compensation Analyst',
+    'Benefits Administrator',
+    'Training Coordinator'
+  ],
+  'Operations': [
+    'Operations Manager',
+    'Operations Director',
+    'Process Manager',
+    'Supply Chain Manager',
+    'Logistics Coordinator',
+    'Facilities Manager',
+    'Project Manager'
+  ],
+  'IT': [
+    'IT Manager',
+    'IT Director',
+    'System Administrator',
+    'Network Engineer',
+    'IT Support Specialist',
+    'Security Analyst',
+    'Database Administrator',
+    'IT Project Manager'
+  ],
+  'Customer Support': [
+    'Support Manager',
+    'Customer Success Manager',
+    'Support Specialist',
+    'Technical Support Engineer',
+    'Customer Experience Manager',
+    'Support Team Lead'
+  ],
+  'Product': [
+    'Product Manager',
+    'Product Director',
+    'Product Owner',
+    'Product Analyst',
+    'Product Marketing Manager',
+    'Product Operations Manager'
+  ],
+  'Design': [
+    'Design Manager',
+    'Creative Director',
+    'UI/UX Designer',
+    'Graphic Designer',
+    'Product Designer',
+    'Visual Designer',
+    'Design Systems Manager'
+  ]
+} as const;
+
+// ---------------------------------
+// Office Location Types
+// ---------------------------------
+export const officeLocations = [
+  'onsite',
+  'remote'
+] as const;
+
+// ---------------------------------
+// Timezones (Simplified for easy selection)
+// ---------------------------------
+export const timezones = [
+  'UTC',
+  'GMT',
+  'EAT', // East Africa Time (Kenya, Tanzania, Uganda, etc.)
+  'WAT', // West Africa Time (Nigeria, Ghana, etc.)
+  'CAT', // Central Africa Time (South Africa, Zimbabwe, etc.)
+  'SAST', // South Africa Standard Time
+  'EET', // Eastern European Time
+  'CET', // Central European Time
+  'WET', // Western European Time
+  'EST', // Eastern Standard Time (US/Canada)
+  'CST', // Central Standard Time (US/Canada)
+  'MST', // Mountain Standard Time (US/Canada)
+  'PST', // Pacific Standard Time (US/Canada)
+  'AST', // Atlantic Standard Time
+  'HST', // Hawaii Standard Time
+  'IST', // India Standard Time
+  'PKT', // Pakistan Standard Time
+  'BST', // Bangladesh Standard Time
+  'JST', // Japan Standard Time
+  'KST', // Korea Standard Time
+  'CST_CN', // China Standard Time
+  'SGT', // Singapore Time
+  'PHT', // Philippines Time
+  'WIB', // Western Indonesian Time
+  'WITA', // Central Indonesian Time
+  'WIT', // Eastern Indonesian Time
+  'AEST', // Australian Eastern Standard Time
+  'ACST', // Australian Central Standard Time
+  'AWST', // Australian Western Standard Time
+  'NZST', // New Zealand Standard Time
+  'FJT', // Fiji Time
+  'SST', // Samoa Standard Time
+  'CHST', // Chamorro Standard Time
+  'GST', // Gulf Standard Time (UAE, Oman, etc.)
+  'MSK', // Moscow Standard Time
+  'TRT', // Turkey Time
+  'IRST', // Iran Standard Time
+  'AST_SA', // Saudi Arabia Standard Time
+  'AST_EG', // Egypt Standard Time
+  'AST_IL', // Israel Standard Time
+  'AST_JO', // Jordan Standard Time
+  'AST_LB', // Lebanon Standard Time
+  'AST_IQ', // Iraq Standard Time
+  'AST_PS', // Palestine Standard Time
+  'AST_SY', // Syria Standard Time
+  'AST_YE', // Yemen Standard Time
+  'AST_QA', // Qatar Standard Time
+  'AST_KW', // Kuwait Standard Time
+  'AST_BH', // Bahrain Standard Time
+  'AST_OM', // Oman Standard Time
+  'AST_AE', // UAE Standard Time
+  'AST_IR', // Iran Standard Time
+  'AST_TR', // Turkey Standard Time
+  'AST_RU', // Russia Standard Time
+] as const;
+
+// ---------------------------------
 // Business Partner Types
 // ---------------------------------
 export const partnerTypes = [
@@ -663,6 +841,7 @@ export type User = Omit<z.infer<typeof userSchema>, "role" | "createdAt" | "upda
   emailVerified?: boolean;
   isActive?: boolean;
   vendorId?: string;
+  timezone?: string; // Direct timezone property for easier access
 };
 
 // ---------------------------------
@@ -695,6 +874,21 @@ export type Department = typeof departments[number];
 export type VendorType = typeof vendorTypes[number];
 export type VendorAccessLevel = typeof vendorAccessLevels[number];
 export type PartnerType = typeof partnerTypes[number];
+export type OfficeLocation = typeof officeLocations[number];
+export type Timezone = typeof timezones[number];
+export type DepartmentPosition = typeof departmentPositions[Department][number];
+export type TimeTrackingStatus = typeof timeTrackingStatuses[number];
+export type TimeTrackingType = typeof timeTrackingTypes[number];
+export type MeetingStatus = typeof meetingStatuses[number];
+export type MeetingType = typeof meetingTypes[number];
+export type TaskStatus = typeof taskStatuses[number];
+export type TaskPriority = typeof taskPriorities[number];
+
+// Type exports for the new schemas
+export type TimeTrackingEntry = z.infer<typeof timeTrackingEntrySchema>;
+export type TimeTrackingSummary = z.infer<typeof timeTrackingSummarySchema>;
+export type Meeting = z.infer<typeof meetingSchema>;
+export type Task = z.infer<typeof taskSchema>;
 
 export interface LoginData {
   username: string;
@@ -1009,3 +1203,240 @@ export type MongoOrganizationSettings = {
   recommendedModules?: string[];
   primaryModule?: string;
 };
+
+// ---------------------------------
+// Timezone Utilities
+// ---------------------------------
+
+// Convert simplified timezone codes to IANA timezone identifiers
+export const getIANATimezone = (timezoneCode: string): string => {
+  const timezoneMap: Record<string, string> = {
+    'UTC': 'UTC',
+    'GMT': 'GMT',
+    'EST': 'America/New_York',
+    'CST': 'America/Chicago',
+    'MST': 'America/Denver',
+    'PST': 'America/Los_Angeles',
+    'EAT': 'Africa/Nairobi',
+    'CAT': 'Africa/Harare',
+    'WAT': 'Africa/Lagos',
+    'SAST': 'Africa/Johannesburg',
+    'IST': 'Asia/Kolkata',
+    'JST': 'Asia/Tokyo',
+    'CST_CN': 'Asia/Shanghai',
+    'AEST': 'Australia/Sydney',
+    'NZST': 'Pacific/Auckland'
+  };
+  return timezoneMap[timezoneCode] || 'UTC';
+};
+
+export const getTimezoneDisplayName = (timezoneCode: string): string => {
+  const displayNames: Record<string, string> = {
+    'UTC': 'UTC (UTC+0)',
+    'GMT': 'GMT (UTC+0)',
+    'EST': 'EST (UTC-5)',
+    'CST': 'CST (UTC-6)',
+    'MST': 'MST (UTC-7)',
+    'PST': 'PST (UTC-8)',
+    'EAT': 'EAT (UTC+3)',
+    'CAT': 'CAT (UTC+2)',
+    'WAT': 'WAT (UTC+1)',
+    'SAST': 'SAST (UTC+2)',
+    'IST': 'IST (UTC+5:30)',
+    'JST': 'JST (UTC+9)',
+    'CST_CN': 'CST China (UTC+8)',
+    'AEST': 'AEST (UTC+10)',
+    'NZST': 'NZST (UTC+12)'
+  };
+  return displayNames[timezoneCode] || `${timezoneCode} (UTC+0)`;
+};
+
+// Get timezone offset in hours for display
+export const getTimezoneOffset = (timezoneCode: string): string => {
+  const offsetMap: Record<string, string> = {
+    'UTC': 'UTC+0',
+    'GMT': 'UTC+0',
+    'EST': 'UTC-5',
+    'CST': 'UTC-6',
+    'MST': 'UTC-7',
+    'PST': 'UTC-8',
+    'EAT': 'UTC+3',
+    'CAT': 'UTC+2',
+    'WAT': 'UTC+1',
+    'SAST': 'UTC+2',
+    'IST': 'UTC+5:30',
+    'JST': 'UTC+9',
+    'CST_CN': 'UTC+8',
+    'AEST': 'UTC+10',
+    'NZST': 'UTC+12'
+  };
+  return offsetMap[timezoneCode] || 'UTC+0';
+};
+
+// ---------------------------------
+// Time Tracking Types
+// ---------------------------------
+export const timeTrackingStatuses = [
+  'active',
+  'paused',
+  'completed',
+  'stopped'
+] as const;
+
+export const timeTrackingTypes = [
+  'task',
+  'project',
+  'meeting',
+  'break',
+  'training',
+  'other'
+] as const;
+
+// Time tracking entry schema
+export const timeTrackingEntrySchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  organizationId: z.string(),
+  projectId: z.string().optional(),
+  taskId: z.string().optional(),
+  description: z.string(),
+  type: z.enum(timeTrackingTypes),
+  status: z.enum(timeTrackingStatuses),
+  startTime: z.date(),
+  endTime: z.date().optional(),
+  duration: z.number().optional(), // in minutes
+  timezone: z.string(), // user's timezone when tracking
+  location: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  notes: z.string().optional(),
+  billable: z.boolean().default(false),
+  hourlyRate: z.number().optional(),
+  createdAt: z.date(),
+  updatedAt: z.date()
+});
+
+// Time tracking summary schema
+export const timeTrackingSummarySchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  organizationId: z.string(),
+  date: z.date(),
+  totalHours: z.number(),
+  billableHours: z.number(),
+  timezone: z.string(),
+  entries: z.array(z.string()), // array of entry IDs
+  breaks: z.number().default(0),
+  overtime: z.number().default(0),
+  createdAt: z.date(),
+  updatedAt: z.date()
+});
+
+// ---------------------------------
+// Meeting Scheduling Types
+// ---------------------------------
+export const meetingStatuses = [
+  'scheduled',
+  'in_progress',
+  'completed',
+  'cancelled',
+  'rescheduled'
+] as const;
+
+export const meetingTypes = [
+  'one_on_one',
+  'team_meeting',
+  'client_meeting',
+  'training',
+  'review',
+  'other'
+] as const;
+
+// Meeting schema
+export const meetingSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  description: z.string().optional(),
+  organizerId: z.string(),
+  organizationId: z.string(),
+  type: z.enum(meetingTypes),
+  status: z.enum(meetingStatuses),
+  startTime: z.date(),
+  endTime: z.date(),
+  timezone: z.string(), // organizer's timezone
+  location: z.string().optional(),
+  isVirtual: z.boolean().default(false),
+  meetingUrl: z.string().optional(),
+  attendees: z.array(z.object({
+    userId: z.string(),
+    timezone: z.string(),
+    status: z.enum(['accepted', 'declined', 'pending', 'tentative']),
+    responseTime: z.date().optional()
+  })),
+  recurring: z.object({
+    isRecurring: z.boolean(),
+    frequency: z.enum(['daily', 'weekly', 'monthly', 'yearly']).optional(),
+    interval: z.number().optional(),
+    endDate: z.date().optional()
+  }).optional(),
+  reminders: z.array(z.object({
+    type: z.enum(['email', 'push', 'sms']),
+    minutesBefore: z.number()
+  })).optional(),
+  notes: z.string().optional(),
+  createdAt: z.date(),
+  updatedAt: z.date()
+});
+
+// ---------------------------------
+// Task Management Types
+// ---------------------------------
+export const taskStatuses = [
+  'todo',
+  'in_progress',
+  'review',
+  'completed',
+  'cancelled',
+  'on_hold'
+] as const;
+
+export const taskPriorities = [
+  'low',
+  'medium',
+  'high',
+  'urgent'
+] as const;
+
+// Task schema
+export const taskSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  description: z.string().optional(),
+  assigneeId: z.string(),
+  assignerId: z.string(),
+  organizationId: z.string(),
+  projectId: z.string().optional(),
+  status: z.enum(taskStatuses),
+  priority: z.enum(taskPriorities),
+  estimatedHours: z.number().optional(),
+  actualHours: z.number().optional(),
+  dueDate: z.date().optional(),
+  timezone: z.string(), // assignee's timezone
+  tags: z.array(z.string()).optional(),
+  attachments: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    url: z.string(),
+    type: z.string()
+  })).optional(),
+  comments: z.array(z.object({
+    id: z.string(),
+    userId: z.string(),
+    content: z.string(),
+    timestamp: z.date(),
+    timezone: z.string()
+  })).optional(),
+  timeTracking: z.array(z.string()).optional(), // array of time tracking entry IDs
+  dependencies: z.array(z.string()).optional(), // array of task IDs
+  createdAt: z.date(),
+  updatedAt: z.date()
+});

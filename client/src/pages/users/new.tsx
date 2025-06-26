@@ -9,7 +9,15 @@ import { useToast } from '@/components/ui/use-toast';
 import ModuleLayout from '@/components/layout/ModuleLayout';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/hooks/use-auth';
-import { userRoles, departments, availableModules } from '@shared/schema';
+import { 
+  userRoles,
+  departments,
+  availableModules,
+  departmentPositions,
+  officeLocations,
+  timezones,
+  getTimezoneOffset
+} from '@shared/schema';
 import { 
   Building,
   Mail,
@@ -60,7 +68,7 @@ interface FormData {
   phoneNumber: string;
   password: string;
   role: 'owner' | 'admin' | 'manager' | 'employee' | 'contractor' | 'vendor_admin' | 'vendor_manager' | 'vendor_employee';
-  department: typeof departments[number];
+  department: string;
   position: string;
   status: 'active' | 'inactive';
   employeeId?: string;
@@ -145,7 +153,7 @@ interface FormData {
   }>;
 
   // Module Access & Permissions
-  moduleAccess: typeof availableModules[number][];
+  moduleAccess: string[];
   permissions: Array<{
     module: string;
     actions: string[];
@@ -154,7 +162,7 @@ interface FormData {
 
 // Add this interface for module permissions
 interface ModulePermission {
-  module: typeof availableModules[number];
+  module: string;
   role: 'admin' | 'user';
   permissions: {
     view: boolean;
@@ -172,6 +180,17 @@ export default function NewUserPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [vendors, setVendors] = useState<Array<{ id: string; name: string; vendorCode: string }>>([]);
+  
+  // Organization data state
+  const [organizationData, setOrganizationData] = useState<{
+    activeModules: string[];
+    departmentManagers: Record<string, Array<{id: string, name: string, position: string, role: string}>>;
+    departments: string[];
+    departmentPositions: Record<string, string[]>;
+    officeLocations: string[];
+    timezones: string[];
+  } | null>(null);
+
   const [formData, setFormData] = useState<FormData>({
     username: '',
     firstName: '',
@@ -179,12 +198,19 @@ export default function NewUserPage() {
     email: '',
     phoneNumber: '',
     password: '',
-    role: 'employee',
+    role: 'admin', // Default to admin for department management
     department: 'Engineering',
     position: '',
     status: 'active',
     moduleAccess: [],
-    permissions: []
+    permissions: [],
+    // New fields
+    location: {
+      office: 'onsite'
+    },
+    workSchedule: {
+      timezone: 'UTC'
+    }
   });
 
   // Add state for module permissions
@@ -197,6 +223,36 @@ export default function NewUserPage() {
       moduleAccess: modulePermissions.map(p => p.module)
     }));
   }, [modulePermissions]);
+
+  // Fetch organization data when component mounts
+  useEffect(() => {
+    const fetchOrganizationData = async () => {
+      try {
+        const response = await fetch('/api/organization/user-creation-data');
+        if (response.ok) {
+          const data = await response.json();
+          setOrganizationData(data);
+          
+          // Set default department and position
+          if (data.departments.length > 0) {
+            setFormData(prev => ({
+              ...prev,
+              department: data.departments[0],
+              position: data.departmentPositions[data.departments[0]]?.[0] || ''
+            }));
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching organization data:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load organization data',
+          variant: 'destructive',
+        });
+      }
+    };
+    fetchOrganizationData();
+  }, [toast]);
 
   // Fetch vendors when component mounts
   useEffect(() => {
@@ -225,22 +281,149 @@ export default function NewUserPage() {
     return role === 'vendor_admin' || role === 'vendor_manager' || role === 'vendor_employee';
   };
 
+  // Handle department change
+  const handleDepartmentChange = (department: string) => {
+    const positions = organizationData?.departmentPositions[department] || [];
+    const firstPosition = positions[0] || '';
+    
+    // Auto-generate manager ID based on department and position
+    const managerId = generateManagerId(department, firstPosition);
+    
+    setFormData(prev => ({
+      ...prev,
+      department,
+      position: firstPosition,
+      managerId
+    }));
+  };
+
+  // Handle position change
+  const handlePositionChange = (position: string) => {
+    // Auto-generate manager ID based on department and position
+    const managerId = generateManagerId(formData.department, position);
+    
+    setFormData(prev => ({
+      ...prev,
+      position,
+      managerId
+    }));
+  };
+
+  // Generate manager ID based on department and position
+  const generateManagerId = (department: string, position: string) => {
+    if (!organizationData) return '';
+    
+    const departmentUsers = organizationData.departmentManagers[department] || [];
+    
+    // Find existing manager for this department
+    const existingManager = departmentUsers.find(user => 
+      user.role === 'admin' || user.role === 'manager'
+    );
+    
+    if (existingManager) {
+      return existingManager.id;
+    }
+    
+    // If no manager exists, find the first user in the department
+    if (departmentUsers.length > 0) {
+      return departmentUsers[0].id;
+    }
+    
+    return '';
+  };
+
+  // Get available positions for selected department
+  const getAvailablePositions = (department: string) => {
+    return organizationData?.departmentPositions[department] || [];
+  };
+
+  // Get available modules (only organization's active modules)
+  const getAvailableModules = () => {
+    return organizationData?.activeModules || [];
+  };
+
+  // Format timezone name for display
+  const formatTimezoneName = (timezone: string) => {
+    const timezoneMap: Record<string, string> = {
+      'UTC': 'UTC (Coordinated Universal Time)',
+      'GMT': 'GMT (Greenwich Mean Time)',
+      'EAT': 'EAT (East Africa Time)',
+      'WAT': 'WAT (West Africa Time)',
+      'CAT': 'CAT (Central Africa Time)',
+      'SAST': 'SAST (South Africa Standard Time)',
+      'EET': 'EET (Eastern European Time)',
+      'CET': 'CET (Central European Time)',
+      'WET': 'WET (Western European Time)',
+      'EST': 'EST (Eastern Standard Time)',
+      'CST': 'CST (Central Standard Time)',
+      'MST': 'MST (Mountain Standard Time)',
+      'PST': 'PST (Pacific Standard Time)',
+      'AST': 'AST (Atlantic Standard Time)',
+      'HST': 'HST (Hawaii Standard Time)',
+      'IST': 'IST (India Standard Time)',
+      'PKT': 'PKT (Pakistan Standard Time)',
+      'BST': 'BST (Bangladesh Standard Time)',
+      'JST': 'JST (Japan Standard Time)',
+      'KST': 'KST (Korea Standard Time)',
+      'CST_CN': 'CST (China Standard Time)',
+      'SGT': 'SGT (Singapore Time)',
+      'PHT': 'PHT (Philippines Time)',
+      'WIB': 'WIB (Western Indonesian Time)',
+      'WITA': 'WITA (Central Indonesian Time)',
+      'WIT': 'WIT (Eastern Indonesian Time)',
+      'AEST': 'AEST (Australian Eastern Standard Time)',
+      'ACST': 'ACST (Australian Central Standard Time)',
+      'AWST': 'AWST (Australian Western Standard Time)',
+      'NZST': 'NZST (New Zealand Standard Time)',
+      'FJT': 'FJT (Fiji Time)',
+      'SST': 'SST (Samoa Standard Time)',
+      'CHST': 'CHST (Chamorro Standard Time)',
+      'GST': 'GST (Gulf Standard Time)',
+      'MSK': 'MSK (Moscow Standard Time)',
+      'TRT': 'TRT (Turkey Time)',
+      'IRST': 'IRST (Iran Standard Time)',
+      'AST_SA': 'AST (Saudi Arabia Standard Time)',
+      'AST_EG': 'AST (Egypt Standard Time)',
+      'AST_IL': 'AST (Israel Standard Time)',
+      'AST_JO': 'AST (Jordan Standard Time)',
+      'AST_LB': 'AST (Lebanon Standard Time)',
+      'AST_IQ': 'AST (Iraq Standard Time)',
+      'AST_PS': 'AST (Palestine Standard Time)',
+      'AST_SY': 'AST (Syria Standard Time)',
+      'AST_YE': 'AST (Yemen Standard Time)',
+      'AST_QA': 'AST (Qatar Standard Time)',
+      'AST_KW': 'AST (Kuwait Standard Time)',
+      'AST_BH': 'AST (Bahrain Standard Time)',
+      'AST_OM': 'AST (Oman Standard Time)',
+      'AST_AE': 'AST (UAE Standard Time)',
+      'AST_IR': 'AST (Iran Standard Time)',
+      'AST_TR': 'AST (Turkey Standard Time)',
+      'AST_RU': 'AST (Russia Standard Time)',
+    };
+    
+    const baseName = timezoneMap[timezone] || timezone;
+    const offset = getTimezoneOffset(timezone);
+    return `${baseName} - ${offset}`;
+  };
+
   // Update validation function for module access
-  const validateModuleAccess = (role: string, modules: typeof availableModules[number][]) => {
+  const validateModuleAccess = (role: string, modules: string[]) => {
+    const availableModules = getAvailableModules();
+    
     if (role === 'owner') {
-      return [...availableModules];
+      return availableModules;
     }
     
     // Vendor roles get limited access
     if (isVendorRole(role)) {
-      return ['inventory', 'pos'] as typeof availableModules[number][];
+      return availableModules.filter(module => ['inventory', 'pos'].includes(module));
     }
     
-    const requiredModules: Record<string, typeof availableModules[number][]> = {
-      'admin': ['hr', 'inventory', 'pos', 'reports', 'settings'] as typeof availableModules[number][],
-      'manager': ['hr', 'inventory', 'pos', 'reports'] as typeof availableModules[number][],
-      'employee': ['pos'] as typeof availableModules[number][],
-      'contractor': ['pos'] as typeof availableModules[number][]
+    const requiredModules: Record<string, string[]> = {
+      'admin': ['hr', 'inventory', 'pos', 'reports', 'settings'],
+      'manager': ['hr', 'inventory', 'pos', 'reports'],
+      'employee': ['pos'],
+      'contractor': ['pos']
     };
 
     // For other roles, ensure they have access to required modules
@@ -366,7 +549,7 @@ export default function NewUserPage() {
   };
 
   // Update handleModuleToggle to handle permissions
-  const handleModuleToggle = (module: typeof availableModules[number]) => {
+  const handleModuleToggle = (module: string) => {
     setModulePermissions(prev => {
       const exists = prev.find(p => p.module === module);
       if (exists) {
@@ -390,7 +573,7 @@ export default function NewUserPage() {
   };
 
   // Add function to update module role
-  const handleModuleRoleChange = (module: typeof availableModules[number], role: 'admin' | 'user') => {
+  const handleModuleRoleChange = (module: string, role: 'admin' | 'user') => {
     setModulePermissions(prev => 
       prev.map(p => p.module === module ? {
         ...p,
@@ -414,7 +597,7 @@ export default function NewUserPage() {
 
   // Add function to update specific permission
   const handlePermissionChange = (
-    module: typeof availableModules[number],
+    module: string,
     permission: keyof ModulePermission['permissions'],
     value: boolean
   ) => {
@@ -562,13 +745,14 @@ export default function NewUserPage() {
                   <Label htmlFor="department">Department</Label>
                   <Select
                     value={formData.department}
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, department: value as typeof departments[number] }))}
+                    onValueChange={handleDepartmentChange}
+                    disabled={!organizationData}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select department" />
+                      <SelectValue placeholder={organizationData ? "Select department" : "Loading..."} />
                     </SelectTrigger>
                     <SelectContent>
-                      {departments.map((dept) => (
+                      {organizationData?.departments.map((dept) => (
                         <SelectItem key={dept} value={dept}>
                           {dept}
                         </SelectItem>
@@ -579,12 +763,22 @@ export default function NewUserPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="position">Position</Label>
-                  <Input
-                    id="position"
+                  <Select
                     value={formData.position}
-                    onChange={(e) => setFormData(prev => ({ ...prev, position: e.target.value }))}
-                    required
-                  />
+                    onValueChange={handlePositionChange}
+                    disabled={!organizationData || !formData.department}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={organizationData ? "Select position" : "Loading..."} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getAvailablePositions(formData.department).map((position) => (
+                        <SelectItem key={position} value={position}>
+                          {position}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
@@ -610,80 +804,105 @@ export default function NewUserPage() {
         return (
           <Card>
             <div className="p-6 space-y-4">
-              <h3 className="text-lg font-semibold mb-4">Location</h3>
+              <h3 className="text-lg font-semibold mb-4">Location & Work Setup</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="office">Office</Label>
+                  <Label htmlFor="officeLocation">Office Location</Label>
+                  <Select
+                    value={formData.location?.office || 'onsite'}
+                    onValueChange={(value) => setFormData(prev => ({
+                      ...prev,
+                      location: { ...prev.location, office: value }
+                    }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select office location" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {officeLocations.map((location) => (
+                        <SelectItem key={location} value={location}>
+                          {location.charAt(0).toUpperCase() + location.slice(1)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="timezone">Timezone</Label>
+                  <Select
+                    value={formData.workSchedule?.timezone || 'UTC'}
+                    onValueChange={(value) => setFormData(prev => ({
+                      ...prev,
+                      workSchedule: { ...prev.workSchedule, timezone: value }
+                    }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select timezone" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {timezones.map((timezone) => (
+                        <SelectItem key={timezone} value={timezone}>
+                          {formatTimezoneName(timezone)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Only show office-specific fields for onsite workers */}
+                {formData.location?.office === 'onsite' && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="floor">Floor</Label>
+                      <Input
+                        id="floor"
+                        value={formData.location?.floor || ''}
+                        onChange={(e) => setFormData(prev => ({
+                          ...prev,
+                          location: { ...prev.location, floor: e.target.value }
+                        }))}
+                        placeholder="e.g., 3rd Floor"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="deskNumber">Desk Number</Label>
+                      <Input
+                        id="deskNumber"
+                        value={formData.location?.deskNumber || ''}
+                        onChange={(e) => setFormData(prev => ({
+                          ...prev,
+                          location: { ...prev.location, deskNumber: e.target.value }
+                        }))}
+                        placeholder="e.g., A-15"
+                      />
+                    </div>
+                  </>
+                )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="startTime">Work Start Time</Label>
                   <Input
-                    id="office"
-                    value={formData.location?.office || ''}
+                    id="startTime"
+                    type="time"
+                    value={formData.workSchedule?.startTime || ''}
                     onChange={(e) => setFormData(prev => ({
                       ...prev,
-                      location: { ...prev.location, office: e.target.value }
+                      workSchedule: { ...prev.workSchedule, startTime: e.target.value }
                     }))}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="floor">Floor</Label>
+                  <Label htmlFor="endTime">Work End Time</Label>
                   <Input
-                    id="floor"
-                    value={formData.location?.floor || ''}
+                    id="endTime"
+                    type="time"
+                    value={formData.workSchedule?.endTime || ''}
                     onChange={(e) => setFormData(prev => ({
                       ...prev,
-                      location: { ...prev.location, floor: e.target.value }
-                    }))}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="deskNumber">Desk Number</Label>
-                  <Input
-                    id="deskNumber"
-                    value={formData.location?.deskNumber || ''}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      location: { ...prev.location, deskNumber: e.target.value }
-                    }))}
-                  />
-                </div>
-              </div>
-
-              <h3 className="text-lg font-semibold mb-4 mt-6">Emergency Contact</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="emergencyName">Name</Label>
-                  <Input
-                    id="emergencyName"
-                    value={formData.emergencyContact?.name || ''}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      emergencyContact: { ...prev.emergencyContact, name: e.target.value }
-                    }))}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="emergencyRelationship">Relationship</Label>
-                  <Input
-                    id="emergencyRelationship"
-                    value={formData.emergencyContact?.relationship || ''}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      emergencyContact: { ...prev.emergencyContact, relationship: e.target.value }
-                    }))}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="emergencyPhone">Phone</Label>
-                  <Input
-                    id="emergencyPhone"
-                    type="tel"
-                    value={formData.emergencyContact?.phone || ''}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      emergencyContact: { ...prev.emergencyContact, phone: e.target.value }
+                      workSchedule: { ...prev.workSchedule, endTime: e.target.value }
                     }))}
                   />
                 </div>
@@ -717,11 +936,13 @@ export default function NewUserPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="managerId">Manager ID</Label>
+                  <Label htmlFor="managerId">Manager ID (Auto-generated)</Label>
                   <Input
                     id="managerId"
                     value={formData.managerId || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, managerId: e.target.value }))}
+                    readOnly
+                    className="bg-gray-50"
+                    placeholder="Will be auto-generated based on department"
                   />
                 </div>
 
@@ -786,24 +1007,33 @@ export default function NewUserPage() {
                 <h2 className="text-lg font-semibold mb-4">Module Access</h2>
                 <p className="text-sm text-gray-500 mb-4">
                   Select which modules this user can access and define their role and permissions for each module.
+                  Only modules subscribed by your organization are shown.
                 </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {availableModules.map((module) => {
+              </div>
+              
+              {!organizationData ? (
+                <div className="text-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+                  <p>Loading organization modules...</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {getAvailableModules().map((module) => {
                     const modulePermission = modulePermissions.find(p => p.module === module);
                     return (
                       <div key={module} className="border rounded-lg p-4 space-y-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id={module}
+                            <Checkbox
+                              id={module}
                               checked={!!modulePermission}
-                      onCheckedChange={() => handleModuleToggle(module)}
-                    />
+                              onCheckedChange={() => handleModuleToggle(module)}
+                            />
                             <Label htmlFor={module} className="font-medium">
-                      {module.split('_').map(word => 
-                        word.charAt(0).toUpperCase() + word.slice(1)
-                      ).join(' ')}
-                    </Label>
+                              {module.split('_').map(word => 
+                                word.charAt(0).toUpperCase() + word.slice(1)
+                              ).join(' ')}
+                            </Label>
                           </div>
                         </div>
                         
@@ -853,7 +1083,7 @@ export default function NewUserPage() {
                     );
                   })}
                 </div>
-              </div>
+              )}
             </div>
           </Card>
         );

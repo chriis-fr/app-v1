@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useLocation } from "wouter";
+import { useState, useEffect } from 'react';
+import { useLocation } from 'wouter';
 import {
   Card,
   CardContent,
@@ -35,54 +35,76 @@ import {
 import InventoryLayout from "@/components/layouts/inventory-layout";
 import AccessRestricted from "@/components/pos/AccessRestricted";
 
-// Mock data for warehouses
-const mockWarehouses = [
-  {
-    id: 1,
-    name: "Main Warehouse",
-    location: "123 Main St, City",
-    capacity: "10,000 sq ft",
-    utilization: "78%",
-    manager: "John Doe",
-    contact: "+1 234-567-8900",
-    email: "main@warehouse.com",
-    items: 1250,
-    status: "Active"
-  },
-  {
-    id: 2,
-    name: "North Distribution Center",
-    location: "456 North Ave, Town",
-    capacity: "8,000 sq ft",
-    utilization: "65%",
-    manager: "Jane Smith",
-    contact: "+1 234-567-8901",
-    email: "north@warehouse.com",
-    items: 850,
-    status: "Active"
-  },
-  {
-    id: 3,
-    name: "South Storage Facility",
-    location: "789 South Rd, Village",
-    capacity: "5,000 sq ft",
-    utilization: "45%",
-    manager: "Mike Johnson",
-    contact: "+1 234-567-8902",
-    email: "south@warehouse.com",
-    items: 420,
-    status: "Maintenance"
-  }
-];
+interface Warehouse {
+  id: number;
+  name: string;
+  location: string;
+  capacity: string;
+  utilization: string;
+  manager: string;
+  contact: string;
+  email: string;
+  items: number;
+  status: string;
+}
 
 export default function InventoryWarehouses() {
   const [location, setLocation] = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   
   // Check if user has permission to manage warehouses
   const hasPermission = user?.role === 'admin' || user?.role === 'owner' || user?.role === 'manager';
+  
+  // Fetch warehouses data
+  useEffect(() => {
+    const fetchWarehouses = async () => {
+      try {
+        const response = await fetch('/api/inventory/warehouses', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setWarehouses(data);
+        } else {
+          // Fallback to mock data if API fails
+          setWarehouses([
+            {
+              id: 1,
+              name: "Main Warehouse",
+              location: "123 Main St, City",
+              capacity: "10,000 sq ft",
+              utilization: "78%",
+              manager: "Loading...",
+              contact: "+1 234-567-8900",
+              email: "main@warehouse.com",
+              items: 1250,
+              status: "Active"
+            }
+          ]);
+        }
+      } catch (error) {
+        console.error('Error fetching warehouses:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load warehouse data",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (hasPermission) {
+      fetchWarehouses();
+    }
+  }, [hasPermission, toast]);
   
   // Handle navigation
   const handleNavigate = (path: string) => {
@@ -108,7 +130,7 @@ export default function InventoryWarehouses() {
   };
   
   // Filter warehouses based on search term
-  const filteredWarehouses = mockWarehouses.filter(warehouse => 
+  const filteredWarehouses = warehouses.filter(warehouse => 
     warehouse.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     warehouse.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
     warehouse.manager.toLowerCase().includes(searchTerm.toLowerCase())

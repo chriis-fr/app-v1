@@ -14,7 +14,7 @@ model Organization {
   type          String
   industry      String
   size          String?
-  walletAddress String?  @unique
+  walletAddress String? 
   activeModules String[]
   maxModules    Int      @default(2)
   address       String?
@@ -83,4 +83,53 @@ model ModuleAccess {
   updatedAt DateTime @updatedAt
 
   @@map("moduleAccess")
+}
+
+model TimeTrackingEntry {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId         String   @db.ObjectId
+  organizationId String   @db.ObjectId
+  startTime      DateTime
+  endTime        DateTime?
+  status         String
+  type           String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Meeting {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  organizationId String   @db.ObjectId
+  title          String
+  description    String?
+  startTime      DateTime
+  endTime        DateTime
+  status         String
+  type           String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  attendees      MeetingAttendee[]
+}
+
+model MeetingAttendee {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  meetingId String   @db.ObjectId
+  userId    String   @db.ObjectId
+  status    String
+  joinedAt  DateTime?
+  meeting   Meeting? @relation(fields: [meetingId], references: [id])
+}
+
+model Task {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  organizationId String   @db.ObjectId
+  title          String
+  description    String?
+  assigneeId     String   @db.ObjectId
+  priority       String
+  status         String
+  dueDate        DateTime
+  timezone       String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 } 
