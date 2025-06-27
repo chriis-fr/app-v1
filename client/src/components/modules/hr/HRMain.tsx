@@ -4,7 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DataTable } from '@/components/ui/data-table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { UserPlus, DollarSign, Clock, Loader2, BarChart, TrendingUp, Plus, Search, User2, Users, Building2 } from 'lucide-react';
+import { 
+  UserPlus, DollarSign, Clock, Loader2, BarChart, TrendingUp, Plus, Search, User2, Users, Building2,
+  Calendar, FileText, Settings, Briefcase, CreditCard, Package, Building, Activity, Target,
+  CalendarDays, Receipt, Users2, Clock4, CheckCircle, XCircle, AlertCircle
+} from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { Employee, columns as employeeColumns } from '@/pages/hr/columns';
 import { useAuth } from '@/hooks/use-auth';
@@ -15,6 +19,8 @@ import { Payroll } from '@/components/hr/Payroll';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 
 interface PayrollData {
   employeeId: string;
@@ -27,6 +33,43 @@ interface AttendanceData {
   employeeId: string;
   checkInTime: Date;
   checkOutTime?: Date;
+  status: 'present' | 'absent' | 'break' | 'logout';
+}
+
+interface LeaveRequest {
+  id: string;
+  employeeName: string;
+  startDate: string;
+  endDate: string;
+  leaveType: string;
+  status: 'pending' | 'approved' | 'rejected';
+}
+
+interface Holiday {
+  id: string;
+  name: string;
+  date: string;
+}
+
+interface Birthday {
+  id: string;
+  employeeName: string;
+  date: string;
+}
+
+interface WorkAnniversary {
+  id: string;
+  employeeName: string;
+  date: string;
+  yearsCompleted: number;
+}
+
+interface LeaveBalance {
+  paidLeave: number;
+  casualLeave: number;
+  sickLeave: number;
+  marriageLeave: number;
+  unpaidLeave: number;
 }
 
 export default function HRMain() {
@@ -37,10 +80,22 @@ export default function HRMain() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [payroll, setPayroll] = useState<PayrollData[]>([]);
   const [attendance, setAttendance] = useState<AttendanceData[]>([]);
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
+  const [holidays, setHolidays] = useState<Holiday[]>([]);
+  const [birthdays, setBirthdays] = useState<Birthday[]>([]);
+  const [workAnniversaries, setWorkAnniversaries] = useState<WorkAnniversary[]>([]);
+  const [leaveBalance, setLeaveBalance] = useState<LeaveBalance>({
+    paidLeave: 0,
+    casualLeave: 0,
+    sickLeave: 0,
+    marriageLeave: 0,
+    unpaidLeave: 0
+  });
   const [error, setError] = useState<string | null>(null);
   const errorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [loginAccessFilter, setLoginAccessFilter] = useState<'all' | 'login' | 'no-login'>('all');
+  const [activeTab, setActiveTab] = useState('dashboard');
 
   useEffect(() => {
     fetchData();
@@ -61,6 +116,7 @@ export default function HRMain() {
     try {
       setLoading(true);
       setError(null);
+      
       // Fetch employees
       const employeesResponse = await fetch('/api/hr/employees');
       if (!employeesResponse.ok) throw new Error('Failed to fetch employees');
@@ -78,8 +134,43 @@ export default function HRMain() {
       if (!attendanceResponse.ok) throw new Error('Failed to fetch attendance data');
       const attendanceData = await attendanceResponse.json();
       setAttendance(attendanceData);
+
+      // Fetch leave requests
+      const leaveRequestsResponse = await fetch('/api/hr/leave-requests');
+      if (leaveRequestsResponse.ok) {
+        const leaveRequestsData = await leaveRequestsResponse.json();
+        setLeaveRequests(leaveRequestsData);
+      }
+
+      // Fetch holidays
+      const holidaysResponse = await fetch('/api/hr/holidays');
+      if (holidaysResponse.ok) {
+        const holidaysData = await holidaysResponse.json();
+        setHolidays(holidaysData);
+      }
+
+      // Fetch birthdays
+      const birthdaysResponse = await fetch('/api/hr/birthdays');
+      if (birthdaysResponse.ok) {
+        const birthdaysData = await birthdaysResponse.json();
+        setBirthdays(birthdaysData);
+      }
+
+      // Fetch work anniversaries
+      const anniversariesResponse = await fetch('/api/hr/work-anniversaries');
+      if (anniversariesResponse.ok) {
+        const anniversariesData = await anniversariesResponse.json();
+        setWorkAnniversaries(anniversariesData);
+      }
+
+      // Fetch leave balance
+      const leaveBalanceResponse = await fetch('/api/hr/leave-balance');
+      if (leaveBalanceResponse.ok) {
+        const leaveBalanceData = await leaveBalanceResponse.json();
+        setLeaveBalance(leaveBalanceData);
+      }
+
     } catch (error) {
-      
       console.error('Error fetching data:', error);
       setError(String(error));
       toast({
@@ -99,56 +190,11 @@ export default function HRMain() {
     employee.department.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Add credential verification handler
-  const handleVerifyCredential = async (credentialId: string, userId: string) => {
-    try {
-      const response = await fetch('/api/hr/verify-credential', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ credentialId, userId }),
-      });
-      const data = await response.json();
-      if (data.success) {
-        setEmployees(employees.map(emp =>
-          emp.id === userId
-            ? {
-                ...emp,
-                credentials: emp.credentials?.map(cred =>
-                  cred.id === credentialId
-                    ? { ...cred, verified: true, blockchainHash: data.blockchainHash }
-                    : cred
-                )
-              }
-            : emp
-        ));
-        toast({ title: 'Success', description: 'Credential verified successfully' });
-      }
-    } catch (error) {
-      toast({ title: 'Error', description: 'Failed to verify credential', variant: 'destructive' });
-    }
-  };
-
-  const payrollColumns = [
-    { accessorKey: 'employeeId', header: 'Employee ID' },
-    { accessorKey: 'amount', header: 'Amount',
-      cell: ({ row }: { row: any }) => `$${row.original.amount.toFixed(2)}` 
-    },
-    { accessorKey: 'currency', header: 'Currency' },
-    { accessorKey: 'status', header: 'Status' },
-  ];
-
-  const attendanceColumns = [
-    { accessorKey: 'employeeId', header: 'Employee ID' },
-    { accessorKey: 'checkInTime', header: 'Check In',
-      cell: ({ row }: { row: any }) => new Date(row.original.checkInTime).toLocaleTimeString()
-    },
-    { accessorKey: 'checkOutTime', header: 'Check Out',
-      cell: ({ row }: { row: any }) => row.original.checkOutTime ? 
-        new Date(row.original.checkOutTime).toLocaleTimeString() : 'Active'
-    },
-  ];
+  // Calculate dashboard stats
+  const presentEmployees = attendance.filter(a => a.status === 'present').length;
+  const absentEmployees = attendance.filter(a => a.status === 'absent').length;
+  const breakInEmployees = attendance.filter(a => a.status === 'break').length;
+  const logoutEmployees = attendance.filter(a => a.status === 'logout').length;
 
   const renderLoadingState = () => (
     <div className="flex items-center justify-center p-4">
@@ -157,33 +203,8 @@ export default function HRMain() {
     </div>
   );
 
-  // Department distribution and recent activity analytics for HR admins and admins
-  let departmentDistribution: { name: string; value: number }[] = [];
-  let recentActivity: { name: string; department: string; time: string }[] = [];
-  if ((user?.role === 'hr_admin' || user?.role === 'admin') && employees.length > 0) {
-    // Calculate department distribution
-    const departmentCounts = employees.reduce((acc: Record<string, number>, emp: Employee) => {
-      acc[emp.department] = (acc[emp.department] || 0) + 1;
-      return acc;
-    }, {});
-    departmentDistribution = Object.entries(departmentCounts).map(([name, value]) => ({ name, value: value as number }));
-    // Recent activity: last 5 join dates
-    recentActivity = employees
-      .sort((a, b) => new Date(b.joinDate).getTime() - new Date(a.joinDate).getTime())
-      .slice(0, 5)
-      .map(emp => ({
-        name: `${emp.firstName} ${emp.lastName}`,
-        department: emp.department,
-        time: new Date(emp.joinDate).toLocaleDateString()
-      }));
-  }
-
   // Only show the unified HR tabbed interface for owner, hr_admin, admin
   if (user?.role === 'owner' || user?.role === 'hr_admin' || user?.role === 'admin') {
-    // Calculate summary stats
-    const totalEmployees = employees.length;
-    const activeEmployees = employees.filter(e => e.status === 'active').length;
-    const departmentCount = new Set(employees.map(e => e.department)).size;
     return (
       <DashboardLayout>
         <div className="space-y-4 pt-2">
@@ -200,84 +221,305 @@ export default function HRMain() {
             </div>
           </div>
 
-          {/* Summary cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <Card className="shadow-md border-blue-100">
-              <CardHeader className="flex flex-row items-center gap-2 pb-2">
-                <CardTitle className="text-lg font-medium flex items-center gap-2">
-                  <Users className="h-5 w-5 text-blue-600" />
-                  Total Employees
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-blue-900">{totalEmployees}</div>
-              </CardContent>
-            </Card>
-            <Card className="shadow-md border-blue-100">
-              <CardHeader className="flex flex-row items-center gap-2 pb-2">
-                <CardTitle className="text-lg font-medium flex items-center gap-2">
-                  <User2 className="h-5 w-5 text-green-600" />
-                  Active Employees
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-700">{activeEmployees}</div>
-              </CardContent>
-            </Card>
-            <Card className="shadow-md border-blue-100">
-              <CardHeader className="flex flex-row items-center gap-2 pb-2">
-                <CardTitle className="text-lg font-medium flex items-center gap-2">
-                  <Building2 className="h-5 w-5 text-purple-600" />
-                  Departments
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-purple-700">{departmentCount}</div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="flex justify-between items-center mb-6 pt-2 mt-2">
-            <h1 className="text-2xl font-bold">Employee Management</h1>
-            <div className="flex gap-2">
-              <Select value={loginAccessFilter} onValueChange={v => setLoginAccessFilter(v as any)}>
-                <SelectTrigger className="w-36">
-                  <SelectValue placeholder="Login Access" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Employees</SelectItem>
-                  <SelectItem value="login">With Login</SelectItem>
-                  <SelectItem value="no-login">No Login</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button onClick={() => setLocation('/hr/new')}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Employee
-              </Button>
-            </div>
-          </div>
-          <div className="mb-6">
-            <div className="relative">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search employees..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8"
-              />
-            </div>
-          </div>
-          <Tabs defaultValue="employees" className="space-y-4">
-            <TabsList>
-              <TabsTrigger value="employees">Employees</TabsTrigger>
-              <TabsTrigger value="skills">Skills & Matching</TabsTrigger>
-              <TabsTrigger value="credentials">Credentials</TabsTrigger>
-              <TabsTrigger value="payroll">Payroll</TabsTrigger>
-              <TabsTrigger value="attendance">Attendance</TabsTrigger>
-              <TabsTrigger value="documents">Documents</TabsTrigger>
-              <TabsTrigger value="leave">Leave Management</TabsTrigger>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+            <TabsList className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 h-auto p-1">
+              <TabsTrigger value="dashboard" className="flex items-center gap-2">
+                <BarChart className="h-4 w-4" />
+                Dashboard
+              </TabsTrigger>
+              <TabsTrigger value="hiring" className="flex items-center gap-2">
+                <Users2 className="h-4 w-4" />
+                Hiring
+              </TabsTrigger>
+              <TabsTrigger value="employees" className="flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Employees
+              </TabsTrigger>
+              <TabsTrigger value="time" className="flex items-center gap-2">
+                <Clock4 className="h-4 w-4" />
+                Time
+              </TabsTrigger>
+              <TabsTrigger value="leave" className="flex items-center gap-2">
+                <CalendarDays className="h-4 w-4" />
+                Leave
+              </TabsTrigger>
+              <TabsTrigger value="assets" className="flex items-center gap-2">
+                <Package className="h-4 w-4" />
+                Assets
+              </TabsTrigger>
+              <TabsTrigger value="calendar" className="flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                Calendar
+              </TabsTrigger>
+              <TabsTrigger value="payroll" className="flex items-center gap-2">
+                <DollarSign className="h-4 w-4" />
+                Payroll
+              </TabsTrigger>
+              <TabsTrigger value="expenses" className="flex items-center gap-2">
+                <Receipt className="h-4 w-4" />
+                Expenses
+              </TabsTrigger>
+              <TabsTrigger value="meeting-room" className="flex items-center gap-2">
+                <Building className="h-4 w-4" />
+                Meeting Room
+              </TabsTrigger>
+              <TabsTrigger value="activity-logs" className="flex items-center gap-2">
+                <Activity className="h-4 w-4" />
+                Activity Logs
+              </TabsTrigger>
+              <TabsTrigger value="settings" className="flex items-center gap-2">
+                <Settings className="h-4 w-4" />
+                Settings
+              </TabsTrigger>
             </TabsList>
-            <TabsContent value="employees">
+
+            {/* Dashboard Tab */}
+            <TabsContent value="dashboard" className="space-y-6">
+              {/* Summary Cards */}
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Present Employees</CardTitle>
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{presentEmployees}</div>
+                    <p className="text-xs text-muted-foreground">
+                      out of {employees.length} total
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Absent Employees</CardTitle>
+                    <XCircle className="h-4 w-4 text-red-600" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{absentEmployees}</div>
+                    <p className="text-xs text-muted-foreground">
+                      out of {employees.length} total
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Break In</CardTitle>
+                    <Clock className="h-4 w-4 text-yellow-600" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{breakInEmployees}</div>
+                    <p className="text-xs text-muted-foreground">
+                      currently on break
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Logged Out</CardTitle>
+                    <AlertCircle className="h-4 w-4 text-gray-600" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{logoutEmployees}</div>
+                    <p className="text-xs text-muted-foreground">
+                      currently logged out
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Leave Balance Cards */}
+              <div className="grid gap-4 md:grid-cols-5">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Paid Leave</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{leaveBalance.paidLeave}</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Casual Leave</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{leaveBalance.casualLeave}</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Sick Leave</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{leaveBalance.sickLeave}</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Marriage Leave</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{leaveBalance.marriageLeave}</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Unpaid Leave</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{leaveBalance.unpaidLeave}</div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Recent Activity Grid */}
+              <div className="grid gap-6 md:grid-cols-2">
+                {/* Leave Requests */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Leave Requests</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {leaveRequests.length === 0 ? (
+                      <p className="text-muted-foreground text-center py-4">No leave requests found</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {leaveRequests.slice(0, 5).map((request) => (
+                          <div key={request.id} className="flex items-center justify-between p-2 border rounded">
+                            <div>
+                              <p className="font-medium">{request.employeeName}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {request.startDate} - {request.endDate}
+                              </p>
+                            </div>
+                            <Badge variant={request.status === 'approved' ? 'default' : request.status === 'rejected' ? 'destructive' : 'secondary'}>
+                              {request.status}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Holidays */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Holidays</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {holidays.length === 0 ? (
+                      <p className="text-muted-foreground text-center py-4">No holidays found for this month</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {holidays.slice(0, 5).map((holiday) => (
+                          <div key={holiday.id} className="flex items-center justify-between p-2 border rounded">
+                            <span className="font-medium">{holiday.name}</span>
+                            <span className="text-sm text-muted-foreground">{holiday.date}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Birthdays */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Birthdays</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {birthdays.length === 0 ? (
+                      <p className="text-muted-foreground text-center py-4">No birthdays found for this month</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {birthdays.slice(0, 5).map((birthday) => (
+                          <div key={birthday.id} className="flex items-center justify-between p-2 border rounded">
+                            <span className="font-medium">{birthday.employeeName}</span>
+                            <span className="text-sm text-muted-foreground">{birthday.date}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Work Anniversaries */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Work Anniversaries</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {workAnniversaries.length === 0 ? (
+                      <p className="text-muted-foreground text-center py-4">No work anniversaries found for this month</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {workAnniversaries.slice(0, 5).map((anniversary) => (
+                          <div key={anniversary.id} className="flex items-center justify-between p-2 border rounded">
+                            <div>
+                              <p className="font-medium">{anniversary.employeeName}</p>
+                              <p className="text-sm text-muted-foreground">{anniversary.yearsCompleted} years</p>
+                            </div>
+                            <span className="text-sm text-muted-foreground">{anniversary.date}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            {/* Hiring Tab */}
+            <TabsContent value="hiring" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <div className="flex justify-between items-center">
+                    <CardTitle>Hiring Management</CardTitle>
+                    <Button onClick={() => setLocation('/hr/hiring/new')}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      New Job Posting
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">Job postings, candidate management, and onboarding workflows will be implemented here.</p>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Employees Tab */}
+            <TabsContent value="employees" className="space-y-4">
+              <div className="flex justify-between items-center mb-6 pt-2 mt-2">
+                <h1 className="text-2xl font-bold">Employee Management</h1>
+                <div className="flex gap-2">
+                  <Select value={loginAccessFilter} onValueChange={v => setLoginAccessFilter(v as any)}>
+                    <SelectTrigger className="w-36">
+                      <SelectValue placeholder="Login Access" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Employees</SelectItem>
+                      <SelectItem value="login">With Login</SelectItem>
+                      <SelectItem value="no-login">No Login</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button onClick={() => setLocation('/hr/new')}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Employee
+                  </Button>
+                </div>
+              </div>
+              <div className="mb-6">
+                <div className="relative">
+                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search employees..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-8"
+                  />
+                </div>
+              </div>
+              
               <Card className="shadow-lg border-blue-100">
                 <CardHeader>
                   <CardTitle>Employee Management</CardTitle>
@@ -291,96 +533,165 @@ export default function HRMain() {
                 </CardContent>
               </Card>
             </TabsContent>
-            <TabsContent value="skills">
+
+            {/* Time Management Tab */}
+            <TabsContent value="time" className="space-y-4">
               <Card>
                 <CardHeader>
-                  <CardTitle>Skill Matching</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <SkillMatching
-                    projectRequirements={{ skills: ['javascript', 'typescript', 'react', 'node.js'], experience: 3 }}
-                  />
-                </CardContent>
-              </Card>
-            </TabsContent>
-            <TabsContent value="credentials">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Credential Verification</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-6">
-                    {filteredEmployees.map((employee) => (
-                      <div key={employee.id} className="space-y-4">
-                        <h3 className="font-medium">{employee.firstName} {employee.lastName}</h3>
-                        <CredentialVerification
-                          credentials={employee.credentials || []}
-                          onVerify={(credentialId) => handleVerifyCredential(credentialId, employee.id)}
-                        />
-                      </div>
-                    ))}
+                  <div className="flex justify-between items-center">
+                    <CardTitle>Time Management</CardTitle>
+                    <Button onClick={() => setLocation('/hr/time/attendance')}>
+                      <Clock className="mr-2 h-4 w-4" />
+                      View Attendance
+                    </Button>
                   </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">Attendance tracking, check-in/out, break management, and time reports will be implemented here.</p>
                 </CardContent>
               </Card>
             </TabsContent>
-            <TabsContent value="payroll">
+
+            {/* Leave Management Tab */}
+            <TabsContent value="leave" className="space-y-4">
               <Card>
                 <CardHeader>
-                  <CardTitle>Payroll Management</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-6">
-                    {filteredEmployees.map((employee) => (
-                      <Payroll
-                        key={employee.id}
-                        employee={employee}
-                        onUpdate={async (employeeId, compensation) => {
-                          try {
-                            const response = await fetch(`/api/hr/${employeeId}/compensation`, {
-                              method: 'PUT',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ compensation }),
-                            });
-                            if (!response.ok) throw new Error('Failed to update compensation');
-                            const updatedEmployee = await response.json();
-                            setEmployees(employees.map(emp => emp.id === employeeId ? updatedEmployee : emp));
-                          } catch (error) {
-                            toast({ title: 'Error', description: 'Failed to update compensation', variant: 'destructive' });
-                          }
-                        }}
-                      />
-                    ))}
+                  <div className="flex justify-between items-center">
+                    <CardTitle>Leave Management</CardTitle>
+                    <Button onClick={() => setLocation('/hr/leave/requests')}>
+                      <CalendarDays className="mr-2 h-4 w-4" />
+                      View Requests
+                    </Button>
                   </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">Leave requests, approvals, balances, and policies will be implemented here.</p>
                 </CardContent>
               </Card>
             </TabsContent>
-            <TabsContent value="attendance">
+
+            {/* Asset Management Tab */}
+            <TabsContent value="assets" className="space-y-4">
               <Card>
                 <CardHeader>
-                  <CardTitle>Attendance Records</CardTitle>
+                  <div className="flex justify-between items-center">
+                    <CardTitle>Asset Management</CardTitle>
+                    <Button onClick={() => setLocation('/hr/assets')}>
+                      <Package className="mr-2 h-4 w-4" />
+                      Manage Assets
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-muted-foreground">View and manage employee attendance records</p>
+                  <p className="text-muted-foreground">Asset assignment, tracking, maintenance, and return management will be implemented here.</p>
                 </CardContent>
               </Card>
             </TabsContent>
-            <TabsContent value="documents">
+
+            {/* Calendar Tab */}
+            <TabsContent value="calendar" className="space-y-4">
               <Card>
                 <CardHeader>
-                  <CardTitle>Employee Documents</CardTitle>
+                  <div className="flex justify-between items-center">
+                    <CardTitle>Company Calendar</CardTitle>
+                    <Button onClick={() => setLocation('/hr/calendar')}>
+                      <Calendar className="mr-2 h-4 w-4" />
+                      View Calendar
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-muted-foreground">Access and manage employee documents and records</p>
+                  <p className="text-muted-foreground">Company events, holidays, meetings, and important dates will be displayed here.</p>
                 </CardContent>
               </Card>
             </TabsContent>
-            <TabsContent value="leave">
+
+            {/* Payroll Management Tab */}
+            <TabsContent value="payroll" className="space-y-4">
               <Card>
                 <CardHeader>
-                  <CardTitle>Leave Management</CardTitle>
+                  <div className="flex justify-between items-center">
+                    <CardTitle>Payroll Management</CardTitle>
+                    <Button onClick={() => setLocation('/hr/payroll')}>
+                      <DollarSign className="mr-2 h-4 w-4" />
+                      Process Payroll
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-muted-foreground">View and manage employee leave requests</p>
+                  <p className="text-muted-foreground">Salary processing, payslips, deductions, bonuses, and payroll reports will be implemented here.</p>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Expense Management Tab */}
+            <TabsContent value="expenses" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <div className="flex justify-between items-center">
+                    <CardTitle>Expense Management</CardTitle>
+                    <Button onClick={() => setLocation('/hr/expenses')}>
+                      <Receipt className="mr-2 h-4 w-4" />
+                      View Expenses
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">Employee expense claims, approvals, reimbursements, and expense reports will be implemented here.</p>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Meeting Room Tab */}
+            <TabsContent value="meeting-room" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <div className="flex justify-between items-center">
+                    <CardTitle>Meeting Room Management</CardTitle>
+                    <Button onClick={() => setLocation('/hr/meeting-room')}>
+                      <Building className="mr-2 h-4 w-4" />
+                      Book Room
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">Room bookings, schedules, availability, and meeting management will be implemented here.</p>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Activity Logs Tab */}
+            <TabsContent value="activity-logs" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <div className="flex justify-between items-center">
+                    <CardTitle>Activity Logs</CardTitle>
+                    <Button onClick={() => setLocation('/hr/activity-logs')}>
+                      <Activity className="mr-2 h-4 w-4" />
+                      View Logs
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">Audit trail of HR actions, user activities, and system logs will be displayed here.</p>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Settings Tab */}
+            <TabsContent value="settings" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <div className="flex justify-between items-center">
+                    <CardTitle>HR Settings</CardTitle>
+                    <Button onClick={() => setLocation('/hr/settings')}>
+                      <Settings className="mr-2 h-4 w-4" />
+                      Configure
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">Company policies, leave types, roles, permissions, and system configuration will be managed here.</p>
                 </CardContent>
               </Card>
             </TabsContent>
@@ -390,6 +701,7 @@ export default function HRMain() {
     );
   }
 
+  // Fallback for non-HR users
   return (
     <DashboardLayout>
       <div className="space-y-4">
@@ -449,101 +761,59 @@ export default function HRMain() {
         </div>
 
         {/* HR Admin Analytics */}
-        {(user?.role === 'hr_admin' || user?.role === 'admin') && (
-          <>
-            <h2 className="text-xl font-semibold mt-6 mb-2">HR Analytics</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium">Department Distribution</CardTitle>
-                  <BarChart className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  {loading ? (
-                    renderLoadingState()
-                  ) : departmentDistribution.length > 0 ? (
-                    <div className="space-y-2">
-                      {departmentDistribution.map((dept) => (
-                        <div key={dept.name} className="flex items-center justify-between">
-                          <span className="text-sm">{dept.name}</span>
-                          <span className="text-sm font-medium">{dept.value}</span>
+        {user?.role === 'hr_admin' && (
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Department Distribution</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  renderLoadingState()
+                ) : (
+                  <div className="space-y-2">
+                    {Object.entries(
+                      employees.reduce((acc: Record<string, number>, emp: Employee) => {
+                        acc[emp.department] = (acc[emp.department] || 0) + 1;
+                        return acc;
+                      }, {})
+                    ).map(([dept, count]) => (
+                      <div key={dept} className="flex justify-between items-center">
+                        <span>{dept}</span>
+                        <span className="font-bold">{count}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent Activity</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  renderLoadingState()
+                ) : (
+                  <div className="space-y-2">
+                    {employees
+                      .sort((a, b) => new Date(b.joinDate).getTime() - new Date(a.joinDate).getTime())
+                      .slice(0, 5)
+                      .map((emp) => (
+                        <div key={emp.id} className="flex justify-between items-center">
+                          <span>{emp.firstName} {emp.lastName}</span>
+                          <span className="text-sm text-muted-foreground">
+                            Joined {new Date(emp.joinDate).toLocaleDateString()}
+                          </span>
                         </div>
                       ))}
-                    </div>
-                  ) : (
-                    <div className="text-muted-foreground">No department data available</div>
-                  )}
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium">Recent Activity</CardTitle>
-                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  {loading ? (
-                    renderLoadingState()
-                  ) : recentActivity.length > 0 ? (
-                    <div className="space-y-2">
-                      {recentActivity.map((activity, idx) => (
-                        <div key={idx} className="flex items-center justify-between">
-                          <div>
-                            <span className="font-medium">{activity.name}</span>
-                            <span className="ml-2 text-xs text-muted-foreground">{activity.department}</span>
-                          </div>
-                          <span className="text-xs text-muted-foreground">{activity.time}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-muted-foreground">No recent activity</div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         )}
-
-        <Tabs defaultValue="employees">
-          <TabsList>
-            <TabsTrigger value="employees">Employees</TabsTrigger>
-            <TabsTrigger value="payroll">Payroll</TabsTrigger>
-            <TabsTrigger value="attendance">Attendance</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="employees">
-            {loading ? (
-              renderLoadingState()
-            ) : (
-              <DataTable
-                columns={employeeColumns}
-                data={employees}
-              />
-            )}
-          </TabsContent>
-
-          <TabsContent value="payroll">
-            {loading ? (
-              renderLoadingState()
-            ) : (
-              <DataTable
-                columns={payrollColumns}
-                data={payroll}
-              />
-            )}
-          </TabsContent>
-
-          <TabsContent value="attendance">
-            {loading ? (
-              renderLoadingState()
-            ) : (
-              <DataTable
-                columns={attendanceColumns}
-                data={attendance}
-              />
-            )}
-          </TabsContent>
-        </Tabs>
       </div>
     </DashboardLayout>
   );

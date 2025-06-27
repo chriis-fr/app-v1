@@ -768,4 +768,90 @@ router.get('/attendance', isAuthenticated, checkModuleAccess('hr'), isHRAdminOrO
   }
 });
 
+// Get leave requests
+router.get('/leave-requests', isAuthenticated, checkModuleAccess('hr'), async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+    
+    // TODO: Implement leave requests fetching from database
+    // For now, return empty array
+    res.json([]);
+  } catch (error) {
+    console.error('Error fetching leave requests:', error);
+    res.status(500).json({ message: 'Error fetching leave requests' });
+  }
+});
+
+// Get holidays
+router.get('/holidays', isAuthenticated, checkModuleAccess('hr'), async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+    
+    // TODO: Implement holidays fetching from database
+    // For now, return empty array
+    res.json([]);
+  } catch (error) {
+    console.error('Error fetching holidays:', error);
+    res.status(500).json({ message: 'Error fetching holidays' });
+  }
+});
+
+// Get birthdays for current month
+router.get('/birthdays', isAuthenticated, checkModuleAccess('hr'), async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+    
+    // TODO: Implement birthdays fetching from database
+    // For now, return empty array
+    res.json([]);
+  } catch (error) {
+    console.error('Error fetching birthdays:', error);
+    res.status(500).json({ message: 'Error fetching birthdays' });
+  }
+});
+
+// Get work anniversaries for current month
+router.get('/work-anniversaries', isAuthenticated, checkModuleAccess('hr'), async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+    
+    // TODO: Implement work anniversaries fetching from database
+    // For now, return empty array
+    res.json([]);
+  } catch (error) {
+    console.error('Error fetching work anniversaries:', error);
+    res.status(500).json({ message: 'Error fetching work anniversaries' });
+  }
+});
+
+// Get leave balance
+router.get('/leave-balance', isAuthenticated, checkModuleAccess('hr'), async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+    
+    // TODO: Implement leave balance calculation from database
+    // For now, return default values
+    res.json({
+      paidLeave: 0,
+      casualLeave: 0,
+      sickLeave: 0,
+      marriageLeave: 0,
+      unpaidLeave: 0
+    });
+  } catch (error) {
+    console.error('Error fetching leave balance:', error);
+    res.status(500).json({ message: 'Error fetching leave balance' });
+  }
+});
+
 export default router; 

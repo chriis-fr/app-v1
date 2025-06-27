@@ -13,7 +13,6 @@ const emailConfig = {
 
 // Create transporter
 const transporter = nodemailer.createTransport(emailConfig);
-
 // Get frontend URL based on environment
 const getFrontendUrl = () => {
   if (process.env.NODE_ENV === 'production') {
@@ -50,7 +49,7 @@ export const sendActivationEmail = async (
     subject: `Welcome to Chains ERP - Activate Your Account`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; text-align: center; border-radius: 10px 10px 0 0;">
           <div style="margin-bottom: 20px;">
             <img src="https://chains-erp.com/chainsnobg.png" 
               alt="Chains ERP Logo" 
@@ -64,7 +63,7 @@ export const sendActivationEmail = async (
           <h2 style="color: #333; margin-top: 0;">Hello ${userName},</h2>
           
           <p style="color: #666; line-height: 1.6;">
-            Welcome to Chains ERP! Your account has been created and is ready for activation.
+            Your ${organizationName} account has been created and is ready for activation.
           </p>
           
           <p style="color: #666; line-height: 1.6;">
