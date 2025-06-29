@@ -99,6 +99,13 @@ export default function HRMain() {
 
   useEffect(() => {
     fetchData();
+    
+    // Set up real-time data refresh every 30 seconds
+    const interval = setInterval(() => {
+      fetchData();
+    }, 30000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   // Auto-dismiss error after 5 seconds
@@ -117,67 +124,101 @@ export default function HRMain() {
       setLoading(true);
       setError(null);
       
-      // Fetch employees
-      const employeesResponse = await fetch('/api/hr/employees');
-      if (!employeesResponse.ok) throw new Error('Failed to fetch employees');
-      const employeesData = await employeesResponse.json();
-      setEmployees(employeesData);
+      // Fetch all HR data in parallel for better performance
+      const [
+        employeesResponse,
+        payrollResponse,
+        attendanceResponse,
+        leaveRequestsResponse,
+        holidaysResponse,
+        birthdaysResponse,
+        workAnniversariesResponse,
+        leaveBalanceResponse,
+        notificationsResponse,
+        activityLogsResponse,
+        dashboardSummaryResponse
+      ] = await Promise.all([
+        fetch('/api/hr/employees', { credentials: 'include' }),
+        fetch('/api/hr/payroll', { credentials: 'include' }),
+        fetch('/api/hr/attendance', { credentials: 'include' }),
+        fetch('/api/hr/leave-requests', { credentials: 'include' }),
+        fetch('/api/hr/holidays', { credentials: 'include' }),
+        fetch('/api/hr/birthdays', { credentials: 'include' }),
+        fetch('/api/hr/work-anniversaries', { credentials: 'include' }),
+        fetch('/api/hr/leave-balance', { credentials: 'include' }),
+        fetch('/api/hr/notifications', { credentials: 'include' }),
+        fetch('/api/hr/activity-logs', { credentials: 'include' }),
+        fetch('/api/hr/dashboard-summary', { credentials: 'include' })
+      ]);
 
-      // Fetch payroll data
-      const payrollResponse = await fetch('/api/hr/payroll');
-      if (!payrollResponse.ok) throw new Error('Failed to fetch payroll data');
-      const payrollData = await payrollResponse.json();
-      setPayroll(payrollData);
+      // Handle responses
+      if (employeesResponse.ok) {
+        const employeesData = await employeesResponse.json();
+        setEmployees(employeesData.filter((emp: any) => emp.role !== 'owner'));
+      }
 
-      // Fetch attendance data
-      const attendanceResponse = await fetch('/api/hr/attendance');
-      if (!attendanceResponse.ok) throw new Error('Failed to fetch attendance data');
-      const attendanceData = await attendanceResponse.json();
-      setAttendance(attendanceData);
+      if (payrollResponse.ok) {
+        const payrollData = await payrollResponse.json();
+        setPayroll(payrollData);
+      }
 
-      // Fetch leave requests
-      const leaveRequestsResponse = await fetch('/api/hr/leave-requests');
+      if (attendanceResponse.ok) {
+        const attendanceData = await attendanceResponse.json();
+        setAttendance(attendanceData);
+      }
+
       if (leaveRequestsResponse.ok) {
         const leaveRequestsData = await leaveRequestsResponse.json();
         setLeaveRequests(leaveRequestsData);
       }
 
-      // Fetch holidays
-      const holidaysResponse = await fetch('/api/hr/holidays');
       if (holidaysResponse.ok) {
         const holidaysData = await holidaysResponse.json();
         setHolidays(holidaysData);
       }
 
-      // Fetch birthdays
-      const birthdaysResponse = await fetch('/api/hr/birthdays');
       if (birthdaysResponse.ok) {
         const birthdaysData = await birthdaysResponse.json();
         setBirthdays(birthdaysData);
       }
 
-      // Fetch work anniversaries
-      const anniversariesResponse = await fetch('/api/hr/work-anniversaries');
-      if (anniversariesResponse.ok) {
-        const anniversariesData = await anniversariesResponse.json();
-        setWorkAnniversaries(anniversariesData);
+      if (workAnniversariesResponse.ok) {
+        const workAnniversariesData = await workAnniversariesResponse.json();
+        setWorkAnniversaries(workAnniversariesData);
       }
 
-      // Fetch leave balance
-      const leaveBalanceResponse = await fetch('/api/hr/leave-balance');
       if (leaveBalanceResponse.ok) {
         const leaveBalanceData = await leaveBalanceResponse.json();
         setLeaveBalance(leaveBalanceData);
       }
 
+      // Store additional data for use in components
+      if (notificationsResponse.ok) {
+        const notificationsData = await notificationsResponse.json();
+        console.log('HR Notifications:', notificationsData);
+      }
+
+      if (activityLogsResponse.ok) {
+        const activityLogsData = await activityLogsResponse.json();
+        console.log('HR Activity Logs:', activityLogsData);
+      }
+
+      if (dashboardSummaryResponse.ok) {
+        const dashboardSummaryData = await dashboardSummaryResponse.json();
+        console.log('HR Dashboard Summary:', dashboardSummaryData);
+      }
+
     } catch (error) {
-      console.error('Error fetching data:', error);
-      setError(String(error));
-      toast({
-        title: 'Error',
-        description: 'Failed to fetch HR data',
-        variant: 'destructive',
-      });
+      console.error('Error fetching HR data:', error);
+      setError('Failed to load HR data. Please try again.');
+      
+      // Auto-dismiss error after 5 seconds
+      if (errorTimeoutRef.current) {
+        clearTimeout(errorTimeoutRef.current);
+      }
+      errorTimeoutRef.current = setTimeout(() => {
+        setError(null);
+      }, 5000);
     } finally {
       setLoading(false);
     }

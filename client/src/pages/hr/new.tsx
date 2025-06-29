@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { availableModules, userRoles, departments } from '@shared/schema';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
+import { api } from '@/lib/api';
 
 export default function NewEmployeePage() {
   const [, setLocation] = useLocation();
@@ -36,6 +37,7 @@ export default function NewEmployeePage() {
   });
   const [loading, setLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
+  const [customPosition, setCustomPosition] = useState('');
 
   // Steps for login-enabled (user) flow
   const userSteps = [
@@ -66,6 +68,14 @@ export default function NewEmployeePage() {
     setForm({ ...form, canLogin: checked });
   };
 
+  const handleDepartmentChange = (value: string) => {
+    setForm(prev => ({ ...prev, department: value }));
+    // Reset custom position when department changes from "Other"
+    if (value !== 'Other') {
+      setCustomPosition('');
+    }
+  };
+
   const handleModuleToggle = (module: string) => {
     setForm((prev) => ({
       ...prev,
@@ -80,12 +90,29 @@ export default function NewEmployeePage() {
     setLoading(true);
     try {
       const payload: any = { ...form };
+      
+      // For basic employees (no login), use custom position if department is "Other"
+      if (!form.canLogin && form.department === 'Other') {
+        payload.position = customPosition;
+      }
+      
+      // Remove HR-specific fields that don't exist in User model
+      delete payload.employmentType;
+      delete payload.salary;
+      delete payload.benefits;
+      delete payload.supervisor;
+      delete payload.canLogin;
+      
       if (!form.canLogin) {
-        delete payload.email;
-        delete payload.username;
-        delete payload.password;
-        delete payload.moduleAccess;
-        delete payload.role;
+        // For basic employees, set default values for required fields
+        payload.email = `${form.firstName.toLowerCase()}.${form.lastName.toLowerCase()}@${currentUser?.organization?.name?.toLowerCase().replace(/\s+/g, '') || 'company'}.com`;
+        payload.username = `${form.firstName.toLowerCase()}.${form.lastName.toLowerCase()}`;
+        payload.password = 'tempPassword123!'; // Temporary password for basic employees
+        payload.role = 'employee';
+        payload.moduleAccess = ['dashboard', 'profile'];
+        payload.status = 'active';
+        payload.isActive = true;
+        payload.emailVerified = false;
       } else {
         if (!form.email || !form.username || !form.password || !form.role || form.moduleAccess.length === 0) {
           toast({ title: 'Error', description: 'All login and module fields are required.', variant: 'destructive' });
@@ -93,21 +120,78 @@ export default function NewEmployeePage() {
           return;
         }
       }
-      if (!form.firstName || !form.lastName || !form.department || !form.position || !form.employmentType || !form.salary) {
+      
+      // Validate required fields including custom position for "Other" department
+      const positionToValidate = (!form.canLogin && form.department === 'Other') ? customPosition : form.position;
+      if (!form.firstName || !form.lastName || !form.department || !positionToValidate) {
         toast({ title: 'Error', description: 'Please fill all required fields.', variant: 'destructive' });
         setLoading(false);
         return;
       }
-      const response = await fetch('/api/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      if (!response.ok) throw new Error('Failed to create employee');
+      
+      // Get current user's organization ID
+      if (!currentUser?.organizationId) {
+        toast({ title: 'Error', description: 'No organization ID found', variant: 'destructive' });
+        setLoading(false);
+        return;
+      }
+      
+      // Add organization ID to payload
+      payload.organizationId = currentUser.organizationId;
+      
+      console.log('Creating employee with payload:', payload);
+      console.log('Current user:', currentUser);
+      console.log('Form state:', form);
+      console.log('Custom position:', customPosition);
+      console.log('Position to validate:', positionToValidate);
+      
+      const response = await api.post('/hr/employees', payload);
+      console.log('API response:', response);
+      
       toast({ title: 'Success', description: 'Employee created successfully' });
       setLocation('/hr');
-    } catch (error) {
-      toast({ title: 'Error', description: 'Failed to create employee', variant: 'destructive' });
+    } catch (error: any) {
+      console.error('Error creating employee:', error);
+      
+      // Handle specific error types
+      if (error.response?.status === 403) {
+        toast({ 
+          title: 'Permission Denied', 
+          description: error.response?.data?.error || 'You do not have permission to create employees', 
+          variant: 'destructive' 
+        });
+        return;
+      }
+      
+      if (error.response?.status === 401) {
+        toast({ 
+          title: 'Authentication Error', 
+          description: 'Please log in again to continue', 
+          variant: 'destructive' 
+        });
+        setTimeout(() => {
+          window.location.href = '/auth';
+        }, 2000);
+        return;
+      }
+      
+      // Handle token expiration specifically
+      if (error.name === 'TokenExpiredError' || error.message?.includes('Token expired')) {
+        toast({ 
+          title: 'Session Expired', 
+          description: 'Your session has expired. Please log in again.', 
+          variant: 'destructive' 
+        });
+        // Redirect to login after a short delay
+        setTimeout(() => {
+          window.location.href = '/auth';
+        }, 2000);
+        return;
+      }
+      
+      // Handle other errors
+      const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message || 'Failed to create employee';
+      toast({ title: 'Error', description: errorMessage, variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -169,16 +253,10 @@ export default function NewEmployeePage() {
                     </div>
                   )}
                   {Number(currentStep) === 2 && (
-                    <div>
-                      {/* Contact & Location fields */}
-                      {/* ...reuse code from users/new.tsx... */}
-                    </div>
-                  )}
-                  {Number(currentStep) === 3 && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="department">Department</Label>
-                        <Select value={form.department} onValueChange={value => setForm(prev => ({ ...prev, department: value }))}>
+                        <Select value={form.department} onValueChange={value => handleDepartmentChange(value)}>
                           <SelectTrigger>
                             <SelectValue placeholder="Select department" />
                           </SelectTrigger>
@@ -191,16 +269,35 @@ export default function NewEmployeePage() {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="position">Position</Label>
-                        <Input id="position" value={form.position} onChange={handleChange} name="position" required />
+                        {form.department === 'Other' ? (
+                          <>
+                            <Input 
+                              id="customPosition" 
+                              value={customPosition} 
+                              onChange={(e) => setCustomPosition(e.target.value)} 
+                              placeholder="Enter custom position" 
+                              required 
+                            />
+                            <p className="text-sm text-muted-foreground">Enter a custom position for this employee</p>
+                          </>
+                        ) : (
+                          <Input id="position" value={form.position} onChange={handleChange} name="position" required />
+                        )}
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="employmentType">Employment Type</Label>
-                        <Input id="employmentType" value={form.employmentType} onChange={handleChange} name="employmentType" required />
+                        <Input id="employmentType" value={form.employmentType} onChange={handleChange} name="employmentType" />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="salary">Salary</Label>
-                        <Input id="salary" value={form.salary} onChange={handleChange} name="salary" required />
+                        <Input id="salary" value={form.salary} onChange={handleChange} name="salary" />
                       </div>
+                    </div>
+                  )}
+                  {Number(currentStep) === 3 && (
+                    <div>
+                      {/* Contact & Location fields */}
+                      {/* ...reuse code from users/new.tsx... */}
                     </div>
                   )}
                   {Number(currentStep) === 4 && (
@@ -267,7 +364,7 @@ export default function NewEmployeePage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="department">Department</Label>
-                        <Select value={form.department} onValueChange={value => setForm(prev => ({ ...prev, department: value }))}>
+                        <Select value={form.department} onValueChange={value => handleDepartmentChange(value)}>
                           <SelectTrigger>
                             <SelectValue placeholder="Select department" />
                           </SelectTrigger>
@@ -280,15 +377,28 @@ export default function NewEmployeePage() {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="position">Position</Label>
-                        <Input id="position" value={form.position} onChange={handleChange} name="position" required />
+                        {form.department === 'Other' ? (
+                          <>
+                            <Input 
+                              id="customPosition" 
+                              value={customPosition} 
+                              onChange={(e) => setCustomPosition(e.target.value)} 
+                              placeholder="Enter custom position" 
+                              required 
+                            />
+                            <p className="text-sm text-muted-foreground">Enter a custom position for this employee</p>
+                          </>
+                        ) : (
+                          <Input id="position" value={form.position} onChange={handleChange} name="position" required />
+                        )}
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="employmentType">Employment Type</Label>
-                        <Input id="employmentType" value={form.employmentType} onChange={handleChange} name="employmentType" required />
+                        <Input id="employmentType" value={form.employmentType} onChange={handleChange} name="employmentType" />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="salary">Salary</Label>
-                        <Input id="salary" value={form.salary} onChange={handleChange} name="salary" required />
+                        <Input id="salary" value={form.salary} onChange={handleChange} name="salary" />
                       </div>
                     </div>
                   )}

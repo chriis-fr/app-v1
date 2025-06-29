@@ -58,13 +58,7 @@ export default function Sidebar() {
         id: 'hr',
         name: 'HR Management',
         icon: Users,
-        route: '/dashboard/hr/info',
-        subItems: [
-          { name: 'Employees', route: '/hr', icon: Users },
-          { name: 'Payroll', route: '/dashboard/hr/payroll', icon: DollarSign },
-          { name: 'Attendance', route: '/dashboard/hr/attendance', icon: Clock },
-          // Add more HR submodules as needed
-        ]
+        route: '/hr'
       },
       { id: 'inventory', name: 'Inventory', icon: Package, route: '/dashboard/inventory/info' }
     ],
@@ -217,10 +211,10 @@ export default function Sidebar() {
               key={item.id}
               className={clsx(
                 'flex flex-col',
-                item.subItems ? 'relative group' : ''
+                (item as any).subItems ? 'relative group' : ''
               )}
-              onMouseEnter={() => item.subItems && setOpenDropdown(item.id)}
-              onMouseLeave={() => item.subItems && setOpenDropdown(null)}
+              onMouseEnter={() => (item as any).subItems && setOpenDropdown(item.id)}
+              onMouseLeave={() => (item as any).subItems && setOpenDropdown(null)}
             >
               <div
                 className={clsx(
@@ -231,12 +225,12 @@ export default function Sidebar() {
               >
                 <item.icon className="h-5 w-5 text-gray-400" />
                 <span className="text-sm text-gray-600">{item.name}</span>
-                {item.subItems && <ChevronDown className="h-4 w-4 ml-auto text-gray-400" />}
+                {(item as any).subItems && <ChevronDown className="h-4 w-4 ml-auto text-gray-400" />}
               </div>
               {/* For admins, show shortcuts to subItems/components below the module name */}
-              {user?.role === 'admin' && item.subItems && (
+              {user?.role === 'admin' && (item as any).subItems && (
                 <div className="ml-8 mt-1 space-y-1">
-                  {item.subItems.map((sub) => (
+                  {(item as any).subItems.map((sub: any) => (
                     <div
                       key={sub.route}
                       className="flex items-center gap-2 px-2 py-1 rounded cursor-pointer text-gray-600 text-xs"
@@ -248,9 +242,9 @@ export default function Sidebar() {
                   ))}
                 </div>
               )}
-              {item.subItems && openDropdown === item.id && (
+              {(item as any).subItems && openDropdown === item.id && (
                 <div className="absolute left-0 top-full mt-1 w-48 bg-white border rounded-lg shadow-lg z-50 py-2">
-                  {item.subItems.map((sub) => (
+                  {(item as any).subItems.map((sub: any) => (
                     <div
                       key={sub.route}
                       className="flex items-center gap-2 px-4 py-2 hover:bg-gray-50 cursor-pointer"
@@ -285,10 +279,10 @@ export default function Sidebar() {
                 key={item.id}
                 className={clsx(
                   'flex flex-col',
-                  item.subItems ? 'relative group' : ''
+                  (item as any).subItems ? 'relative group' : ''
                 )}
-                onMouseEnter={() => item.subItems && setOpenDropdown(item.id)}
-                onMouseLeave={() => item.subItems && setOpenDropdown(null)}
+                onMouseEnter={() => (item as any).subItems && setOpenDropdown(item.id)}
+                onMouseLeave={() => (item as any).subItems && setOpenDropdown(null)}
               >
                 <div
                   className={clsx(
@@ -299,11 +293,11 @@ export default function Sidebar() {
                 >
                   <item.icon className="h-5 w-5 text-gray-400" />
                   <span className="text-sm text-gray-600">{item.name}</span>
-                  {item.subItems && <ChevronDown className="h-4 w-4 ml-auto text-gray-400" />}
+                  {(item as any).subItems && <ChevronDown className="h-4 w-4 ml-auto text-gray-400" />}
                 </div>
-                {item.subItems && openDropdown === item.id && (
+                {(item as any).subItems && openDropdown === item.id && (
                   <div className="absolute left-0 top-full mt-1 w-48 bg-white border rounded-lg shadow-lg z-50 py-2">
-                    {item.subItems.map((sub) => (
+                    {(item as any).subItems.map((sub: any) => (
                       <div
                         key={sub.route}
                         className="flex items-center gap-2 px-4 py-2 hover:bg-gray-50 cursor-pointer"
@@ -328,10 +322,10 @@ export default function Sidebar() {
                 key={item.id}
                 className={clsx(
                   'flex flex-col',
-                  item.subItems ? 'relative group' : ''
+                  (item as any).subItems ? 'relative group' : ''
                 )}
-                onMouseEnter={() => item.subItems && setOpenDropdown(item.id)}
-                onMouseLeave={() => item.subItems && setOpenDropdown(null)}
+                onMouseEnter={() => (item as any).subItems && setOpenDropdown(item.id)}
+                onMouseLeave={() => (item as any).subItems && setOpenDropdown(null)}
               >
                 <div
                   className={clsx(
@@ -342,11 +336,11 @@ export default function Sidebar() {
                 >
                   <item.icon className="h-5 w-5 text-gray-400" />
                   <span className="text-sm text-gray-600">{item.name}</span>
-                  {item.subItems && <ChevronDown className="h-4 w-4 ml-auto text-gray-400" />}
+                  {(item as any).subItems && <ChevronDown className="h-4 w-4 ml-auto text-gray-400" />}
                 </div>
-                {item.subItems && openDropdown === item.id && (
+                {(item as any).subItems && openDropdown === item.id && (
                   <div className="absolute left-0 top-full mt-1 w-48 bg-white border rounded-lg shadow-lg z-50 py-2">
-                    {item.subItems.map((sub) => (
+                    {(item as any).subItems.map((sub: any) => (
                       <div
                         key={sub.route}
                         className="flex items-center gap-2 px-4 py-2 hover:bg-gray-50 cursor-pointer"
@@ -371,10 +365,10 @@ export default function Sidebar() {
                 key={item.id}
                 className={clsx(
                   'flex flex-col',
-                  item.subItems ? 'relative group' : ''
+                  (item as any).subItems ? 'relative group' : ''
                 )}
-                onMouseEnter={() => item.subItems && setOpenDropdown(item.id)}
-                onMouseLeave={() => item.subItems && setOpenDropdown(null)}
+                onMouseEnter={() => (item as any).subItems && setOpenDropdown(item.id)}
+                onMouseLeave={() => (item as any).subItems && setOpenDropdown(null)}
               >
                 <div
                   className={clsx(
@@ -385,11 +379,11 @@ export default function Sidebar() {
                 >
                   <item.icon className="h-5 w-5 text-gray-400" />
                   <span className="text-sm text-gray-600">{item.name}</span>
-                  {item.subItems && <ChevronDown className="h-4 w-4 ml-auto text-gray-400" />}
+                  {(item as any).subItems && <ChevronDown className="h-4 w-4 ml-auto text-gray-400" />}
                 </div>
-                {item.subItems && openDropdown === item.id && (
+                {(item as any).subItems && openDropdown === item.id && (
                   <div className="absolute left-0 top-full mt-1 w-48 bg-white border rounded-lg shadow-lg z-50 py-2">
-                    {item.subItems.map((sub) => (
+                    {(item as any).subItems.map((sub: any) => (
                       <div
                         key={sub.route}
                         className="flex items-center gap-2 px-4 py-2 hover:bg-gray-50 cursor-pointer"
@@ -414,10 +408,10 @@ export default function Sidebar() {
                 key={item.id}
                 className={clsx(
                   'flex flex-col',
-                  item.subItems ? 'relative group' : ''
+                  (item as any).subItems ? 'relative group' : ''
                 )}
-                onMouseEnter={() => item.subItems && setOpenDropdown(item.id)}
-                onMouseLeave={() => item.subItems && setOpenDropdown(null)}
+                onMouseEnter={() => (item as any).subItems && setOpenDropdown(item.id)}
+                onMouseLeave={() => (item as any).subItems && setOpenDropdown(null)}
               >
                 <div
                   className={clsx(
@@ -428,11 +422,11 @@ export default function Sidebar() {
                 >
                   <item.icon className="h-5 w-5 text-gray-400" />
                   <span className="text-sm text-gray-600">{item.name}</span>
-                  {item.subItems && <ChevronDown className="h-4 w-4 ml-auto text-gray-400" />}
+                  {(item as any).subItems && <ChevronDown className="h-4 w-4 ml-auto text-gray-400" />}
                 </div>
-                {item.subItems && openDropdown === item.id && (
+                {(item as any).subItems && openDropdown === item.id && (
                   <div className="absolute left-0 top-full mt-1 w-48 bg-white border rounded-lg shadow-lg z-50 py-2">
-                    {item.subItems.map((sub) => (
+                    {(item as any).subItems.map((sub: any) => (
                       <div
                         key={sub.route}
                         className="flex items-center gap-2 px-4 py-2 hover:bg-gray-50 cursor-pointer"
@@ -457,10 +451,10 @@ export default function Sidebar() {
                 key={item.id}
                 className={clsx(
                   'flex flex-col',
-                  item.subItems ? 'relative group' : ''
+                  (item as any).subItems ? 'relative group' : ''
                 )}
-                onMouseEnter={() => item.subItems && setOpenDropdown(item.id)}
-                onMouseLeave={() => item.subItems && setOpenDropdown(null)}
+                onMouseEnter={() => (item as any).subItems && setOpenDropdown(item.id)}
+                onMouseLeave={() => (item as any).subItems && setOpenDropdown(null)}
               >
                 <div
                   className={clsx(
@@ -471,11 +465,11 @@ export default function Sidebar() {
                 >
                   <item.icon className="h-5 w-5 text-gray-400" />
                   <span className="text-sm text-gray-600">{item.name}</span>
-                  {item.subItems && <ChevronDown className="h-4 w-4 ml-auto text-gray-400" />}
+                  {(item as any).subItems && <ChevronDown className="h-4 w-4 ml-auto text-gray-400" />}
                 </div>
-                {item.subItems && openDropdown === item.id && (
+                {(item as any).subItems && openDropdown === item.id && (
                   <div className="absolute left-0 top-full mt-1 w-48 bg-white border rounded-lg shadow-lg z-50 py-2">
-                    {item.subItems.map((sub) => (
+                    {(item as any).subItems.map((sub: any) => (
                       <div
                         key={sub.route}
                         className="flex items-center gap-2 px-4 py-2 hover:bg-gray-50 cursor-pointer"

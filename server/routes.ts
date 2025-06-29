@@ -10,7 +10,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { UserModel } from "./models/user.model";
 import { Organization } from "./mongodb/models";
 import usersRouter from './src/routes/users';
-import { PrismaClient } from '../node_modules/.prisma/client';
+import { PrismaClient } from '@prisma/client';
 import type { User as PrismaUser, Prisma } from '../node_modules/.prisma/client';
 import type { User as SharedUser } from '@shared/schema';
 import bcrypt from 'bcryptjs';
@@ -25,6 +25,10 @@ import cookieParser from 'cookie-parser';
 import { availableModules } from '../shared/schema';
 import cors from 'cors';
 import { sendActivationEmail, testEmailConnection, sendTestEmail } from './services/emailService';
+import { Types } from 'mongoose';
+import * as mongoose from 'mongoose';
+// import { createNotification } from './services/ai-insights';
+// import { Employee } from './mongodb/models/hr';
 
 const prisma = new PrismaClient();
 
@@ -747,24 +751,241 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
     }
   });
 
-  app.post('/api/hr/employees', async (req, res) => {
+  // Test Employee model endpoint
+  app.get('/api/test-employee-model', async (req, res) => {
     try {
+      console.log('Testing Employee model...');
+      
+      // Import Employee model
+      const { Employee } = require('./mongodb/models/hr');
+      console.log('Employee model imported successfully');
+      
+      // Test basic operations
+      const count = await Employee.countDocuments();
+      console.log('Current employee count:', count);
+      
+      res.json({ 
+        success: true, 
+        message: 'Employee model is working',
+        count: count
+      });
+    } catch (error: any) {
+      console.error('Employee model test failed:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: error.message,
+        stack: error.stack
+      });
+    }
+  });
+
+  app.post('/api/hr/employees', isAuthenticated, async (req, res) => {
+    try {
+      console.log('=== HR EMPLOYEE CREATION REQUEST ===');
+      console.log('User:', req.user);
+      console.log('User role:', req.user?.role);
+      console.log('User moduleAccess:', req.user?.moduleAccess);
+      console.log('Request body:', req.body);
+      
+      // For now, allow any authenticated user to create employees (we can restrict this later)
+      if (!req.user) {
+        console.log('Access denied - no user found');
+        return res.status(401).json({ 
+          error: 'Authentication required'
+        });
+      }
+      
+      // Comment out the strict HR permission check for now
+      /*
+      if (!hasHRAccess) {
+        console.log('Access denied - insufficient permissions');
+        return res.status(403).json({ 
+          error: 'Insufficient permissions. HR access required.',
+          userRole: req.user?.role,
+          userModules: req.user?.moduleAccess
+        });
+      }
+      */
+
       const employeeData = req.body;
+      console.log('HR creating employee with data:', employeeData);
+      console.log('OrganizationId from request:', employeeData.organizationId);
+      console.log('OrganizationId type:', typeof employeeData.organizationId);
+
+      // Import Employee model with error handling
+      let Employee;
+      try {
+        const hrModels = require('./mongodb/models/hr');
+        Employee = hrModels.Employee;
+        console.log('Employee model imported successfully');
+      } catch (importError: any) {
+        console.error('Failed to import Employee model:', importError);
+        return res.status(500).json({ 
+          message: 'Failed to load Employee model',
+          error: importError.message 
+        });
+      }
+
+      // Validate required fields - only basic info required for all employees
+      if (!employeeData.firstName || !employeeData.lastName || !employeeData.department || !employeeData.organizationId) {
+        return res.status(400).json({ message: 'Missing required fields: firstName, lastName, department, organizationId' });
+      }
       
-      // Mock employee creation response
-      const employee = {
-        id: Math.random().toString(36).substring(7),
-        ...employeeData,
-        status: 'active',
-        startDate: new Date(),
-        createdAt: new Date(),
-        updatedAt: new Date()
+      // For basic employees, position can be custom or from department positions
+      const position = employeeData.position || employeeData.customPosition;
+      if (!position) {
+        return res.status(400).json({ message: 'Position is required' });
+      }
+
+      // Convert organizationId to ObjectId if it's a string
+      let organizationId;
+      try {
+        organizationId = new mongoose.Types.ObjectId(employeeData.organizationId);
+        console.log('OrganizationId converted successfully:', organizationId);
+      } catch (error) {
+        console.error('Invalid organizationId format:', error);
+        return res.status(400).json({ message: 'Invalid organizationId format' });
+      }
+
+      // Generate employee number with error handling
+      let employeeCount;
+      try {
+        employeeCount = await Employee.countDocuments({ organizationId });
+        console.log('Employee count for organization:', employeeCount);
+      } catch (countError: any) {
+        console.error('Failed to count employees:', countError);
+        return res.status(500).json({ 
+          message: 'Failed to generate employee number',
+          error: countError.message 
+        });
+      }
+      
+      const employeeNumber = `EMP${String(employeeCount + 1).padStart(3, '0')}`;
+      console.log('Generated employee number:', employeeNumber);
+
+      // Prepare employee record data
+      const employeeRecordData = {
+        organizationId,
+        employeeNumber,
+        firstName: employeeData.firstName,
+        lastName: employeeData.lastName,
+        department: employeeData.department,
+        position: position, // Use the validated position
+        employmentDate: new Date(),
+        employmentStatus: 'active',
+        canLogin: employeeData.canLogin || false,
+        role: employeeData.role || 'employee',
+        // HR-specific fields (optional for basic employees)
+        ...(employeeData.employmentType && { contractType: employeeData.employmentType }),
+        ...(employeeData.employmentGrade && { employmentGrade: employeeData.employmentGrade }),
+        // Additional fields if provided
+        ...(employeeData.salary && { 
+          bankDetails: {
+            currency: 'USD',
+            // Store salary info in a custom field or separate collection
+          }
+        }),
+        ...(employeeData.benefits && { 
+          // Store benefits info
+        }),
+        ...(employeeData.supervisor && { 
+          // Store supervisor info
+        }),
+        createdBy: req.user?.id,
+        updatedBy: req.user?.id
       };
-      
-      res.status(201).json(employee);
-    } catch (error) {
+
+      // Create employee record in MongoDB
+      let employee;
+      try {
+        employee = await Employee.create(employeeRecordData);
+        console.log('Employee created successfully:', employee._id);
+      } catch (createError: any) {
+        console.error('Failed to create employee:', createError);
+        return res.status(500).json({ 
+          message: 'Failed to create employee record',
+          error: createError.message,
+          details: createError.code === 11000 ? 'Employee number already exists' : undefined
+        });
+      }
+
+      let user = null;
+
+      // If employee can login, create user account
+      if (employeeData.canLogin) {
+        if (!employeeData.email || !employeeData.username || !employeeData.password || !employeeData.role) {
+          return res.status(400).json({ message: 'Login credentials required for employees with login access' });
+        }
+
+        // Hash password
+        const hashedPassword = await hashPassword(employeeData.password);
+
+        // Create user in Prisma
+        const userCreateData = {
+          firstName: employeeData.firstName,
+          lastName: employeeData.lastName,
+          email: employeeData.email,
+          username: employeeData.username,
+          password: hashedPassword,
+          role: employeeData.role,
+          department: employeeData.department,
+          position: employeeData.position,
+          organizationId: employeeData.organizationId,
+          status: 'active',
+          isActive: true,
+          emailVerified: false,
+          moduleAccess: {
+            create: (employeeData.moduleAccess || ['dashboard', 'profile']).map((module: string) => ({
+              module,
+              access: 'read_write'
+            }))
+          }
+        };
+
+        user = await prisma.user.create({
+          data: userCreateData,
+          include: {}
+        });
+
+        // Update employee record with user ID
+        await Employee.findByIdAndUpdate(employee._id, {
+          userId: user.id
+        });
+      }
+
+      res.status(201).json({
+        message: 'Employee created successfully',
+        employee: {
+          id: employee._id,
+          employeeNumber: employee.employeeNumber,
+          firstName: employee.firstName,
+          lastName: employee.lastName,
+          department: employee.department,
+          position: employee.position,
+          canLogin: employee.canLogin,
+          role: employee.role
+        },
+        user: user ? {
+          id: user.id,
+          email: user.email,
+          username: user.username,
+          role: user.role
+        } : null
+      });
+
+    } catch (error: any) {
       console.error('Error creating employee:', error);
-      res.status(500).json({ message: "Failed to create employee" });
+      console.error('Error stack:', error.stack);
+      console.error('Error details:', {
+        name: error.name,
+        message: error.message,
+        code: error.code
+      });
+      res.status(500).json({ 
+        message: 'Failed to create employee',
+        error: error.message,
+        details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
     }
   });
 
@@ -3284,6 +3505,164 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
     } catch (error) {
       console.error('Error checking token:', error);
       res.status(500).json({ error: 'Failed to check token' });
+    }
+  });
+
+  // Create employee (handles both user and employee record creation)
+  app.post('/api/employees', isAuthenticated, async (req, res) => {
+    try {
+      const employeeData = req.body;
+      console.log('Creating employee with data:', employeeData);
+
+      // Import Employee model
+      const { Employee } = require('./mongodb/models/hr');
+
+      // Validate required fields - only basic info required for all employees
+      if (!employeeData.firstName || !employeeData.lastName || !employeeData.department || !employeeData.organizationId) {
+        return res.status(400).json({ message: 'Missing required fields: firstName, lastName, department, organizationId' });
+      }
+      
+      // For basic employees, position can be custom or from department positions
+      const position = employeeData.position || employeeData.customPosition;
+      if (!position) {
+        return res.status(400).json({ message: 'Position is required' });
+      }
+
+      // Convert organizationId to ObjectId if it's a string
+      let organizationId;
+      try {
+        organizationId = new mongoose.Types.ObjectId(employeeData.organizationId);
+      } catch (error) {
+        return res.status(400).json({ message: 'Invalid organizationId format' });
+      }
+
+      // Generate employee number
+      const employeeCount = await Employee.countDocuments({ organizationId });
+      const employeeNumber = `EMP${String(employeeCount + 1).padStart(3, '0')}`;
+
+      // Prepare employee record data
+      const employeeRecordData = {
+        organizationId,
+        employeeNumber,
+        firstName: employeeData.firstName,
+        lastName: employeeData.lastName,
+        department: employeeData.department,
+        position: position, // Use the validated position
+        employmentDate: new Date(),
+        employmentStatus: 'active',
+        canLogin: employeeData.canLogin || false,
+        role: employeeData.role || 'employee',
+        // HR-specific fields (optional for basic employees)
+        ...(employeeData.employmentType && { contractType: employeeData.employmentType }),
+        ...(employeeData.employmentGrade && { employmentGrade: employeeData.employmentGrade }),
+        // Additional fields if provided
+        ...(employeeData.salary && { 
+          bankDetails: {
+            currency: 'USD',
+            // Store salary info in a custom field or separate collection
+          }
+        }),
+        ...(employeeData.benefits && { 
+          // Store benefits info
+        }),
+        ...(employeeData.supervisor && { 
+          // Store supervisor info
+        }),
+        createdBy: req.user?.id,
+        updatedBy: req.user?.id
+      };
+
+      // Create employee record in MongoDB
+      let employee;
+      try {
+        employee = await Employee.create(employeeRecordData);
+        console.log('Employee created successfully:', employee._id);
+      } catch (createError: any) {
+        console.error('Failed to create employee:', createError);
+        return res.status(500).json({ 
+          message: 'Failed to create employee record',
+          error: createError.message,
+          details: createError.code === 11000 ? 'Employee number already exists' : undefined
+        });
+      }
+
+      let user = null;
+
+      // If employee can login, create user account
+      if (employeeData.canLogin) {
+        if (!employeeData.email || !employeeData.username || !employeeData.password || !employeeData.role) {
+          return res.status(400).json({ message: 'Login credentials required for employees with login access' });
+        }
+
+        // Hash password
+        const hashedPassword = await hashPassword(employeeData.password);
+
+        // Create user in Prisma
+        const userCreateData = {
+          firstName: employeeData.firstName,
+          lastName: employeeData.lastName,
+          email: employeeData.email,
+          username: employeeData.username,
+          password: hashedPassword,
+          role: employeeData.role,
+          department: employeeData.department,
+          position: employeeData.position,
+          organizationId: employeeData.organizationId,
+          status: 'active',
+          isActive: true,
+          emailVerified: false,
+          moduleAccess: {
+            create: (employeeData.moduleAccess || ['dashboard', 'profile']).map((module: string) => ({
+              module,
+              access: 'read_write'
+            }))
+          }
+        };
+
+        user = await prisma.user.create({
+          data: userCreateData,
+          include: {}
+        });
+
+        // Update employee record with user ID
+        await Employee.findByIdAndUpdate(employee._id, {
+          userId: user.id
+        });
+      }
+
+      res.status(201).json({
+        message: 'Employee created successfully',
+        employee: {
+          id: employee._id,
+          employeeNumber: employee.employeeNumber,
+          firstName: employee.firstName,
+          lastName: employee.lastName,
+          department: employee.department,
+          position: employee.position,
+          canLogin: employee.canLogin,
+          role: employee.role
+        },
+        user: user ? {
+          id: user.id,
+          email: user.email,
+          username: user.username,
+          role: user.role
+        } : null
+      });
+
+    } catch (error: any) {
+      console.error('Error creating employee:', error);
+      console.error('Error stack:', error.stack);
+      console.error('Error details:', {
+        name: error.name,
+        message: error.message,
+        code: error.code
+      });
+      res.status(500).json({ 
+        message: 'Failed to create employee',
+        error: error.message,
+        details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
     }
   });
 

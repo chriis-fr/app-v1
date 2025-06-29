@@ -73,7 +73,8 @@ export const departments = [
   'IT',
   'Customer Support',
   'Product',
-  'Design'
+  'Design',
+  'Other'
 ] as const;
 
 // ---------------------------------
@@ -183,6 +184,9 @@ export const departmentPositions = {
     'Product Designer',
     'Visual Designer',
     'Design Systems Manager'
+  ],
+  'Other': [
+    'Custom Position'
   ]
 } as const;
 

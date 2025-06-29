@@ -100,6 +100,20 @@ function App() {
             <Route path="/hr/employees/:id" component={EmployeeHRDetail} />
             <ProtectedRoute path="/hr/new" component={NewEmployeePage} requiredModule="hr" />
             
+            {/* HR Submodule Routes - All redirect to main HR page */}
+            <ProtectedRoute path="/dashboard/hr/attendance" component={HRPage} requiredModule="hr" />
+            <ProtectedRoute path="/dashboard/hr/payroll" component={HRPage} requiredModule="hr" />
+            <ProtectedRoute path="/dashboard/hr/hiring" component={HRPage} requiredModule="hr" />
+            <ProtectedRoute path="/dashboard/hr/employees" component={HRPage} requiredModule="hr" />
+            <ProtectedRoute path="/dashboard/hr/time-management" component={HRPage} requiredModule="hr" />
+            <ProtectedRoute path="/dashboard/hr/leave-management" component={HRPage} requiredModule="hr" />
+            <ProtectedRoute path="/dashboard/hr/asset-management" component={HRPage} requiredModule="hr" />
+            <ProtectedRoute path="/dashboard/hr/calendar" component={HRPage} requiredModule="hr" />
+            <ProtectedRoute path="/dashboard/hr/expenses" component={HRPage} requiredModule="hr" />
+            <ProtectedRoute path="/dashboard/hr/meeting-room" component={HRPage} requiredModule="hr" />
+            <ProtectedRoute path="/dashboard/hr/activity-logs" component={HRPage} requiredModule="hr" />
+            <ProtectedRoute path="/dashboard/hr/settings" component={HRPage} requiredModule="hr" />
+            
             {/* HR Task Management Routes */}
             <ProtectedRoute path="/hr/tasks" component={TasksPage} requiredModule="hr" />
             <ProtectedRoute path="/hr/tasks/new" component={TasksPage} requiredModule="hr" />

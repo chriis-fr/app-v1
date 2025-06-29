@@ -430,6 +430,81 @@ export function setupAuth(app: Express) {
     });
   });
 
+  // Refresh token endpoint
+  app.post("/api/auth/refresh", async (req, res) => {
+    try {
+      const currentToken = req.cookies?.token || req.cookies?.auth_token || req.headers.authorization?.split(' ')[1];
+      
+      if (!currentToken) {
+        return res.status(401).json({ error: 'No token provided' });
+      }
+
+      // Verify the current token (even if expired, we can still extract user info)
+      let decoded;
+      try {
+        decoded = jwt.verify(currentToken, process.env.JWT_SECRET || 'your-secret-key') as any;
+      } catch (jwtError: any) {
+        // If token is expired, try to decode it without verification to get user info
+        if (jwtError.name === 'TokenExpiredError') {
+          decoded = jwt.decode(currentToken) as any;
+        } else {
+          return res.status(401).json({ error: 'Invalid token' });
+        }
+      }
+
+      if (!decoded || !decoded.id) {
+        return res.status(401).json({ error: 'Invalid token payload' });
+      }
+
+      // Get the user from database
+      const user = await prisma.user.findUnique({
+        where: { id: decoded.id },
+        include: { organization: true }
+      });
+
+      if (!user) {
+        return res.status(401).json({ error: 'User not found' });
+      }
+
+      // Generate new token
+      const newToken = jwt.sign(
+        {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+          organizationId: user.organizationId,
+          isOwner: user.isOwner ?? false
+        },
+        process.env.JWT_SECRET || 'your-secret-key',
+        { expiresIn: '24h' }
+      );
+
+      // Set new token in cookies
+      res.cookie('token', newToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+      });
+
+      res.cookie('auth_token', newToken, {
+        httpOnly: false,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 24 * 60 * 60 * 1000
+      });
+
+      // Return new token
+      res.json({ 
+        message: 'Token refreshed successfully',
+        token: newToken
+      });
+    } catch (error) {
+      console.error('Token refresh error:', error);
+      res.status(500).json({ error: 'Failed to refresh token' });
+    }
+  });
+
   app.get("/api/auth/me", async (req, res) => {
     if (!req.user) {
       return res.status(401).json({ message: 'Not authenticated' });

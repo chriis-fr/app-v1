@@ -5,7 +5,7 @@ export interface IUser extends Document {
   password: string;
   firstName: string;
   lastName: string;
-  role: 'owner' | 'admin' | 'manager' | 'employee' | 'contractor' | 'vendor_admin' | 'vendor_manager' | 'vendor_employee';
+  role: 'owner' | 'admin' | 'hr' | 'manager' | 'employee' | 'contractor' | 'vendor_admin' | 'vendor_manager' | 'vendor_employee';
   organizationId: mongoose.Types.ObjectId;
   department: string;
   position: string;
@@ -44,7 +44,7 @@ const userSchema = new Schema<IUser>({
   },
   role: {
     type: String,
-    enum: ['owner', 'admin', 'manager', 'employee', 'contractor', 'vendor_admin', 'vendor_manager', 'vendor_employee'],
+    enum: ['owner', 'admin', 'hr', 'manager', 'employee', 'contractor', 'vendor_admin', 'vendor_manager', 'vendor_employee'],
     default: 'employee'
   },
   organizationId: {

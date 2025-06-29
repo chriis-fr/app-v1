@@ -5,10 +5,10 @@
   "main": "index.ts",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "tsx watch index.ts",
     "build": "tsc",
     "postinstall": "prisma generate",
-    "start": "tsx src/index.ts",
+    "start": "tsx index.ts",
     "update-users": "tsx scripts/update-users.ts",
     "migrate-users": "tsx scripts/migrate-users.ts"
   },
