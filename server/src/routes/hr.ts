@@ -307,6 +307,7 @@ router.post('/employees', async (req: Request, res: Response) => {
         lastLogin: null,
         createdBy: req.user?.id,
         updatedBy: req.user?.id
+        // Note: Not setting userId field to avoid unique index constraint violation
       };
 
       console.log('HR router: Creating employee record:', employeeData);

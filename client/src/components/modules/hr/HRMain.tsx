@@ -153,18 +153,18 @@ export default function HRMain() {
 
       // Handle responses
       if (employeesResponse.ok) {
-        const employeesData = await employeesResponse.json();
+      const employeesData = await employeesResponse.json();
         setEmployees(employeesData.filter((emp: any) => emp.role !== 'owner'));
       }
 
       if (payrollResponse.ok) {
-        const payrollData = await payrollResponse.json();
-        setPayroll(payrollData);
+      const payrollData = await payrollResponse.json();
+      setPayroll(payrollData);
       }
 
       if (attendanceResponse.ok) {
-        const attendanceData = await attendanceResponse.json();
-        setAttendance(attendanceData);
+      const attendanceData = await attendanceResponse.json();
+      setAttendance(attendanceData);
       }
 
       if (leaveRequestsResponse.ok) {
@@ -389,28 +389,28 @@ export default function HRMain() {
                 <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium">Sick Leave</CardTitle>
-                  </CardHeader>
-                  <CardContent>
+              </CardHeader>
+              <CardContent>
                     <div className="text-2xl font-bold">{leaveBalance.sickLeave}</div>
-                  </CardContent>
-                </Card>
+              </CardContent>
+            </Card>
                 <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium">Marriage Leave</CardTitle>
-                  </CardHeader>
-                  <CardContent>
+              </CardHeader>
+              <CardContent>
                     <div className="text-2xl font-bold">{leaveBalance.marriageLeave}</div>
-                  </CardContent>
-                </Card>
+              </CardContent>
+            </Card>
                 <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium">Unpaid Leave</CardTitle>
-                  </CardHeader>
-                  <CardContent>
+              </CardHeader>
+              <CardContent>
                     <div className="text-2xl font-bold">{leaveBalance.unpaidLeave}</div>
-                  </CardContent>
-                </Card>
-              </div>
+              </CardContent>
+            </Card>
+          </div>
 
               {/* Recent Activity Grid */}
               <div className="grid gap-6 md:grid-cols-2">
@@ -530,36 +530,36 @@ export default function HRMain() {
 
             {/* Employees Tab */}
             <TabsContent value="employees" className="space-y-4">
-              <div className="flex justify-between items-center mb-6 pt-2 mt-2">
-                <h1 className="text-2xl font-bold">Employee Management</h1>
-                <div className="flex gap-2">
-                  <Select value={loginAccessFilter} onValueChange={v => setLoginAccessFilter(v as any)}>
-                    <SelectTrigger className="w-36">
-                      <SelectValue placeholder="Login Access" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Employees</SelectItem>
-                      <SelectItem value="login">With Login</SelectItem>
-                      <SelectItem value="no-login">No Login</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Button onClick={() => setLocation('/hr/new')}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Employee
-                  </Button>
-                </div>
-              </div>
-              <div className="mb-6">
-                <div className="relative">
-                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search employees..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-8"
-                  />
-                </div>
-              </div>
+          <div className="flex justify-between items-center mb-6 pt-2 mt-2">
+            <h1 className="text-2xl font-bold">Employee Management</h1>
+            <div className="flex gap-2">
+              <Select value={loginAccessFilter} onValueChange={v => setLoginAccessFilter(v as any)}>
+                <SelectTrigger className="w-36">
+                  <SelectValue placeholder="Login Access" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Employees</SelectItem>
+                  <SelectItem value="login">With Login</SelectItem>
+                  <SelectItem value="no-login">No Login</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button onClick={() => setLocation('/hr/new')}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Employee
+              </Button>
+            </div>
+          </div>
+          <div className="mb-6">
+            <div className="relative">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search employees..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-8"
+              />
+            </div>
+          </div>
               
               <Card className="shadow-lg border-blue-100">
                 <CardHeader>
@@ -621,7 +621,7 @@ export default function HRMain() {
                       <Package className="mr-2 h-4 w-4" />
                       Manage Assets
                     </Button>
-                  </div>
+                      </div>
                 </CardHeader>
                 <CardContent>
                   <p className="text-muted-foreground">Asset assignment, tracking, maintenance, and return management will be implemented here.</p>
@@ -652,7 +652,7 @@ export default function HRMain() {
               <Card>
                 <CardHeader>
                   <div className="flex justify-between items-center">
-                    <CardTitle>Payroll Management</CardTitle>
+                  <CardTitle>Payroll Management</CardTitle>
                     <Button onClick={() => setLocation('/hr/payroll')}>
                       <DollarSign className="mr-2 h-4 w-4" />
                       Process Payroll
@@ -804,15 +804,15 @@ export default function HRMain() {
         {/* HR Admin Analytics */}
         {user?.role === 'hr_admin' && (
           <div className="grid gap-4 md:grid-cols-2">
-            <Card>
+              <Card>
               <CardHeader>
                 <CardTitle>Department Distribution</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {loading ? (
-                  renderLoadingState()
+                </CardHeader>
+                <CardContent>
+                  {loading ? (
+                    renderLoadingState()
                 ) : (
-                  <div className="space-y-2">
+                    <div className="space-y-2">
                     {Object.entries(
                       employees.reduce((acc: Record<string, number>, emp: Employee) => {
                         acc[emp.department] = (acc[emp.department] || 0) + 1;
@@ -822,22 +822,22 @@ export default function HRMain() {
                       <div key={dept} className="flex justify-between items-center">
                         <span>{dept}</span>
                         <span className="font-bold">{count}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
 
-            <Card>
+              <Card>
               <CardHeader>
                 <CardTitle>Recent Activity</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {loading ? (
-                  renderLoadingState()
+                </CardHeader>
+                <CardContent>
+                  {loading ? (
+                    renderLoadingState()
                 ) : (
-                  <div className="space-y-2">
+                    <div className="space-y-2">
                     {employees
                       .sort((a, b) => new Date(b.joinDate).getTime() - new Date(a.joinDate).getTime())
                       .slice(0, 5)
@@ -849,11 +849,11 @@ export default function HRMain() {
                           </span>
                         </div>
                       ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
         )}
       </div>
     </DashboardLayout>

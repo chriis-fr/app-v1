@@ -9,50 +9,241 @@ import ModuleLayout from '@/components/layout/ModuleLayout';
 import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/hooks/use-auth';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { availableModules, userRoles, departments } from '@shared/schema';
+import { 
+  availableModules, 
+  userRoles, 
+  departments, 
+  departmentPositions,
+  officeLocations,
+  timezones,
+  getTimezoneOffset
+} from '@shared/schema';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { api } from '@/lib/api';
+import { 
+  Building,
+  Mail,
+  Phone,
+  Shield,
+  User,
+  Briefcase,
+  Calendar,
+  Loader2,
+  Key,
+  MapPin,
+  Clock,
+  Users,
+  FileText,
+  Wallet,
+  Heart,
+  Laptop,
+  GraduationCap,
+  Award,
+  Star,
+  DollarSign,
+  ShieldCheck,
+  FileCheck,
+  Building2,
+  DoorOpen,
+  FileKey,
+  Banknote,
+  FileSpreadsheet,
+  Globe,
+  Map,
+  Home,
+  BuildingIcon,
+  ArrowLeft,
+  ArrowRight,
+  CheckCircle2
+} from 'lucide-react';
+import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
+interface FormData {
+  // Basic Information
+  username: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phoneNumber: string;
+  password: string;
+  role: 'owner' | 'admin' | 'manager' | 'employee' | 'contractor' | 'vendor_admin' | 'vendor_manager' | 'vendor_employee';
+  department: string;
+  position: string;
+  status: 'active' | 'inactive';
+  employeeId?: string;
+  hireDate?: string;
+  managerId?: string;
+  team?: string;
+  vendorId?: string;
+
+  // Location
+  location?: {
+    office?: string;
+    floor?: string;
+    deskNumber?: string;
+  };
+
+  // Work Schedule
+  workSchedule?: {
+    startTime?: string;
+    endTime?: string;
+    timezone?: string;
+  };
+
+  // Emergency Contact
+  emergencyContact?: {
+    name?: string;
+    relationship?: string;
+    phone?: string;
+  };
+
+  // Skills & Education
+  skills?: string[];
+  certifications?: string[];
+  education?: Array<{
+    degree?: string;
+    institution?: string;
+    graduationYear?: string;
+  }>;
+
+  // Performance & Compensation
+  performance?: {
+    lastReviewDate?: string;
+    nextReviewDate?: string;
+    rating?: number;
+  };
+  compensation?: {
+    baseSalary?: number;
+    bonus?: number;
+    stockOptions?: number;
+    currency?: string;
+  };
+
+  // Benefits
+  benefits?: {
+    healthInsurance?: boolean;
+    dentalInsurance?: boolean;
+    visionInsurance?: boolean;
+    retirementPlan?: boolean;
+    lifeInsurance?: boolean;
+  };
+
+  // Equipment
+  equipment?: {
+    laptop?: string;
+    monitor?: string;
+    phone?: string;
+    accessories?: string[];
+  };
+
+  // Access Levels
+  accessLevels?: {
+    systems?: string[];
+    buildings?: string[];
+    rooms?: string[];
+  };
+
+  // Documents
+  documents?: Array<{
+    id?: string;
+    type?: string;
+    url?: string;
+    expiryDate?: string;
+  }>;
+
+  // Module Access & Permissions
+  moduleAccess: string[];
+  permissions: Array<{
+    module: string;
+    actions: string[];
+  }>;
+
+  // Basic employee fields
+  employmentType?: string;
+  salary?: string;
+  canLogin: boolean;
+}
+
+// Add this interface for module permissions
+interface ModulePermission {
+  module: string;
+  role: 'admin' | 'user';
+  permissions: {
+    view: boolean;
+    create: boolean;
+    edit: boolean;
+    delete: boolean;
+    manage: boolean;
+  };
+}
 
 export default function NewEmployeePage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { user: currentUser } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
+  const [currentStep, setCurrentStep] = useState(1);
+  const [customPosition, setCustomPosition] = useState('');
+  const [modulePermissions, setModulePermissions] = useState<Record<string, ModulePermission>>({});
 
-  const [form, setForm] = useState({
+  // Filter roles for HR - they can only create users with roles lower than executives
+  const hrAllowedRoles = userRoles.filter(role => 
+    ['manager', 'employee', 'contractor'].includes(role)
+  );
+
+  // Filter positions to exclude executive positions
+  const hrAllowedPositions = Object.entries(departmentPositions).reduce((acc, [dept, positions]) => {
+    if (dept !== 'Executive') {
+      acc[dept] = positions;
+    }
+    return acc;
+  }, {} as Record<string, readonly string[]>);
+
+  const [form, setForm] = useState<FormData>({
+    username: '',
     firstName: '',
     lastName: '',
     email: '',
-    username: '',
+    phoneNumber: '',
     password: '',
+    role: 'employee',
     department: '',
     position: '',
+    status: 'active',
     employmentType: '',
     salary: '',
-    benefits: '',
-    supervisor: '',
     canLogin: false,
-    role: '',
-    moduleAccess: [] as string[],
+    moduleAccess: [],
+    permissions: [],
+    location: {},
+    workSchedule: {},
+    emergencyContact: {},
+    skills: [],
+    certifications: [],
+    education: [],
+    performance: {},
+    compensation: {},
+    benefits: {},
+    equipment: {},
+    accessLevels: {},
+    documents: []
   });
-  const [loading, setLoading] = useState(false);
-  const [currentStep, setCurrentStep] = useState(1);
-  const [customPosition, setCustomPosition] = useState('');
 
-  // Steps for login-enabled (user) flow
   const userSteps = [
-    { id: 1, title: 'Basic Information' },
-    { id: 2, title: 'Contact & Location' },
-    { id: 3, title: 'Employment Details' },
-    { id: 4, title: 'Access & Permissions' },
-    { id: 5, title: 'Additional Information' },
-    { id: 6, title: 'Review & Confirm' },
+    { id: '1', title: 'Basic Info' },
+    { id: '2', title: 'Work Details' },
+    { id: '3', title: 'Contact & Location' },
+    { id: '4', title: 'Access & Permissions' },
+    { id: '5', title: 'Additional Info' },
+    { id: '6', title: 'Review & Confirm' }
   ];
-  // Steps for employee-only flow
+
   const employeeSteps = [
-    { id: 1, title: 'Basic Information' },
-    { id: 2, title: 'Employment Details' },
-    { id: 3, title: 'Review & Confirm' },
+    { id: '1', title: 'Basic Info' },
+    { id: '2', title: 'Work Details' },
+    { id: '3', title: 'Review & Confirm' }
   ];
 
   if (!currentUser || !['owner', 'admin'].includes(currentUser.role?.toLowerCase())) {
@@ -61,49 +252,171 @@ export default function NewEmployeePage() {
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   const handleToggle = (checked: boolean) => {
-    setForm({ ...form, canLogin: checked });
-  };
-
-  const handleDepartmentChange = (value: string) => {
-    setForm(prev => ({ ...prev, department: value }));
-    // Reset custom position when department changes from "Other"
-    if (value !== 'Other') {
-      setCustomPosition('');
+    setForm(prev => ({ ...prev, canLogin: checked }));
+    if (!checked) {
+      setCurrentStep(1);
     }
   };
 
+  const handleDepartmentChange = (value: string) => {
+    setForm(prev => ({ ...prev, department: value, position: '' }));
+    setCustomPosition('');
+  };
+
   const handleModuleToggle = (module: string) => {
-    setForm((prev) => ({
+    setForm(prev => ({
       ...prev,
       moduleAccess: prev.moduleAccess.includes(module)
-        ? prev.moduleAccess.filter((m) => m !== module)
-        : [...prev.moduleAccess, module],
+        ? prev.moduleAccess.filter(m => m !== module)
+        : [...prev.moduleAccess, module]
     }));
+  };
+
+  const handleModuleRoleChange = (module: string, role: 'admin' | 'user') => {
+    setModulePermissions(prev => ({
+      ...prev,
+      [module]: {
+        ...prev[module],
+        module,
+        role
+      }
+    }));
+  };
+
+  const handlePermissionChange = (
+    module: string,
+    permission: keyof ModulePermission['permissions'],
+    value: boolean
+  ) => {
+    setModulePermissions(prev => ({
+      ...prev,
+      [module]: {
+        ...prev[module],
+        module,
+        permissions: {
+          ...prev[module]?.permissions,
+          [permission]: value
+        }
+      }
+    }));
+  };
+
+  const validateModuleAccess = (role: string, modules: string[]) => {
+    const roleModuleMap: Record<string, string[]> = {
+      owner: [...availableModules],
+      admin: [...availableModules],
+      manager: ['dashboard', 'hr', 'inventory', 'pos', 'crm', 'accounting', 'analytics'],
+      employee: ['dashboard', 'hr', 'inventory', 'pos'],
+      contractor: ['dashboard', 'hr', 'inventory'],
+      vendor_admin: ['dashboard', 'inventory', 'pos'],
+      vendor_manager: ['dashboard', 'inventory', 'pos'],
+      vendor_employee: ['dashboard', 'inventory']
+    };
+
+    const allowedModules = roleModuleMap[role] || [];
+    return modules.filter(module => allowedModules.includes(module));
+  };
+
+  const nextStep = () => {
+    if (currentStep < (form.canLogin ? 6 : 3)) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const prevStep = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setIsLoading(true);
     try {
-      const payload: any = { ...form };
-      
-      // For basic employees (no login), use custom position if department is "Other"
-      if (!form.canLogin && form.department === 'Other') {
-        payload.position = customPosition;
-      }
-      
-      // Remove HR-specific fields that don't exist in User model
-      delete payload.employmentType;
-      delete payload.salary;
-      delete payload.benefits;
-      delete payload.supervisor;
-      delete payload.canLogin;
-      
-      if (!form.canLogin) {
+      if (form.canLogin) {
+        // Create a user (same as users/new)
+        const payload: any = { ...form };
+        
+        // Remove HR-specific fields that don't exist in User model
+        delete payload.employmentType;
+        delete payload.salary;
+        delete payload.canLogin;
+        
+        // Validate required fields for user creation
+        if (!form.email || !form.username || !form.password || !form.role || form.moduleAccess.length === 0) {
+          toast({ title: 'Error', description: 'All login and module fields are required.', variant: 'destructive' });
+          setIsLoading(false);
+          return;
+        }
+        
+        // Get current user's organization ID
+        if (!currentUser?.organizationId) {
+          toast({ title: 'Error', description: 'No organization ID found', variant: 'destructive' });
+          setIsLoading(false);
+          return;
+        }
+        
+        // Validate and set module access based on role
+        const validatedModuleAccess = validateModuleAccess(form.role, form.moduleAccess);
+        
+        // Create the user with the current organization ID and module permissions
+        const newUserData = {
+          ...payload,
+          organizationId: currentUser.organizationId,
+          isOwner: form.role === 'owner',
+          moduleAccess: validatedModuleAccess,
+          permissions: Object.entries(modulePermissions).map(([module, perm]) => ({
+            module,
+            role: perm.role,
+            actions: Object.entries(perm.permissions)
+              .filter(([_, value]) => value)
+              .map(([key]) => key)
+          }))
+        };
+
+        console.log('Creating user with data:', newUserData);
+
+        const response = await fetch('/api/mongodb/users', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(newUserData),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to create user');
+        }
+
+        const createdUser = await response.json();
+        toast({
+          title: 'Success',
+          description: createdUser?.user?._id
+            ? `User created successfully. Employee ID: ${createdUser.user._id}`
+            : 'User created successfully.',
+        });
+        setLocation('/hr');
+      } else {
+        // Create a basic employee (no login access)
+        const payload: any = { ...form };
+        
+        // For basic employees (no login), use custom position if department is "Other"
+        if (!form.canLogin && form.department === 'Other') {
+          payload.position = customPosition;
+        }
+        
+        // Remove HR-specific fields that don't exist in User model
+        delete payload.employmentType;
+        delete payload.salary;
+        delete payload.benefits;
+        delete payload.supervisor;
+        delete payload.canLogin;
+        
         // For basic employees, set default values for required fields
         payload.email = `${form.firstName.toLowerCase()}.${form.lastName.toLowerCase()}@${currentUser?.organization?.name?.toLowerCase().replace(/\s+/g, '') || 'company'}.com`;
         payload.username = `${form.firstName.toLowerCase()}.${form.lastName.toLowerCase()}`;
@@ -113,45 +426,35 @@ export default function NewEmployeePage() {
         payload.status = 'active';
         payload.isActive = true;
         payload.emailVerified = false;
-      } else {
-        if (!form.email || !form.username || !form.password || !form.role || form.moduleAccess.length === 0) {
-          toast({ title: 'Error', description: 'All login and module fields are required.', variant: 'destructive' });
-          setLoading(false);
+        
+        // Validate required fields including custom position for "Other" department
+        const positionToValidate = (!form.canLogin && form.department === 'Other') ? customPosition : form.position;
+        if (!form.firstName || !form.lastName || !form.department || !positionToValidate) {
+          toast({ title: 'Error', description: 'Please fill all required fields.', variant: 'destructive' });
+          setIsLoading(false);
           return;
         }
+        
+        // Get current user's organization ID
+        if (!currentUser?.organizationId) {
+          toast({ title: 'Error', description: 'No organization ID found', variant: 'destructive' });
+          setIsLoading(false);
+          return;
+        }
+        
+        // Add organization ID to payload
+        payload.organizationId = currentUser.organizationId;
+        
+        console.log('Creating employee with payload:', payload);
+        
+        const response = await api.post('/hr/employees', payload);
+        console.log('API response:', response);
+        
+        toast({ title: 'Success', description: 'Employee created successfully' });
+        setLocation('/hr');
       }
-      
-      // Validate required fields including custom position for "Other" department
-      const positionToValidate = (!form.canLogin && form.department === 'Other') ? customPosition : form.position;
-      if (!form.firstName || !form.lastName || !form.department || !positionToValidate) {
-        toast({ title: 'Error', description: 'Please fill all required fields.', variant: 'destructive' });
-        setLoading(false);
-        return;
-      }
-      
-      // Get current user's organization ID
-      if (!currentUser?.organizationId) {
-        toast({ title: 'Error', description: 'No organization ID found', variant: 'destructive' });
-        setLoading(false);
-        return;
-      }
-      
-      // Add organization ID to payload
-      payload.organizationId = currentUser.organizationId;
-      
-      console.log('Creating employee with payload:', payload);
-      console.log('Current user:', currentUser);
-      console.log('Form state:', form);
-      console.log('Custom position:', customPosition);
-      console.log('Position to validate:', positionToValidate);
-      
-      const response = await api.post('/hr/employees', payload);
-      console.log('API response:', response);
-      
-      toast({ title: 'Success', description: 'Employee created successfully' });
-      setLocation('/hr');
     } catch (error: any) {
-      console.error('Error creating employee:', error);
+      console.error('Error creating employee/user:', error);
       
       // Handle specific error types
       if (error.response?.status === 403) {
@@ -190,11 +493,15 @@ export default function NewEmployeePage() {
       }
       
       // Handle other errors
-      const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message || 'Failed to create employee';
+      const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message || 'Failed to create employee/user';
       toast({ title: 'Error', description: errorMessage, variant: 'destructive' });
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
+  };
+
+  const getAvailablePositions = (department: string) => {
+    return hrAllowedPositions[department] || [];
   };
 
   return (
@@ -202,7 +509,7 @@ export default function NewEmployeePage() {
       <div className="container mx-auto py-6 max-w-2xl">
         <Card>
           <CardHeader>
-            <CardTitle>Add Employee</CardTitle>
+            <CardTitle>{form.canLogin ? 'Add User with Login Access' : 'Add Employee'}</CardTitle>
           </CardHeader>
           <CardContent>
             {/* Stepper Navigation */}
@@ -261,7 +568,7 @@ export default function NewEmployeePage() {
                             <SelectValue placeholder="Select department" />
                           </SelectTrigger>
                           <SelectContent>
-                            {departments.map((dept) => (
+                            {departments.filter(dept => dept !== 'Executive').map((dept) => (
                               <SelectItem key={dept} value={dept}>{dept}</SelectItem>
                             ))}
                           </SelectContent>
@@ -281,7 +588,16 @@ export default function NewEmployeePage() {
                             <p className="text-sm text-muted-foreground">Enter a custom position for this employee</p>
                           </>
                         ) : (
-                          <Input id="position" value={form.position} onChange={handleChange} name="position" required />
+                          <Select value={form.position} onValueChange={value => setForm(prev => ({ ...prev, position: value }))}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select position" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {getAvailablePositions(form.department).map((position) => (
+                                <SelectItem key={position} value={position}>{position}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         )}
                       </div>
                       <div className="space-y-2">
@@ -295,30 +611,100 @@ export default function NewEmployeePage() {
                     </div>
                   )}
                   {Number(currentStep) === 3 && (
-                    <div>
-                      {/* Contact & Location fields */}
-                      {/* ...reuse code from users/new.tsx... */}
+                    <div className="space-y-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="phoneNumber">Phone Number</Label>
+                          <Input id="phoneNumber" value={form.phoneNumber} onChange={handleChange} name="phoneNumber" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="office">Office Location</Label>
+                          <Select value={form.location?.office || ''} onValueChange={value => setForm(prev => ({ ...prev, location: { ...prev.location, office: value } }))}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select office" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {officeLocations.map((location) => (
+                                <SelectItem key={location} value={location}>{location}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="floor">Floor</Label>
+                          <Input id="floor" value={form.location?.floor || ''} onChange={(e) => setForm(prev => ({ ...prev, location: { ...prev.location, floor: e.target.value } }))} name="floor" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="deskNumber">Desk Number</Label>
+                          <Input id="deskNumber" value={form.location?.deskNumber || ''} onChange={(e) => setForm(prev => ({ ...prev, location: { ...prev.location, deskNumber: e.target.value } }))} name="deskNumber" />
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-semibold">Work Schedule</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="startTime">Start Time</Label>
+                            <Input id="startTime" type="time" value={form.workSchedule?.startTime || ''} onChange={(e) => setForm(prev => ({ ...prev, workSchedule: { ...prev.workSchedule, startTime: e.target.value } }))} />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="endTime">End Time</Label>
+                            <Input id="endTime" type="time" value={form.workSchedule?.endTime || ''} onChange={(e) => setForm(prev => ({ ...prev, workSchedule: { ...prev.workSchedule, endTime: e.target.value } }))} />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="timezone">Timezone</Label>
+                            <Select value={form.workSchedule?.timezone || ''} onValueChange={value => setForm(prev => ({ ...prev, workSchedule: { ...prev.workSchedule, timezone: value } }))}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select timezone" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {timezones.map((tz) => (
+                                  <SelectItem key={tz} value={tz}>{tz}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-semibold">Emergency Contact</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="emergencyName">Contact Name</Label>
+                            <Input id="emergencyName" value={form.emergencyContact?.name || ''} onChange={(e) => setForm(prev => ({ ...prev, emergencyContact: { ...prev.emergencyContact, name: e.target.value } }))} />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="emergencyRelationship">Relationship</Label>
+                            <Input id="emergencyRelationship" value={form.emergencyContact?.relationship || ''} onChange={(e) => setForm(prev => ({ ...prev, emergencyContact: { ...prev.emergencyContact, relationship: e.target.value } }))} />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="emergencyPhone">Phone</Label>
+                            <Input id="emergencyPhone" value={form.emergencyContact?.phone || ''} onChange={(e) => setForm(prev => ({ ...prev, emergencyContact: { ...prev.emergencyContact, phone: e.target.value } }))} />
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   )}
                   {Number(currentStep) === 4 && (
-                    <div>
-                      {/* Access & Permissions (role, module access, permissions, etc.) */}
+                    <div className="space-y-6">
                       <div className="space-y-2">
                         <Label htmlFor="role">Role</Label>
-                        <Select value={form.role} onValueChange={value => setForm(prev => ({ ...prev, role: value }))}>
+                        <Select value={form.role} onValueChange={value => setForm(prev => ({ ...prev, role: value as any }))}>
                           <SelectTrigger>
                             <SelectValue placeholder="Select role" />
                           </SelectTrigger>
                           <SelectContent>
-                            {userRoles.map((role) => (
+                            {hrAllowedRoles.map((role) => (
                               <SelectItem key={role} value={role}>{role.charAt(0).toUpperCase() + role.slice(1)}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="space-y-2">
+
+                      <div className="space-y-4">
                         <Label>Module Access</Label>
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                           {availableModules.map((module) => (
                             <div key={module} className="flex items-center space-x-2">
                               <Checkbox
@@ -326,23 +712,241 @@ export default function NewEmployeePage() {
                                 checked={form.moduleAccess.includes(module)}
                                 onCheckedChange={() => handleModuleToggle(module)}
                               />
-                              <Label htmlFor={`module-access-${module}`}>{module}</Label>
+                              <Label htmlFor={`module-access-${module}`} className="text-sm">{module}</Label>
                             </div>
                           ))}
                         </div>
                       </div>
+
+                      {form.moduleAccess.length > 0 && (
+                        <div className="space-y-4">
+                          <Label>Module Permissions</Label>
+                          <div className="space-y-4">
+                            {form.moduleAccess.map((module) => (
+                              <div key={module} className="border rounded-lg p-4">
+                                <div className="flex items-center justify-between mb-3">
+                                  <h4 className="font-medium">{module}</h4>
+                                  <Select 
+                                    value={modulePermissions[module]?.role || 'user'} 
+                                    onValueChange={(value) => handleModuleRoleChange(module, value as 'admin' | 'user')}
+                                  >
+                                    <SelectTrigger className="w-32">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="user">User</SelectItem>
+                                      <SelectItem value="admin">Admin</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                                  {(['view', 'create', 'edit', 'delete', 'manage'] as const).map((permission) => (
+                                    <div key={permission} className="flex items-center space-x-2">
+                                      <Checkbox
+                                        id={`${module}-${permission}`}
+                                        checked={modulePermissions[module]?.permissions?.[permission] || false}
+                                        onCheckedChange={(checked) => handlePermissionChange(module, permission, checked as boolean)}
+                                      />
+                                      <Label htmlFor={`${module}-${permission}`} className="text-xs capitalize">{permission}</Label>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                   {Number(currentStep) === 5 && (
-                    <div>
-                      {/* Additional Information (skills, benefits, equipment, etc.) */}
-                      {/* ...reuse code from users/new.tsx... */}
+                    <div className="space-y-6">
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-semibold">Skills & Education</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="skills">Skills (comma-separated)</Label>
+                            <Textarea 
+                              id="skills" 
+                              value={form.skills?.join(', ') || ''} 
+                              onChange={(e) => setForm(prev => ({ ...prev, skills: e.target.value.split(',').map(s => s.trim()).filter(s => s) }))} 
+                              placeholder="e.g., JavaScript, React, Project Management"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="certifications">Certifications (comma-separated)</Label>
+                            <Textarea 
+                              id="certifications" 
+                              value={form.certifications?.join(', ') || ''} 
+                              onChange={(e) => setForm(prev => ({ ...prev, certifications: e.target.value.split(',').map(s => s.trim()).filter(s => s) }))} 
+                              placeholder="e.g., PMP, AWS Certified, Scrum Master"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-semibold">Compensation</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="baseSalary">Base Salary</Label>
+                            <Input 
+                              id="baseSalary" 
+                              type="number" 
+                              value={form.compensation?.baseSalary || ''} 
+                              onChange={(e) => setForm(prev => ({ ...prev, compensation: { ...prev.compensation, baseSalary: Number(e.target.value) } }))} 
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="bonus">Bonus</Label>
+                            <Input 
+                              id="bonus" 
+                              type="number" 
+                              value={form.compensation?.bonus || ''} 
+                              onChange={(e) => setForm(prev => ({ ...prev, compensation: { ...prev.compensation, bonus: Number(e.target.value) } }))} 
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="currency">Currency</Label>
+                            <Select value={form.compensation?.currency || 'USD'} onValueChange={value => setForm(prev => ({ ...prev, compensation: { ...prev.compensation, currency: value } }))}>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="USD">USD</SelectItem>
+                                <SelectItem value="EUR">EUR</SelectItem>
+                                <SelectItem value="GBP">GBP</SelectItem>
+                                <SelectItem value="CAD">CAD</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-semibold">Benefits</h3>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                          {(['healthInsurance', 'dentalInsurance', 'visionInsurance', 'retirementPlan', 'lifeInsurance'] as const).map((benefit) => (
+                            <div key={benefit} className="flex items-center space-x-2">
+                              <Checkbox
+                                id={benefit}
+                                checked={form.benefits?.[benefit] || false}
+                                onCheckedChange={(checked) => setForm(prev => ({ 
+                                  ...prev, 
+                                  benefits: { ...prev.benefits, [benefit]: checked as boolean } 
+                                }))}
+                              />
+                              <Label htmlFor={benefit} className="text-sm capitalize">{benefit.replace(/([A-Z])/g, ' $1').trim()}</Label>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-semibold">Equipment</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="laptop">Laptop</Label>
+                            <Input 
+                              id="laptop" 
+                              value={form.equipment?.laptop || ''} 
+                              onChange={(e) => setForm(prev => ({ ...prev, equipment: { ...prev.equipment, laptop: e.target.value } }))} 
+                              placeholder="e.g., MacBook Pro 16"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="monitor">Monitor</Label>
+                            <Input 
+                              id="monitor" 
+                              value={form.equipment?.monitor || ''} 
+                              onChange={(e) => setForm(prev => ({ ...prev, equipment: { ...prev.equipment, monitor: e.target.value } }))} 
+                              placeholder="e.g., Dell 27&quot; 4K"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="phone">Phone</Label>
+                            <Input 
+                              id="phone" 
+                              value={form.equipment?.phone || ''} 
+                              onChange={(e) => setForm(prev => ({ ...prev, equipment: { ...prev.equipment, phone: e.target.value } }))} 
+                              placeholder="e.g., iPhone 15 Pro"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="accessories">Accessories (comma-separated)</Label>
+                            <Input 
+                              id="accessories" 
+                              value={form.equipment?.accessories?.join(', ') || ''} 
+                              onChange={(e) => setForm(prev => ({ 
+                                ...prev, 
+                                equipment: { 
+                                  ...prev.equipment, 
+                                  accessories: e.target.value.split(',').map(s => s.trim()).filter(s => s) 
+                                } 
+                              }))} 
+                              placeholder="e.g., Keyboard, Mouse, Headphones"
+                            />
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   )}
                   {Number(currentStep) === 6 && (
-                    <div>
-                      {/* Review & Confirm step */}
-                      {/* ...reuse code from users/new.tsx... */}
+                    <div className="space-y-6">
+                      <Alert>
+                        <AlertTitle>Review Employee Information</AlertTitle>
+                        <AlertDescription>
+                          Please review all the information below before creating the employee.
+                        </AlertDescription>
+                      </Alert>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-4">
+                          <h3 className="text-lg font-semibold">Basic Information</h3>
+                          <div className="space-y-2 text-sm">
+                            <p><strong>Name:</strong> {form.firstName} {form.lastName}</p>
+                            <p><strong>Email:</strong> {form.email}</p>
+                            <p><strong>Username:</strong> {form.username}</p>
+                            <p><strong>Phone:</strong> {form.phoneNumber}</p>
+                            <p><strong>Role:</strong> {form.role}</p>
+                            <p><strong>Department:</strong> {form.department}</p>
+                            <p><strong>Position:</strong> {form.position}</p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-4">
+                          <h3 className="text-lg font-semibold">Access & Permissions</h3>
+                          <div className="space-y-2 text-sm">
+                            <p><strong>Module Access:</strong></p>
+                            <ul className="list-disc list-inside ml-2">
+                              {form.moduleAccess.map(module => (
+                                <li key={module}>{module}</li>
+                              ))}
+                            </ul>
+                            <p><strong>Status:</strong> {form.status}</p>
+                          </div>
+                        </div>
+
+                        {form.location?.office && (
+                          <div className="space-y-4">
+                            <h3 className="text-lg font-semibold">Location</h3>
+                            <div className="space-y-2 text-sm">
+                              <p><strong>Office:</strong> {form.location.office}</p>
+                              {form.location.floor && <p><strong>Floor:</strong> {form.location.floor}</p>}
+                              {form.location.deskNumber && <p><strong>Desk:</strong> {form.location.deskNumber}</p>}
+                            </div>
+                          </div>
+                        )}
+
+                        {form.compensation?.baseSalary && (
+                          <div className="space-y-4">
+                            <h3 className="text-lg font-semibold">Compensation</h3>
+                            <div className="space-y-2 text-sm">
+                              <p><strong>Base Salary:</strong> {form.compensation.baseSalary} {form.compensation.currency}</p>
+                              {form.compensation.bonus && <p><strong>Bonus:</strong> {form.compensation.bonus} {form.compensation.currency}</p>}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </>
@@ -369,7 +973,7 @@ export default function NewEmployeePage() {
                             <SelectValue placeholder="Select department" />
                           </SelectTrigger>
                           <SelectContent>
-                            {departments.map((dept) => (
+                            {departments.filter(dept => dept !== 'Executive').map((dept) => (
                               <SelectItem key={dept} value={dept}>{dept}</SelectItem>
                             ))}
                           </SelectContent>
@@ -389,7 +993,16 @@ export default function NewEmployeePage() {
                             <p className="text-sm text-muted-foreground">Enter a custom position for this employee</p>
                           </>
                         ) : (
-                          <Input id="position" value={form.position} onChange={handleChange} name="position" required />
+                          <Select value={form.position} onValueChange={value => setForm(prev => ({ ...prev, position: value }))}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select position" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {getAvailablePositions(form.department).map((position) => (
+                                <SelectItem key={position} value={position}>{position}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         )}
                       </div>
                       <div className="space-y-2">
@@ -416,7 +1029,7 @@ export default function NewEmployeePage() {
                 {((form.canLogin && Number(currentStep) < 6) || (!form.canLogin && Number(currentStep) < 3)) ? (
                   <Button type="button" onClick={() => setCurrentStep(s => Number(s) + 1)}>Next</Button>
                 ) : (
-                  <Button type="submit" disabled={loading}>{loading ? 'Creating...' : 'Create Employee'}</Button>
+                  <Button type="submit" disabled={isLoading}>{isLoading ? 'Creating...' : 'Create Employee'}</Button>
                 )}
               </div>
             </form>

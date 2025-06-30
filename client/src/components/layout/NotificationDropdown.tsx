@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Bell, Calendar, CheckCircle, AlertTriangle, Users, Clock, FileText, DollarSign, Package, Settings, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useAuth } from '@/hooks/use-auth';
 import { useLocation } from 'wouter';
 import { cn } from '@/lib/utils';
+import { useNotifications } from '@/contexts/NotificationContext';
 
 interface Notification {
   id: string;
@@ -30,144 +31,7 @@ export default function NotificationDropdown() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const [isOpen, setIsOpen] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  // Fetch notifications
-  useEffect(() => {
-    if (isOpen) {
-      fetchNotifications();
-    }
-  }, [isOpen]);
-
-  const fetchNotifications = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch('/api/notifications', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setNotifications(data);
-      } else {
-        // Fallback to mock data if API fails
-        setNotifications(generateMockNotifications());
-      }
-    } catch (error) {
-      console.error('Error fetching notifications:', error);
-      setNotifications(generateMockNotifications());
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const generateMockNotifications = (): Notification[] => {
-    const now = new Date();
-    return [
-      {
-        id: '1',
-        type: 'meeting',
-        title: 'Upcoming Team Meeting',
-        message: 'Team standup meeting starts in 15 minutes',
-        timestamp: new Date(now.getTime() - 5 * 60 * 1000),
-        isRead: false,
-        priority: 'high',
-        actionUrl: '/meetings',
-        metadata: { meetingId: 'meeting-1' }
-      },
-      {
-        id: '2',
-        type: 'task',
-        title: 'Task Assignment',
-        message: 'New task assigned: Review Q4 financial reports',
-        timestamp: new Date(now.getTime() - 30 * 60 * 1000),
-        isRead: false,
-        priority: 'medium',
-        actionUrl: '/hr/tasks',
-        metadata: { taskId: 'task-1' }
-      },
-      {
-        id: '3',
-        type: 'approval',
-        title: 'Approval Required',
-        message: 'Invoice #INV-2024-001 requires your approval',
-        timestamp: new Date(now.getTime() - 2 * 60 * 60 * 1000),
-        isRead: false,
-        priority: 'high',
-        actionUrl: '/finance',
-        metadata: { amount: 2500 }
-      },
-      {
-        id: '4',
-        type: 'system',
-        title: 'System Maintenance',
-        message: 'Scheduled maintenance tonight at 2:00 AM UTC',
-        timestamp: new Date(now.getTime() - 4 * 60 * 60 * 1000),
-        isRead: true,
-        priority: 'low'
-      },
-      {
-        id: '5',
-        type: 'user',
-        title: 'New User Registration',
-        message: 'John Smith joined the organization',
-        timestamp: new Date(now.getTime() - 6 * 60 * 60 * 1000),
-        isRead: true,
-        priority: 'low',
-        metadata: { userId: 'user-1', userName: 'John Smith' }
-      },
-      {
-        id: '6',
-        type: 'inventory',
-        title: 'Low Stock Alert',
-        message: 'Product "Premium Widget" is running low on stock',
-        timestamp: new Date(now.getTime() - 8 * 60 * 60 * 1000),
-        isRead: false,
-        priority: 'medium',
-        actionUrl: '/inventory',
-        metadata: { itemCount: 5 }
-      }
-    ];
-  };
-
-  const markAsRead = async (notificationId: string) => {
-    try {
-      await fetch(`/api/notifications/${notificationId}/read`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      setNotifications(prev => 
-        prev.map(notif => 
-          notif.id === notificationId ? { ...notif, isRead: true } : notif
-        )
-      );
-    } catch (error) {
-      console.error('Error marking notification as read:', error);
-    }
-  };
-
-  const markAllAsRead = async () => {
-    try {
-      await fetch('/api/notifications/read-all', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      setNotifications(prev => 
-        prev.map(notif => ({ ...notif, isRead: true }))
-      );
-    } catch (error) {
-      console.error('Error marking all notifications as read:', error);
-    }
-  };
+  const { notifications, unreadCount, loading, markAsRead, markAllAsRead } = useNotifications();
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
@@ -228,8 +92,6 @@ export default function NotificationDropdown() {
     setIsOpen(false);
   };
 
-  const unreadCount = notifications.filter(n => !n.isRead).length;
-
   return (
     <div className="relative">
       <Button
@@ -238,9 +100,9 @@ export default function NotificationDropdown() {
         onClick={() => setIsOpen(!isOpen)}
         className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors"
       >
-        <Bell className="h-5 w-5 text-gray-600" />
+        <Bell className={`h-5 w-5 text-gray-600 ${unreadCount > 0 ? 'animate-pulse' : ''}`} />
         {unreadCount > 0 && (
-          <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
+          <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs bg-blue-500 text-white">
             {unreadCount > 99 ? '99+' : unreadCount}
           </Badge>
         )}
