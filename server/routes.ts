@@ -135,6 +135,21 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
   // Add cookie-parser middleware
   app.use(cookieParser());
 
+  // Mock notification creation function
+  const createNotification = async (data: {
+    type: string;
+    title: string;
+    message: string;
+    userId: string;
+    organizationId: string;
+    priority?: string;
+    actionUrl?: string;
+    metadata?: any;
+  }) => {
+    // Mock implementation - just log the notification
+    console.log('Notification created:', data);
+  };
+
   // Set up authentication routes
   setupAuth(app);
 
@@ -2465,7 +2480,8 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
       }
 
       // Check if user has permission to schedule meetings
-      const canSchedule = req.user.role === 'owner' || req.user.role === 'executive' || req.user.role === 'board' || req.user.role === 'admin';
+      // Allow HR, admin, owner, executive, and board to schedule meetings
+      const canSchedule = ['owner', 'executive', 'board', 'admin', 'hr'].includes(req.user.role);
       if (!canSchedule) {
         return res.status(403).json({ error: 'Insufficient permissions to schedule meetings' });
       }
@@ -2477,7 +2493,7 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
           organizerId: req.user.id,
           organizationId: req.user.organizationId,
           type,
-          status: 'pending_approval', // Requires approval for high-rank meetings
+          status: req.user.role === 'hr' ? 'pending_approval' : 'scheduled', // HR meetings need approval
           startTime: new Date(startTime),
           endTime: new Date(endTime),
           timezone,
@@ -2502,39 +2518,77 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
 
         // Send notifications to attendees
         for (const attendee of attendees) {
-          await createNotification({
-            type: 'meeting',
-            title: 'Meeting Invitation',
-            message: `You have been invited to "${title}" on ${new Date(startTime).toLocaleDateString()}`,
-            userId: attendee.userId,
-            organizationId: req.user.organizationId,
-            priority: 'medium',
-            actionUrl: `/meetings`,
-            metadata: { meetingId: meeting.id }
+          // Get attendee user details
+          const attendeeUser = await prisma.user.findUnique({
+            where: { id: attendee.userId }
           });
+
+          if (attendeeUser) {
+            // Create in-app notification
+            await createNotification({
+              type: 'meeting',
+              title: 'Meeting Invitation',
+              message: `You have been invited to "${title}" on ${new Date(startTime).toLocaleDateString()}`,
+              userId: attendee.userId,
+              organizationId: req.user.organizationId,
+              priority: 'medium',
+              actionUrl: `/meetings`,
+              metadata: { meetingId: meeting.id }
+            });
+
+            // Send email notification
+            const { sendMeetingNotification } = await import('./services/emailService');
+            const meetingDate = new Date(startTime).toLocaleDateString();
+            const meetingTime = new Date(startTime).toLocaleTimeString();
+            const organizerName = `${(req.user as any)?.firstName || ''} ${(req.user as any)?.lastName || ''}`.trim();
+            
+            await sendMeetingNotification(
+              attendeeUser.email,
+              `${attendeeUser.firstName} ${attendeeUser.lastName}`,
+              title,
+              meetingDate,
+              meetingTime,
+              organizerName,
+              location || 'TBD',
+              isVirtual || false,
+              meetingUrl
+            );
+          }
         }
       }
 
-      // Send notification to higher ranks for approval if needed
-      if (['owner', 'executive', 'board'].includes(req.user.role)) {
-        const admins = await prisma.user.findMany({
+      // Send notification to executives for approval if HR created the meeting
+      if (req.user.role === 'hr') {
+        const executives = await prisma.user.findMany({
           where: {
             organizationId: req.user.organizationId,
-            role: 'admin'
+            role: { in: ['owner', 'executive', 'board', 'admin'] }
           }
         });
 
-        for (const admin of admins) {
+        for (const executive of executives) {
+          // Create in-app notification
           await createNotification({
             type: 'approval',
             title: 'Meeting Approval Required',
-            message: `${req.user.email} scheduled a meeting: "${title}"`,
-            userId: admin.id,
+            message: `HR scheduled a meeting: "${title}" - requires your approval`,
+            userId: executive.id,
             organizationId: req.user.organizationId,
             priority: 'high',
             actionUrl: `/meetings`,
             metadata: { meetingId: meeting.id, organizerId: req.user.id }
           });
+
+          // Send email notification to executives
+          const { sendNotificationEmail } = await import('./services/emailService');
+          await sendNotificationEmail(
+            executive.email,
+            `${executive.firstName} ${executive.lastName}`,
+            'Meeting Approval Required',
+            `HR scheduled a meeting: "${title}" on ${new Date(startTime).toLocaleDateString()} at ${new Date(startTime).toLocaleTimeString()}. This meeting requires your approval.`,
+            'approval',
+            '/meetings'
+          );
         }
       }
 
@@ -2558,7 +2612,7 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
       };
 
       // Filter by user's role - owners/executives see all, others see only their meetings
-      if (!['owner', 'executive', 'board', 'admin'].includes(req.user.role)) {
+      if (!['owner', 'executive', 'board', 'admin', 'hr'].includes(req.user.role)) {
         whereClause.OR = [
           { organizerId: req.user.id },
           { attendees: { some: { userId: req.user.id } } }
@@ -2619,7 +2673,7 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
       const { id } = req.params;
       
       // Only higher ranks can approve meetings
-      const canApprove = req.user.role === 'owner' || req.user.role === 'executive' || req.user.role === 'board';
+      const canApprove = req.user.role === 'owner' || req.user.role === 'executive' || req.user.role === 'board' || req.user.role === 'admin';
       if (!canApprove) {
         return res.status(403).json({ error: 'Insufficient permissions to approve meetings' });
       }
@@ -2684,7 +2738,7 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
       }
 
       // Only organizer or higher ranks can update
-      const canUpdate = req.user.id === meeting.organizerId || ['owner', 'executive', 'board', 'admin'].includes(req.user.role);
+      const canUpdate = req.user.id === meeting.organizerId || ['owner', 'executive', 'board', 'admin', 'hr'].includes(req.user.role);
       if (!canUpdate) {
         return res.status(403).json({ error: 'Insufficient permissions to update meeting' });
       }
@@ -2735,7 +2789,7 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
       }
 
       // Only organizer or higher ranks can delete
-      const canDelete = req.user.id === meeting.organizerId || ['owner', 'executive', 'board'].includes(req.user.role);
+      const canDelete = req.user.id === meeting.organizerId || ['owner', 'executive', 'board', 'admin'].includes(req.user.role);
       if (!canDelete) {
         return res.status(403).json({ error: 'Insufficient permissions to delete meeting' });
       }
@@ -2833,836 +2887,6 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
     } catch (error) {
       console.error('Error marking all notifications as read:', error);
       res.status(500).json({ message: "Failed to mark all notifications as read" });
-    }
-  });
-
-  // Mock notification creation function
-  const createNotification = async (data: {
-    type: string;
-    title: string;
-    message: string;
-    userId: string;
-    organizationId: string;
-    priority?: string;
-    actionUrl?: string;
-    metadata?: any;
-  }) => {
-    // Mock implementation - just log the notification
-    console.log('Notification created:', data);
-  };
-
-  // Organization user creation data endpoint
-  app.get('/api/organization/user-creation-data', async (req, res) => {
-    try {
-      if (!req.user || !req.user.organizationId) {
-        return res.status(401).json({ error: 'Not authenticated' });
-      }
-
-      // Get organization data
-      const organization = await prisma.organization.findUnique({
-        where: { id: req.user.organizationId }
-      });
-
-      if (!organization) {
-        return res.status(404).json({ error: 'Organization not found' });
-      }
-
-      // Get all users in the organization
-      const users = await prisma.user.findMany({
-        where: { organizationId: req.user.organizationId },
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          email: true,
-          role: true,
-          department: true,
-          position: true
-        }
-      });
-
-      // Define comprehensive list of departments
-      const allDepartments = [
-        'Executive', 'Engineering', 'Design', 'Product', 'Marketing', 'Sales', 
-        'Customer Success', 'HR', 'Finance', 'Operations', 'Legal', 'IT',
-        'Research & Development', 'Quality Assurance', 'Business Development',
-        'Communications', 'Strategy', 'Compliance', 'Security', 'Facilities'
-      ];
-
-      // Define department-specific positions
-      const departmentSpecificPositions: Record<string, string[]> = {
-        'Executive': ['CEO', 'CTO', 'CFO', 'COO', 'VP', 'Director', 'Senior Director'],
-        'Engineering': ['Software Engineer', 'Senior Engineer', 'Lead Engineer', 'Architect', 'DevOps Engineer', 'QA Engineer', 'System Administrator'],
-        'Design': ['UX Designer', 'UI Designer', 'Product Designer', 'Visual Designer', 'Design Lead', 'Creative Director'],
-        'Product': ['Product Manager', 'Senior Product Manager', 'Product Owner', 'Product Analyst', 'Product Director'],
-        'Marketing': ['Marketing Manager', 'Marketing Specialist', 'Content Creator', 'Social Media Manager', 'Brand Manager', 'Marketing Director'],
-        'Sales': ['Sales Representative', 'Account Manager', 'Sales Manager', 'Business Development', 'Sales Director'],
-        'Customer Success': ['Customer Success Manager', 'Customer Support', 'Account Executive', 'Customer Success Director'],
-        'HR': ['HR Manager', 'HR Specialist', 'Recruiter', 'Talent Acquisition', 'HR Director', 'People Operations'],
-        'Finance': ['Finance Analyst', 'Accountant', 'Controller', 'Finance Manager', 'CFO', 'Financial Analyst'],
-        'Operations': ['Operations Manager', 'Operations Analyst', 'Process Manager', 'Operations Director'],
-        'Legal': ['Legal Counsel', 'Legal Assistant', 'Compliance Officer', 'Legal Director'],
-        'IT': ['IT Manager', 'System Administrator', 'Network Engineer', 'IT Support', 'IT Director'],
-        'Research & Development': ['Research Scientist', 'R&D Manager', 'Research Analyst', 'R&D Director'],
-        'Quality Assurance': ['QA Engineer', 'QA Manager', 'Test Lead', 'QA Director'],
-        'Business Development': ['Business Development Manager', 'Partnership Manager', 'BD Director'],
-        'Communications': ['Communications Manager', 'PR Specialist', 'Internal Communications', 'Communications Director'],
-        'Strategy': ['Strategy Manager', 'Strategic Analyst', 'Strategy Director'],
-        'Compliance': ['Compliance Officer', 'Compliance Manager', 'Compliance Director'],
-        'Security': ['Security Engineer', 'Security Manager', 'CISO', 'Security Director'],
-        'Facilities': ['Facilities Manager', 'Facilities Coordinator', 'Facilities Director']
-      };
-
-      // Group users by department
-      const departmentManagers: Record<string, any[]> = {};
-      const departmentPositions: Record<string, string[]> = {};
-      const departments = new Set<string>();
-
-      // Always include all departments
-      allDepartments.forEach(dept => {
-        departments.add(dept);
-        departmentManagers[dept] = [];
-        // Initialize with department-specific positions
-        departmentPositions[dept] = departmentSpecificPositions[dept] || [];
-      });
-
-      // Group existing users by department and add their positions
-      users.forEach(user => {
-        if (user.department) {
-          if (!departmentManagers[user.department]) {
-            departmentManagers[user.department] = [];
-          }
-          departmentManagers[user.department].push(user);
-
-          if (!departmentPositions[user.department]) {
-            departmentPositions[user.department] = [];
-          }
-          if (user.position && !departmentPositions[user.department].includes(user.position)) {
-            departmentPositions[user.department].push(user.position);
-          }
-        }
-      });
-
-      res.json({
-        departments: Array.from(departments),
-        departmentPositions,
-        departmentManagers,
-        activeModules: organization.activeModules || [],
-        organizationName: organization.name
-      });
-    } catch (error) {
-      console.error('Error fetching organization user creation data:', error);
-      res.status(500).json({ error: 'Failed to fetch organization data' });
-    }
-  });
-
-  // Vendors endpoint
-  app.get('/api/vendors', async (req, res) => {
-    try {
-      if (!req.user || !req.user.organizationId) {
-        return res.status(401).json({ error: 'Not authenticated' });
-      }
-
-      const vendors = await prisma.vendor.findMany({
-        where: { organizationId: req.user.organizationId },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          phone: true,
-          status: true
-        }
-      });
-
-      res.json(vendors);
-    } catch (error) {
-      console.error('Error fetching vendors:', error);
-      res.status(500).json({ error: 'Failed to fetch vendors' });
-    }
-  });
-
-  // Send activation token endpoint
-  app.post('/api/users/:id/send-activation', async (req, res) => {
-    try {
-      if (!req.user || !req.user.organizationId) {
-        return res.status(401).json({ error: 'Not authenticated' });
-      }
-
-      const { id } = req.params;
-
-      // Check if user has permission to activate users
-      const canActivate = req.user.role === 'owner' || req.user.role === 'admin';
-      if (!canActivate) {
-        return res.status(403).json({ error: 'Insufficient permissions to activate users' });
-      }
-
-      // Find the user to activate
-      const userToActivate = await prisma.user.findFirst({
-        where: {
-          id,
-          organizationId: req.user.organizationId
-        }
-      });
-
-      if (!userToActivate) {
-        return res.status(404).json({ error: 'User not found' });
-      }
-
-      if (userToActivate.isActive) {
-        return res.status(400).json({ error: 'User is already active' });
-      }
-
-      // Check if user already has a valid activation token
-      const now = new Date();
-      const hasValidToken = userToActivate.activationToken && 
-                           userToActivate.tokenExpiresAt && 
-                           userToActivate.tokenExpiresAt > now;
-
-      if (hasValidToken) {
-        return res.status(400).json({ 
-          error: 'User already has a valid activation token',
-          tokenExpiresAt: userToActivate.tokenExpiresAt,
-          canResendAfter: userToActivate.tokenExpiresAt
-        });
-      }
-
-      // Generate activation token
-      const activationToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-      const tokenExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-
-      console.log('=== TOKEN GENERATION ===');
-      console.log('Generated Token:', activationToken);
-      console.log('Token Expires:', tokenExpiresAt);
-      console.log('User ID to update:', id);
-      console.log('=======================');
-
-      // Update user with activation token
-      try {
-        const updatedUser = await prisma.user.update({
-          where: { id },
-          data: {
-            activationToken,
-            tokenExpiresAt
-          }
-        });
-
-        console.log('=== TOKEN SAVE SUCCESS ===');
-        console.log('Updated User ID:', updatedUser.id);
-        console.log('Updated User Email:', updatedUser.email);
-        console.log('Saved Token:', updatedUser.activationToken);
-        console.log('Saved Expiry:', updatedUser.tokenExpiresAt);
-        console.log('Token Match:', updatedUser.activationToken === activationToken);
-        console.log('==========================');
-      } catch (updateError) {
-        console.error('=== TOKEN SAVE ERROR ===');
-        console.error('Error updating user with token:', updateError);
-        console.error('User ID:', id);
-        console.error('Generated Token:', activationToken);
-        console.error('Token Expires:', tokenExpiresAt);
-        console.error('========================');
-        
-        // Try to get more info about the user
-        try {
-          const userInfo = await prisma.user.findUnique({
-            where: { id },
-            select: { id: true, email: true, activationToken: true, tokenExpiresAt: true }
-          });
-          console.log('Current user state:', userInfo);
-        } catch (infoError) {
-          console.error('Could not get user info:', infoError);
-        }
-        
-        return res.status(500).json({ error: 'Failed to save activation token' });
-      }
-
-      // Verify the token was saved
-      const updatedUser = await prisma.user.findUnique({
-        where: { id },
-        select: {
-          id: true,
-          email: true,
-          activationToken: true,
-          tokenExpiresAt: true
-        }
-      });
-
-      console.log('=== TOKEN SAVE VERIFICATION ===');
-      console.log('Updated User ID:', updatedUser?.id);
-      console.log('Updated User Email:', updatedUser?.email);
-      console.log('Saved Token:', updatedUser?.activationToken);
-      console.log('Saved Expiry:', updatedUser?.tokenExpiresAt);
-      console.log('Token Match:', updatedUser?.activationToken === activationToken);
-      console.log('================================');
-
-      // Get organization name for email
-      const organization = await prisma.organization.findUnique({
-        where: { id: req.user.organizationId },
-        select: { name: true }
-      });
-
-      const organizationName = organization?.name || 'Your Organization';
-
-      // Send activation email
-      const emailResult = await sendActivationEmail(
-        userToActivate.email,
-        `${userToActivate.firstName} ${userToActivate.lastName}`,
-        activationToken,
-        organizationName
-      );
-
-      // Log the activation attempt
-      console.log('=== ACTIVATION TOKEN GENERATED ===');
-      console.log('User ID:', userToActivate.id);
-      console.log('User Email:', userToActivate.email);
-      console.log('User Name:', `${userToActivate.firstName} ${userToActivate.lastName}`);
-      console.log('Activation Token:', activationToken);
-      console.log('Token Expires:', tokenExpiresAt);
-      console.log('Organization:', req.user.organizationId);
-      console.log('Activated by:', req.user.email);
-      console.log('Current User Role:', req.user.role);
-      console.log('User was inactive:', !userToActivate.isActive);
-      console.log('Email sent:', emailResult.success);
-      if (emailResult.success) {
-        console.log('Email Message ID:', emailResult.messageId);
-      } else {
-        console.log('Email Error:', emailResult.error);
-      }
-      console.log('================================');
-
-      res.json({ 
-        message: emailResult.success 
-          ? 'Activation email sent successfully' 
-          : 'Activation token generated but email failed to send',
-        userId: userToActivate.id,
-        userEmail: userToActivate.email,
-        tokenGenerated: true,
-        emailSent: emailResult.success,
-        emailError: emailResult.error
-      });
-
-    } catch (error) {
-      console.error('Error sending activation token:', error);
-      res.status(500).json({ error: 'Failed to send activation token' });
-    }
-  });
-
-  // Activation endpoint
-  app.post('/api/users/activate', async (req, res) => {
-    try {
-      console.log('🔐 Activation endpoint called');
-      console.log('📧 Request body:', req.body);
-      
-      const { token, password, email } = req.body;
-      
-      if (!token || !password || !email) {
-        console.log('❌ Missing token, password, or email');
-        return res.status(400).json({ error: 'Token, password, and email are required' });
-      }
-      
-      console.log('🔍 Searching for user by email:', email);
-      
-      // First, find the user by email
-      const user = await prisma.user.findFirst({
-        where: {
-          email: email
-        },
-        include: {
-          organization: true
-        }
-      });
-      
-      if (!user) {
-        console.log('❌ User not found with email:', email);
-        return res.status(400).json({ error: 'User not found' });
-      }
-      
-      console.log('✅ User found:', user.email);
-      console.log('🔍 Checking activation token...');
-      
-      // Check if user has the correct activation token and it's not expired
-      if (!user.activationToken || user.activationToken !== token) {
-        console.log('❌ Invalid activation token');
-        return res.status(400).json({ error: 'Invalid activation token' });
-      }
-      
-      if (!user.tokenExpiresAt || user.tokenExpiresAt < new Date()) {
-        console.log('❌ Activation token expired');
-        return res.status(400).json({ error: 'Activation token has expired' });
-      }
-      
-      console.log('✅ Token is valid and not expired');
-      
-      // Hash the new password
-      const hashedPassword = await bcrypt.hash(password, 10);
-      
-      // Update user with new password and activation status using Prisma
-      const updatedUser = await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          password: hashedPassword,
-          isActive: true,
-          emailVerified: true,
-          activationToken: null,
-          tokenExpiresAt: null
-        },
-        include: {
-          organization: true
-        }
-      });
-      
-      // Also sync to MongoDB for consistency
-      try {
-        await UserModel.findOneAndUpdate(
-          { email: user.email },
-          {
-            password: hashedPassword,
-            isActive: true,
-            emailVerified: true,
-            activationToken: null,
-            tokenExpiresAt: null
-          }
-        );
-        console.log('✅ MongoDB user also updated');
-      } catch (mongoError) {
-        console.log('⚠️ MongoDB sync failed (non-critical):', mongoError);
-      }
-      
-      console.log('✅ User activated successfully');
-
-      // Generate JWT token for automatic login
-      const tokenPayload = {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        organizationId: user.organizationId,
-        isOwner: user.role === 'owner'
-      };
-
-      const jwtToken = jwt.sign(
-        tokenPayload,
-        process.env.JWT_SECRET || 'your-secret-key',
-        { expiresIn: '24h' }
-      );
-
-      // Set the token in cookies
-      res.cookie('token', jwtToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 24 * 60 * 60 * 1000 // 24 hours
-      });
-
-      res.cookie('auth_token', jwtToken, {
-        httpOnly: false,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 24 * 60 * 60 * 1000
-      });
-
-      // Return success with user data and token
-      const { password: userPassword, ...userWithoutPassword } = updatedUser;
-      console.log('🎉 Activation completed successfully');
-      res.json({ 
-        message: 'Account activated successfully',
-        user: userWithoutPassword,
-        token: jwtToken
-      });
-    } catch (error) {
-      console.error('❌ Activation error:', error);
-      res.status(500).json({ error: 'Activation failed' });
-    }
-  });
-
-  // Check activation token endpoint (for debugging)
-  app.get('/api/users/:id/activation-status', async (req, res) => {
-    try {
-      if (!req.user || !req.user.organizationId) {
-        return res.status(401).json({ error: 'Not authenticated' });
-      }
-
-      const { id } = req.params;
-
-      // Check if user has permission
-      const canCheck = req.user.role === 'owner' || req.user.role === 'admin';
-      if (!canCheck) {
-        return res.status(403).json({ error: 'Insufficient permissions' });
-      }
-
-      // Find the user in Prisma
-      const user = await prisma.user.findFirst({
-        where: {
-          id,
-          organizationId: req.user.organizationId
-        },
-        select: {
-          id: true,
-          email: true,
-          firstName: true,
-          lastName: true,
-          isActive: true,
-          emailVerified: true,
-          activationToken: true,
-          tokenExpiresAt: true
-        }
-      });
-
-      if (!user) {
-        return res.status(404).json({ error: 'User not found' });
-      }
-
-      const now = new Date();
-      const tokenExpired = user.tokenExpiresAt ? user.tokenExpiresAt < now : true;
-      const hasValidToken = user.activationToken && !tokenExpired;
-
-      res.json({
-        user: {
-          id: user.id,
-          email: user.email,
-          name: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
-          isActive: user.isActive,
-          emailVerified: user.emailVerified
-        },
-        activation: {
-          hasToken: !!user.activationToken,
-          tokenExpired,
-          hasValidToken,
-          expiresAt: user.tokenExpiresAt,
-          canSendNewToken: !hasValidToken
-        }
-      });
-
-    } catch (error) {
-      console.error('Error checking activation status:', error);
-      res.status(500).json({ error: 'Failed to check activation status' });
-    }
-  });
-
-  // Check user in Prisma by email (for debugging)
-  app.get('/api/users/check-prisma/:email', async (req, res) => {
-    try {
-      if (!req.user || !req.user.organizationId) {
-        return res.status(401).json({ error: 'Not authenticated' });
-      }
-
-      const { email } = req.params;
-
-      // Check if user has permission
-      const canCheck = req.user.role === 'owner' || req.user.role === 'admin';
-      if (!canCheck) {
-        return res.status(403).json({ error: 'Insufficient permissions' });
-      }
-
-      // Find the user in Prisma by email
-      const user = await prisma.user.findFirst({
-        where: {
-          email: decodeURIComponent(email),
-          organizationId: req.user.organizationId
-        },
-        select: {
-          id: true,
-          email: true,
-          firstName: true,
-          lastName: true,
-          isActive: true,
-          emailVerified: true,
-          activationToken: true,
-          tokenExpiresAt: true
-        }
-      });
-
-      if (!user) {
-        return res.status(404).json({ error: 'User not found in Prisma' });
-      }
-
-      res.json({
-        user: {
-          id: user.id,
-          email: user.email,
-          name: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
-          isActive: user.isActive,
-          emailVerified: user.emailVerified
-        },
-        activation: {
-          hasToken: !!user.activationToken,
-          tokenExpired: user.tokenExpiresAt ? user.tokenExpiresAt < new Date() : true,
-          hasValidToken: user.activationToken && user.tokenExpiresAt && user.tokenExpiresAt > new Date(),
-          expiresAt: user.tokenExpiresAt
-        }
-      });
-
-    } catch (error) {
-      console.error('Error checking user in Prisma:', error);
-      res.status(500).json({ error: 'Failed to check user in Prisma' });
-    }
-  });
-
-  // Test email connection endpoint
-  app.get('/api/test-email-connection', async (req, res) => {
-    try {
-      const isConnected = await testEmailConnection();
-      res.json({ 
-        success: isConnected, 
-        message: isConnected ? 'Email service is ready' : 'Email service failed to connect' 
-      });
-    } catch (error) {
-      res.status(500).json({ 
-        success: false, 
-        error: 'Failed to test email connection' 
-      });
-    }
-  });
-
-  // Send test email endpoint
-  app.post('/api/test-email', async (req, res) => {
-    try {
-      const { email } = req.body;
-      
-      if (!email) {
-        return res.status(400).json({ error: 'Email is required' });
-      }
-
-      const result = await sendTestEmail(email);
-      
-      if (result.success) {
-        res.json({ 
-          success: true, 
-          message: 'Test email sent successfully',
-          messageId: result.messageId 
-        });
-      } else {
-        res.status(500).json({ 
-          success: false, 
-          error: result.error 
-        });
-      }
-    } catch (error) {
-      res.status(500).json({ 
-        success: false, 
-        error: 'Failed to send test email' 
-      });
-    }
-  });
-
-  // Manual check activation token (for debugging)
-  app.get('/api/users/:id/check-token', async (req, res) => {
-    try {
-      if (!req.user || !req.user.organizationId) {
-        return res.status(401).json({ error: 'Not authenticated' });
-      }
-
-      const { id } = req.params;
-
-      // Check if user has permission
-      const canCheck = req.user.role === 'owner' || req.user.role === 'admin';
-      if (!canCheck) {
-        return res.status(403).json({ error: 'Insufficient permissions' });
-      }
-
-      // Find the user in Prisma
-      const user = await prisma.user.findFirst({
-        where: {
-          id,
-          organizationId: req.user.organizationId
-        },
-        select: {
-          id: true,
-          email: true,
-          firstName: true,
-          lastName: true,
-          isActive: true,
-          emailVerified: true,
-          activationToken: true,
-          tokenExpiresAt: true
-        }
-      });
-
-      if (!user) {
-        return res.status(404).json({ error: 'User not found' });
-      }
-
-      const now = new Date();
-      const tokenExpired = user.tokenExpiresAt ? user.tokenExpiresAt < now : true;
-      const hasValidToken = user.activationToken && !tokenExpired;
-
-      res.json({
-        user: {
-          id: user.id,
-          email: user.email,
-          name: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
-          isActive: user.isActive,
-          emailVerified: user.emailVerified
-        },
-        token: {
-          hasToken: !!user.activationToken,
-          tokenValue: user.activationToken,
-          tokenExpired,
-          hasValidToken,
-          expiresAt: user.tokenExpiresAt,
-          currentTime: now
-        }
-      });
-
-    } catch (error) {
-      console.error('Error checking token:', error);
-      res.status(500).json({ error: 'Failed to check token' });
-    }
-  });
-
-  // Create employee (handles both user and employee record creation)
-  app.post('/api/employees', isAuthenticated, async (req, res) => {
-    try {
-      const employeeData = req.body;
-      console.log('Creating employee with data:', employeeData);
-
-      // Import Employee model
-      const { Employee } = require('./mongodb/models/hr');
-
-      // Validate required fields - only basic info required for all employees
-      if (!employeeData.firstName || !employeeData.lastName || !employeeData.department || !employeeData.organizationId) {
-        return res.status(400).json({ message: 'Missing required fields: firstName, lastName, department, organizationId' });
-      }
-      
-      // For basic employees, position can be custom or from department positions
-      const position = employeeData.position || employeeData.customPosition;
-      if (!position) {
-        return res.status(400).json({ message: 'Position is required' });
-      }
-
-      // Convert organizationId to ObjectId if it's a string
-      let organizationId;
-      try {
-        organizationId = new mongoose.Types.ObjectId(employeeData.organizationId);
-      } catch (error) {
-        return res.status(400).json({ message: 'Invalid organizationId format' });
-      }
-
-      // Generate employee number
-      const employeeCount = await Employee.countDocuments({ organizationId });
-      const employeeNumber = `EMP${String(employeeCount + 1).padStart(3, '0')}`;
-
-      // Prepare employee record data
-      const employeeRecordData = {
-        organizationId,
-        employeeNumber,
-        firstName: employeeData.firstName,
-        lastName: employeeData.lastName,
-        department: employeeData.department,
-        position: position, // Use the validated position
-        employmentDate: new Date(),
-        employmentStatus: 'active',
-        canLogin: employeeData.canLogin || false,
-        role: employeeData.role || 'employee',
-        // HR-specific fields (optional for basic employees)
-        ...(employeeData.employmentType && { contractType: employeeData.employmentType }),
-        ...(employeeData.employmentGrade && { employmentGrade: employeeData.employmentGrade }),
-        // Additional fields if provided
-        ...(employeeData.salary && { 
-          bankDetails: {
-            currency: 'USD',
-            // Store salary info in a custom field or separate collection
-          }
-        }),
-        ...(employeeData.benefits && { 
-          // Store benefits info
-        }),
-        ...(employeeData.supervisor && { 
-          // Store supervisor info
-        }),
-        createdBy: req.user?.id,
-        updatedBy: req.user?.id
-      };
-
-      // Create employee record in MongoDB
-      let employee;
-      try {
-        employee = await Employee.create(employeeRecordData);
-        console.log('Employee created successfully:', employee._id);
-      } catch (createError: any) {
-        console.error('Failed to create employee:', createError);
-        return res.status(500).json({ 
-          message: 'Failed to create employee record',
-          error: createError.message,
-          details: createError.code === 11000 ? 'Employee number already exists' : undefined
-        });
-      }
-
-      let user = null;
-
-      // If employee can login, create user account
-      if (employeeData.canLogin) {
-        if (!employeeData.email || !employeeData.username || !employeeData.password || !employeeData.role) {
-          return res.status(400).json({ message: 'Login credentials required for employees with login access' });
-        }
-
-        // Hash password
-        const hashedPassword = await hashPassword(employeeData.password);
-
-        // Create user in Prisma
-        const userCreateData = {
-          firstName: employeeData.firstName,
-          lastName: employeeData.lastName,
-          email: employeeData.email,
-          username: employeeData.username,
-          password: hashedPassword,
-          role: employeeData.role,
-          department: employeeData.department,
-          position: employeeData.position,
-          organizationId: employeeData.organizationId,
-          status: 'active',
-          isActive: true,
-          emailVerified: false,
-          moduleAccess: {
-            create: (employeeData.moduleAccess || ['dashboard', 'profile']).map((module: string) => ({
-              module,
-              access: 'read_write'
-            }))
-          }
-        };
-
-        user = await prisma.user.create({
-          data: userCreateData,
-          include: {}
-        });
-
-        // Update employee record with user ID
-        await Employee.findByIdAndUpdate(employee._id, {
-          userId: user.id
-        });
-      }
-
-      res.status(201).json({
-        message: 'Employee created successfully',
-        employee: {
-          id: employee._id,
-          employeeNumber: employee.employeeNumber,
-          firstName: employee.firstName,
-          lastName: employee.lastName,
-          department: employee.department,
-          position: employee.position,
-          canLogin: employee.canLogin,
-          role: employee.role
-        },
-        user: user ? {
-          id: user.id,
-          email: user.email,
-          username: user.username,
-          role: user.role
-        } : null
-      });
-
-    } catch (error: any) {
-      console.error('Error creating employee:', error);
-      console.error('Error stack:', error.stack);
-      console.error('Error details:', {
-        name: error.name,
-        message: error.message,
-        code: error.code
-      });
-      res.status(500).json({ 
-        message: 'Failed to create employee',
-        error: error.message,
-        details: process.env.NODE_ENV === 'development' ? error.stack : undefined
-      });
     }
   });
 

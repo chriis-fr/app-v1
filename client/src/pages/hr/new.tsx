@@ -543,20 +543,23 @@ export default function NewEmployeePage() {
                         <Label htmlFor="lastName">Last Name</Label>
                         <Input id="lastName" value={form.lastName} onChange={handleChange} name="lastName" required />
                       </div>
-                      {form.canLogin && <>
-                        <div className="space-y-2">
-                          <Label htmlFor="username">Username</Label>
-                          <Input id="username" value={form.username} onChange={handleChange} name="username" required />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="email">Email</Label>
-                          <Input id="email" type="email" value={form.email} onChange={handleChange} name="email" required />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="password">Password</Label>
-                          <Input id="password" type="password" value={form.password} onChange={handleChange} name="password" required />
-                        </div>
-                      </>}
+                      <div className="space-y-2">
+                        <Label htmlFor="username">Username</Label>
+                        <Input id="username" value={form.username} onChange={handleChange} name="username" required />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="email">Email Address</Label>
+                        <Input id="email" type="email" value={form.email} onChange={handleChange} name="email" required />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="password">Password</Label>
+                        <Input id="password" type="password" value={form.password} onChange={handleChange} name="password" required />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="phoneNumber">Phone Number</Label>
+                        <Input id="phoneNumber" value={form.phoneNumber} onChange={handleChange} name="phoneNumber" placeholder="+1234567890" />
+                        <p className="text-sm text-muted-foreground">Phone number for urgent communications</p>
+                      </div>
                     </div>
                   )}
                   {Number(currentStep) === 2 && (
@@ -612,75 +615,33 @@ export default function NewEmployeePage() {
                   )}
                   {Number(currentStep) === 3 && (
                     <div className="space-y-6">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="phoneNumber">Phone Number</Label>
-                          <Input id="phoneNumber" value={form.phoneNumber} onChange={handleChange} name="phoneNumber" />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="office">Office Location</Label>
-                          <Select value={form.location?.office || ''} onValueChange={value => setForm(prev => ({ ...prev, location: { ...prev.location, office: value } }))}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select office" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {officeLocations.map((location) => (
-                                <SelectItem key={location} value={location}>{location}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="floor">Floor</Label>
-                          <Input id="floor" value={form.location?.floor || ''} onChange={(e) => setForm(prev => ({ ...prev, location: { ...prev.location, floor: e.target.value } }))} name="floor" />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="deskNumber">Desk Number</Label>
-                          <Input id="deskNumber" value={form.location?.deskNumber || ''} onChange={(e) => setForm(prev => ({ ...prev, location: { ...prev.location, deskNumber: e.target.value } }))} name="deskNumber" />
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-4">
-                        <h3 className="text-lg font-semibold">Work Schedule</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="startTime">Start Time</Label>
-                            <Input id="startTime" type="time" value={form.workSchedule?.startTime || ''} onChange={(e) => setForm(prev => ({ ...prev, workSchedule: { ...prev.workSchedule, startTime: e.target.value } }))} />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="endTime">End Time</Label>
-                            <Input id="endTime" type="time" value={form.workSchedule?.endTime || ''} onChange={(e) => setForm(prev => ({ ...prev, workSchedule: { ...prev.workSchedule, endTime: e.target.value } }))} />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="timezone">Timezone</Label>
-                            <Select value={form.workSchedule?.timezone || ''} onValueChange={value => setForm(prev => ({ ...prev, workSchedule: { ...prev.workSchedule, timezone: value } }))}>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select timezone" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {timezones.map((tz) => (
-                                  <SelectItem key={tz} value={tz}>{tz}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-                      </div>
+                      <Alert>
+                        <AlertTitle>Review Employee Information</AlertTitle>
+                        <AlertDescription>
+                          Please review all the information below before creating the employee.
+                        </AlertDescription>
+                      </Alert>
 
-                      <div className="space-y-4">
-                        <h3 className="text-lg font-semibold">Emergency Contact</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="emergencyName">Contact Name</Label>
-                            <Input id="emergencyName" value={form.emergencyContact?.name || ''} onChange={(e) => setForm(prev => ({ ...prev, emergencyContact: { ...prev.emergencyContact, name: e.target.value } }))} />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-4">
+                          <h3 className="text-lg font-semibold">Basic Information</h3>
+                          <div className="space-y-2 text-sm">
+                            <p><strong>Name:</strong> {form.firstName} {form.lastName}</p>
+                            <p><strong>Email:</strong> {form.email || 'Not provided'}</p>
+                            <p><strong>Phone:</strong> {form.phoneNumber || 'Not provided'}</p>
+                            <p><strong>Department:</strong> {form.department}</p>
+                            <p><strong>Position:</strong> {form.department === 'Other' ? customPosition : form.position}</p>
+                            <p><strong>Employment Type:</strong> {form.employmentType || 'Not specified'}</p>
+                            <p><strong>Salary:</strong> {form.salary || 'Not specified'}</p>
                           </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="emergencyRelationship">Relationship</Label>
-                            <Input id="emergencyRelationship" value={form.emergencyContact?.relationship || ''} onChange={(e) => setForm(prev => ({ ...prev, emergencyContact: { ...prev.emergencyContact, relationship: e.target.value } }))} />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="emergencyPhone">Phone</Label>
-                            <Input id="emergencyPhone" value={form.emergencyContact?.phone || ''} onChange={(e) => setForm(prev => ({ ...prev, emergencyContact: { ...prev.emergencyContact, phone: e.target.value } }))} />
+                        </div>
+
+                        <div className="space-y-4">
+                          <h3 className="text-lg font-semibold">Access & Permissions</h3>
+                          <div className="space-y-2 text-sm">
+                            <p><strong>Login Access:</strong> {form.canLogin ? 'Yes' : 'No'}</p>
+                            <p><strong>Status:</strong> {form.status}</p>
+                            <p><strong>Role:</strong> {form.role}</p>
                           </div>
                         </div>
                       </div>
@@ -961,6 +922,16 @@ export default function NewEmployeePage() {
                       <div className="space-y-2">
                         <Label htmlFor="lastName">Last Name</Label>
                         <Input id="lastName" value={form.lastName} onChange={handleChange} name="lastName" required />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="email">Email Address</Label>
+                        <Input id="email" type="email" value={form.email} onChange={handleChange} name="email" placeholder="employee@company.com" />
+                        <p className="text-sm text-muted-foreground">Email for notifications and communications</p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="phoneNumber">Phone Number</Label>
+                        <Input id="phoneNumber" value={form.phoneNumber} onChange={handleChange} name="phoneNumber" placeholder="+1234567890" />
+                        <p className="text-sm text-muted-foreground">Phone number for urgent communications</p>
                       </div>
                     </div>
                   )}

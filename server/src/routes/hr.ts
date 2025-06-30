@@ -292,7 +292,8 @@ router.post('/employees', async (req: Request, res: Response) => {
         employeeNumber,
         firstName: req.body.firstName,
         lastName: req.body.lastName,
-        email: `${req.body.firstName.toLowerCase()}.${req.body.lastName.toLowerCase()}@company.com`, // Generate a default email
+        email: req.body.email || `${req.body.firstName.toLowerCase()}.${req.body.lastName.toLowerCase()}@company.com`,
+        phoneNumber: req.body.phoneNumber,
         department: req.body.department,
         position: position,
         employmentDate: new Date(),
@@ -301,6 +302,7 @@ router.post('/employees', async (req: Request, res: Response) => {
         role: req.body.role || 'employee',
         contractType: req.body.employmentType,
         employmentGrade: req.body.employmentGrade,
+        salary: req.body.salary,
         // Additional fields that might be expected
         isActive: true,
         status: 'active',
