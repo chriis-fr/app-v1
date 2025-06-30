@@ -12,6 +12,8 @@ import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
 import jwt from 'jsonwebtoken';
 import { AuthenticatedUser } from './src/middleware/auth';
+import mongoose from "mongoose";
+import { UserModel } from "./models/user.model";
 
 const prisma = new PrismaClient();
 
@@ -348,8 +350,21 @@ export function setupAuth(app: Express) {
         return res.status(401).json({ message: 'User not found' });
       }
 
-      // Check if user is activated and email verified
-      if (!fullUser.isActive || !fullUser.emailVerified) {
+      // Debug: Log the activation status
+      console.log('=== LOGIN DEBUG ===');
+      console.log('User ID:', fullUser.id);
+      console.log('Email:', fullUser.email);
+      console.log('isActive:', fullUser.isActive);
+      console.log('emailVerified:', fullUser.emailVerified);
+      console.log('==================');
+
+      // Check if user is activated and email verified - treat undefined as true
+      const isActive = fullUser.isActive !== false; // true if undefined or true
+      const emailVerified = fullUser.emailVerified !== false; // true if undefined or true
+      
+      if (!isActive || !emailVerified) {
+        console.log('❌ Activation check failed - isActive:', isActive, 'emailVerified:', emailVerified);
+        console.log('❌ Raw values - isActive:', fullUser.isActive, 'emailVerified:', fullUser.emailVerified);
         return res.status(403).json({ 
           message: 'Account not activated', 
           requiresActivation: true,
