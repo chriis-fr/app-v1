@@ -489,5 +489,147 @@ terminationSchema.index({ status: 1 });
 exitInterviewSchema.index({ employeeId: 1, organizationId: 1 });
 exitInterviewSchema.index({ terminationId: 1 });
 
+// Job Posting Schema
+const jobPostingSchema = new Schema({
+  organizationId: { type: Schema.Types.ObjectId, ref: 'Organization', required: true },
+  title: { type: String, required: true },
+  department: { type: String, required: true },
+  location: { type: String, required: true },
+  employmentType: {
+    type: String,
+    enum: ['full-time', 'part-time', 'contract', 'temporary', 'intern'],
+    required: true
+  },
+  experienceLevel: {
+    type: String,
+    enum: ['entry', 'junior', 'mid', 'senior', 'lead', 'executive'],
+    required: true
+  },
+  salary: {
+    min: { type: Number },
+    max: { type: Number },
+    currency: { type: String, default: 'USD' },
+    isNegotiable: { type: Boolean, default: true }
+  },
+  description: { type: String, required: true },
+  requirements: {
+    skills: [{ type: String }],
+    experience: { type: Number, required: true }, // years
+    education: { type: String },
+    certifications: [{ type: String }],
+    languages: [{ type: String }]
+  },
+  responsibilities: [{ type: String }],
+  benefits: [{ type: String }],
+  applicationDeadline: { type: Date },
+  status: {
+    type: String,
+    enum: ['draft', 'published', 'closed', 'archived'],
+    default: 'draft'
+  },
+  isPublic: { type: Boolean, default: true },
+  publicId: { type: String, unique: true }, // For public application URLs
+  views: { type: Number, default: 0 },
+  applications: { type: Number, default: 0 },
+  createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
+
+// Job Application Schema
+const jobApplicationSchema = new Schema({
+  jobPostingId: { type: Schema.Types.ObjectId, ref: 'JobPosting', required: true },
+  organizationId: { type: Schema.Types.ObjectId, ref: 'Organization', required: true },
+  // Applicant Information
+  firstName: { type: String, required: true },
+  lastName: { type: String, required: true },
+  email: { type: String, required: true },
+  phone: { type: String },
+  dateOfBirth: { type: Date },
+  gender: { type: String, enum: ['male', 'female', 'other'] },
+  address: {
+    street: String,
+    city: String,
+    state: String,
+    country: String,
+    postalCode: String
+  },
+  // Professional Information
+  currentPosition: String,
+  currentCompany: String,
+  experience: { type: Number }, // years
+  education: String,
+  skills: [{ type: String }],
+  certifications: [{ type: String }],
+  languages: [{ type: String }],
+  // Application Details
+  coverLetter: String,
+  expectedSalary: {
+    amount: Number,
+    currency: { type: String, default: 'USD' }
+  },
+  availability: {
+    type: String,
+    enum: ['immediate', '2_weeks', '1_month', '3_months', 'negotiable'],
+    default: 'negotiable'
+  },
+  // Documents
+  resume: {
+    filename: String,
+    url: String,
+    uploadedAt: { type: Date, default: Date.now }
+  },
+  additionalDocuments: [{
+    filename: String,
+    url: String,
+    description: String,
+    uploadedAt: { type: Date, default: Date.now }
+  }],
+  // Application Status
+  status: {
+    type: String,
+    enum: ['pending', 'reviewing', 'shortlisted', 'interviewed', 'offered', 'rejected', 'withdrawn'],
+    default: 'pending'
+  },
+  // Review Process
+  reviewedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+  reviewedAt: { type: Date },
+  reviewNotes: String,
+  // Interview Process
+  interviews: [{
+    scheduledAt: { type: Date },
+    conductedAt: { type: Date },
+    interviewer: { type: Schema.Types.ObjectId, ref: 'User' },
+    type: { type: String, enum: ['phone', 'video', 'in-person'] },
+    notes: String,
+    rating: { type: Number, min: 1, max: 5 },
+    status: { type: String, enum: ['scheduled', 'completed', 'cancelled', 'no-show'] }
+  }],
+  // Communication
+  communications: [{
+    type: { type: String, enum: ['email', 'phone', 'system'] },
+    subject: String,
+    message: String,
+    sentAt: { type: Date, default: Date.now },
+    sentBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    isRead: { type: Boolean, default: false }
+  }],
+  // Tracking
+  source: { type: String, default: 'website' }, // website, referral, job_board, etc.
+  ipAddress: String,
+  userAgent: String,
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
+
+// Add indexes for hiring models
+jobPostingSchema.index({ organizationId: 1, status: 1 });
+jobPostingSchema.index({ isPublic: 1, status: 1 });
+jobApplicationSchema.index({ jobPostingId: 1, status: 1 });
+jobApplicationSchema.index({ organizationId: 1, status: 1 });
+jobApplicationSchema.index({ email: 1 });
+
 export const Termination = mongoose.models.Termination || mongoose.model('Termination', terminationSchema);
-export const ExitInterview = mongoose.models.ExitInterview || mongoose.model('ExitInterview', exitInterviewSchema); 
+export const ExitInterview = mongoose.models.ExitInterview || mongoose.model('ExitInterview', exitInterviewSchema);
+export const JobPosting = mongoose.models.JobPosting || mongoose.model('JobPosting', jobPostingSchema);
+export const JobApplication = mongoose.models.JobApplication || mongoose.model('JobApplication', jobApplicationSchema); 

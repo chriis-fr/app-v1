@@ -512,18 +512,35 @@ export default function HRMain() {
 
             {/* Hiring Tab */}
             <TabsContent value="hiring" className="space-y-4">
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold">Hiring Management</h2>
+                  <p className="text-muted-foreground">Manage job postings, candidates, and hiring process</p>
+                </div>
+                <Button onClick={() => setLocation('/hr/hiring')}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Manage Hiring
+                </Button>
+              </div>
               <Card>
                 <CardHeader>
-                  <div className="flex justify-between items-center">
-                    <CardTitle>Hiring Management</CardTitle>
-                    <Button onClick={() => setLocation('/hr/hiring/new')}>
-                      <Plus className="mr-2 h-4 w-4" />
-                      New Job Posting
-                    </Button>
-                  </div>
+                  <CardTitle>Quick Actions</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-muted-foreground">Job postings, candidate management, and onboarding workflows will be implemented here.</p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <Button variant="outline" onClick={() => setLocation('/hr/hiring')} className="h-20 flex flex-col items-center justify-center">
+                      <Briefcase className="h-6 w-6 mb-2" />
+                      <span>Job Postings</span>
+                    </Button>
+                    <Button variant="outline" onClick={() => setLocation('/hr/hiring')} className="h-20 flex flex-col items-center justify-center">
+                      <Users className="h-6 w-6 mb-2" />
+                      <span>Candidates</span>
+                    </Button>
+                    <Button variant="outline" onClick={() => setLocation('/hr/hiring')} className="h-20 flex flex-col items-center justify-center">
+                      <FileText className="h-6 w-6 mb-2" />
+                      <span>Applications</span>
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
@@ -581,14 +598,14 @@ export default function HRMain() {
                 <CardHeader>
                   <div className="flex justify-between items-center">
                     <CardTitle>Time Management</CardTitle>
-                    <Button onClick={() => setLocation('/hr/time/attendance')}>
+                    <Button onClick={() => setLocation('/hr/timesheets')}>
                       <Clock className="mr-2 h-4 w-4" />
-                      View Attendance
+                      View Timesheets
                     </Button>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-muted-foreground">Attendance tracking, check-in/out, break management, and time reports will be implemented here.</p>
+                  <p className="text-muted-foreground">Track employee time entries, manage timesheets, and generate time reports.</p>
                 </CardContent>
               </Card>
             </TabsContent>
@@ -599,14 +616,14 @@ export default function HRMain() {
                 <CardHeader>
                   <div className="flex justify-between items-center">
                     <CardTitle>Leave Management</CardTitle>
-                    <Button onClick={() => setLocation('/hr/leave/requests')}>
+                    <Button onClick={() => setLocation('/hr/leave-management')}>
                       <CalendarDays className="mr-2 h-4 w-4" />
                       View Requests
                     </Button>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-muted-foreground">Leave requests, approvals, balances, and policies will be implemented here.</p>
+                  <p className="text-muted-foreground">Manage leave requests, approvals, balances, and policies.</p>
                 </CardContent>
               </Card>
             </TabsContent>

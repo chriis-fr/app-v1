@@ -51,7 +51,11 @@ import AnalyticsPage from '@/pages/analytics';
 import EmployeeHRDetail from '@/pages/hr/employees/[id]';
 import NewEmployeePage from '@/pages/hr/new';
 import HRSettingsPage from '@/pages/hr/settings';
+import HiringPage from '@/pages/hr/hiring';
+import TimesheetsPage from '@/pages/hr/timesheets';
+import LeaveManagementPage from '@/pages/hr/leave-management';
 import NotificationsPage from '@/pages/notifications';
+import PublicJobApplication from '@/pages/jobs/[publicId]';
 
 // New timezone-aware features
 import TimeTrackingPage from '@/pages/app/time-tracking';
@@ -74,6 +78,7 @@ function App() {
               <ProtectedRoute path="/settings" component={SettingsPage} />
               <ProtectedRoute path="/organization-settings" component={OrganizationSettingsPage} />
               <ProtectedRoute path="/notifications" component={NotificationsPage} />
+              <Route path="/jobs/:publicId" component={PublicJobApplication} />
               <Route path="/book" component={Book} />
               <ProtectedRoute path="/dashboard/modules" component={ModulesPage} />
               
@@ -95,12 +100,15 @@ function App() {
               
               {/* HR Routes */}
               <ProtectedRoute path="/hr/settings" component={HRSettingsPage} />
+              <ProtectedRoute path="/hr/hiring" component={HiringPage} requiredModule="hr" />
+              <ProtectedRoute path="/hr/timesheets" component={TimesheetsPage} requiredModule="hr" />
+              <ProtectedRoute path="/hr/leave-management" component={LeaveManagementPage} requiredModule="hr" />
+              <Route path="/hr/employees/:id" component={EmployeeHRDetail} />
+              <ProtectedRoute path="/hr/new" component={NewEmployeePage} requiredModule="hr" />
               <ProtectedRoute path="/hr" component={HRPage} requiredModule="hr" />
               <ProtectedRoute path="/dashboard/hr" component={HRPage} requiredModule="hr" />
               <ProtectedRoute path="/dashboard/hr/info" component={HRInfoPage} requiredModule="hr" />
               <ProtectedRoute path="/dashboard/hr/reports" component={HRReports} requiredModule="hr" />
-              <Route path="/hr/employees/:id" component={EmployeeHRDetail} />
-              <ProtectedRoute path="/hr/new" component={NewEmployeePage} requiredModule="hr" />
               
               {/* HR Submodule Routes - All redirect to main HR page */}
               <ProtectedRoute path="/dashboard/hr/attendance" component={HRPage} requiredModule="hr" />

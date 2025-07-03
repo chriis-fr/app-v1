@@ -887,12 +887,19 @@ export type MeetingStatus = typeof meetingStatuses[number];
 export type MeetingType = typeof meetingTypes[number];
 export type TaskStatus = typeof taskStatuses[number];
 export type TaskPriority = typeof taskPriorities[number];
+export type JobPostingStatus = typeof jobPostingStatuses[number];
+export type EmploymentType = typeof employmentTypes[number];
+export type ExperienceLevel = typeof experienceLevels[number];
+export type ApplicationStatus = typeof applicationStatuses[number];
+export type AvailabilityOption = typeof availabilityOptions[number];
 
 // Type exports for the new schemas
 export type TimeTrackingEntry = z.infer<typeof timeTrackingEntrySchema>;
 export type TimeTrackingSummary = z.infer<typeof timeTrackingSummarySchema>;
 export type Meeting = z.infer<typeof meetingSchema>;
 export type Task = z.infer<typeof taskSchema>;
+export type JobPosting = z.infer<typeof jobPostingSchema>;
+export type JobApplication = z.infer<typeof jobApplicationSchema>;
 
 export interface LoginData {
   username: string;
@@ -1030,6 +1037,18 @@ export const organizationSettingsSchema = z.object({
         employer: z.number(),
       }),
     })),
+  }).optional(),
+  hiring: z.object({
+    enablePublicApplications: z.boolean().default(true),
+    applicationDeadline: z.number().default(30),
+    requireResume: z.boolean().default(true),
+    requireCoverLetter: z.boolean().default(false),
+    allowMultipleApplications: z.boolean().default(false),
+    autoRejectAfterDays: z.number().default(90),
+    emailNotifications: z.boolean().default(true),
+    defaultApplicationStatus: z.string().default('pending'),
+    customFields: z.record(z.any()).optional(),
+    applicationFormSettings: z.record(z.any()).optional(),
   }).optional(),
 });
 
@@ -1392,6 +1411,51 @@ export const meetingSchema = z.object({
 });
 
 // ---------------------------------
+// Hiring Types
+// ---------------------------------
+export const jobPostingStatuses = [
+  'draft',
+  'published',
+  'closed',
+  'archived'
+] as const;
+
+export const employmentTypes = [
+  'full-time',
+  'part-time',
+  'contract',
+  'temporary',
+  'intern'
+] as const;
+
+export const experienceLevels = [
+  'entry',
+  'junior',
+  'mid',
+  'senior',
+  'lead',
+  'executive'
+] as const;
+
+export const applicationStatuses = [
+  'pending',
+  'reviewing',
+  'shortlisted',
+  'interviewed',
+  'offered',
+  'rejected',
+  'withdrawn'
+] as const;
+
+export const availabilityOptions = [
+  'immediate',
+  '2_weeks',
+  '1_month',
+  '3_months',
+  'negotiable'
+] as const;
+
+// ---------------------------------
 // Task Management Types
 // ---------------------------------
 export const taskStatuses = [
@@ -1441,6 +1505,112 @@ export const taskSchema = z.object({
   })).optional(),
   timeTracking: z.array(z.string()).optional(), // array of time tracking entry IDs
   dependencies: z.array(z.string()).optional(), // array of task IDs
+  createdAt: z.date(),
+  updatedAt: z.date()
+});
+
+// Job Posting schema
+export const jobPostingSchema = z.object({
+  id: z.string(),
+  organizationId: z.string(),
+  title: z.string(),
+  department: z.string(),
+  location: z.string(),
+  employmentType: z.enum(employmentTypes),
+  experienceLevel: z.enum(experienceLevels),
+  salary: z.object({
+    min: z.number().optional(),
+    max: z.number().optional(),
+    currency: z.string().default('USD'),
+    isNegotiable: z.boolean().default(true)
+  }).optional(),
+  description: z.string(),
+  requirements: z.object({
+    skills: z.array(z.string()).optional(),
+    experience: z.number().optional(),
+    education: z.string().optional(),
+    certifications: z.array(z.string()).optional(),
+    languages: z.array(z.string()).optional()
+  }).optional(),
+  responsibilities: z.array(z.string()).optional(),
+  benefits: z.array(z.string()).optional(),
+  applicationDeadline: z.date().optional(),
+  status: z.enum(jobPostingStatuses).default('draft'),
+  isPublic: z.boolean().default(true),
+  publicId: z.string(),
+  views: z.number().default(0),
+  applications: z.number().default(0),
+  createdBy: z.string(),
+  createdAt: z.date(),
+  updatedAt: z.date()
+});
+
+// Job Application schema
+export const jobApplicationSchema = z.object({
+  id: z.string(),
+  jobPostingId: z.string(),
+  organizationId: z.string(),
+  firstName: z.string(),
+  lastName: z.string(),
+  email: z.string().email(),
+  phone: z.string().optional(),
+  dateOfBirth: z.date().optional(),
+  gender: z.string().optional(),
+  address: z.object({
+    street: z.string().optional(),
+    city: z.string().optional(),
+    state: z.string().optional(),
+    country: z.string().optional(),
+    postalCode: z.string().optional()
+  }).optional(),
+  currentPosition: z.string().optional(),
+  currentCompany: z.string().optional(),
+  experience: z.number().optional(),
+  education: z.string().optional(),
+  skills: z.array(z.string()).optional(),
+  certifications: z.array(z.string()).optional(),
+  languages: z.array(z.string()).optional(),
+  coverLetter: z.string().optional(),
+  expectedSalary: z.object({
+    amount: z.number().optional(),
+    currency: z.string().default('USD')
+  }).optional(),
+  availability: z.enum(availabilityOptions).default('negotiable'),
+  resume: z.object({
+    filename: z.string(),
+    url: z.string(),
+    uploadedAt: z.date()
+  }).optional(),
+  additionalDocuments: z.array(z.object({
+    filename: z.string(),
+    url: z.string(),
+    description: z.string().optional(),
+    uploadedAt: z.date()
+  })).optional(),
+  status: z.enum(applicationStatuses).default('pending'),
+  reviewedBy: z.string().optional(),
+  reviewedAt: z.date().optional(),
+  reviewNotes: z.string().optional(),
+  interviews: z.array(z.object({
+    scheduledAt: z.date().optional(),
+    conductedAt: z.date().optional(),
+    interviewer: z.string().optional(),
+    type: z.enum(['phone', 'video', 'in-person']).optional(),
+    notes: z.string().optional(),
+    rating: z.number().min(1).max(5).optional(),
+    status: z.enum(['scheduled', 'completed', 'cancelled', 'no-show']).optional()
+  })).optional(),
+  communications: z.array(z.object({
+    type: z.enum(['email', 'phone', 'system']),
+    subject: z.string().optional(),
+    message: z.string(),
+    sentAt: z.date(),
+    sentBy: z.string().optional(),
+    isRead: z.boolean().default(false)
+  })).optional(),
+  source: z.string().default('website'),
+  ipAddress: z.string().optional(),
+  userAgent: z.string().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

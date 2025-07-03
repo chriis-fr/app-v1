@@ -339,7 +339,7 @@ export default function NewEmployeePage() {
     try {
       if (form.canLogin) {
         // Create a user (same as users/new)
-        const payload: any = { ...form };
+      const payload: any = { ...form };
         
         // Remove HR-specific fields that don't exist in User model
         delete payload.employmentType;
@@ -543,18 +543,18 @@ export default function NewEmployeePage() {
                         <Label htmlFor="lastName">Last Name</Label>
                         <Input id="lastName" value={form.lastName} onChange={handleChange} name="lastName" required />
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="username">Username</Label>
-                        <Input id="username" value={form.username} onChange={handleChange} name="username" required />
-                      </div>
-                      <div className="space-y-2">
+                        <div className="space-y-2">
+                          <Label htmlFor="username">Username</Label>
+                          <Input id="username" value={form.username} onChange={handleChange} name="username" required />
+                        </div>
+                        <div className="space-y-2">
                         <Label htmlFor="email">Email Address</Label>
-                        <Input id="email" type="email" value={form.email} onChange={handleChange} name="email" required />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="password">Password</Label>
-                        <Input id="password" type="password" value={form.password} onChange={handleChange} name="password" required />
-                      </div>
+                          <Input id="email" type="email" value={form.email} onChange={handleChange} name="email" required />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="password">Password</Label>
+                          <Input id="password" type="password" value={form.password} onChange={handleChange} name="password" required />
+                        </div>
                       <div className="space-y-2">
                         <Label htmlFor="phoneNumber">Phone Number</Label>
                         <Input id="phoneNumber" value={form.phoneNumber} onChange={handleChange} name="phoneNumber" placeholder="+1234567890" />

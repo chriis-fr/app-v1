@@ -138,6 +138,8 @@ type OrganizationsSettingsModulesModuleSettingsHr {
   enablePayroll            Boolean
   enablePerformanceReviews Boolean
   enableTimeTracking       Boolean
+  enableHiring             Boolean
+  hiringSettings           OrganizationsSettingsModulesModuleSettingsHrHiringSettings
 }
 
 type OrganizationsSettingsModulesModuleSettingsInventory {
@@ -145,6 +147,19 @@ type OrganizationsSettingsModulesModuleSettingsInventory {
   enableSerialNumbers Boolean
   lowStockThreshold   Int
   reorderPoint        Int
+}
+
+type OrganizationsSettingsModulesModuleSettingsHrHiringSettings {
+  enablePublicApplications  Boolean
+  applicationDeadline       Int
+  requireResume             Boolean
+  requireCoverLetter        Boolean
+  allowMultipleApplications Boolean
+  autoRejectAfterDays       Int
+  emailNotifications        Boolean
+  defaultApplicationStatus  String
+  customFields              Json?
+  applicationFormSettings   Json?
 }
 
 type OrganizationsSettingsNotifications {
@@ -237,33 +252,33 @@ model BlockchainTransaction {
 }
 
 model BusinessPartner {
-  id             String        @id @default(auto()) @map("_id") @db.ObjectId
-  organizationId String        @db.ObjectId
-  organization   Organization  @relation(fields: [organizationId], references: [id])
+  id             String       @id @default(auto()) @map("_id") @db.ObjectId
+  organizationId String       @db.ObjectId
+  organization   Organization @relation(fields: [organizationId], references: [id])
   name           String
   type           String
   contactPerson  String?
   email          String?
   phone          String?
   address        Json?
-  status         String   @default("active")
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  status         String       @default("active")
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 }
 
 model Vendor {
-  id             String        @id @default(auto()) @map("_id") @db.ObjectId
-  organizationId String        @db.ObjectId
-  organization   Organization  @relation(fields: [organizationId], references: [id])
+  id             String       @id @default(auto()) @map("_id") @db.ObjectId
+  organizationId String       @db.ObjectId
+  organization   Organization @relation(fields: [organizationId], references: [id])
   name           String
   type           String
   contactPerson  String?
   email          String?
   phone          String?
   address        Json?
-  status         String   @default("active")
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  status         String       @default("active")
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 }
 
 model Category {
@@ -297,14 +312,14 @@ model JournalEntry {
 }
 
 model JournalLine {
-  id          String        @id @default(auto()) @map("_id") @db.ObjectId
-  accountId   String        @db.ObjectId
+  id          String       @id @default(auto()) @map("_id") @db.ObjectId
+  accountId   String       @db.ObjectId
   description String
   debit       Float
   credit      Float
-  entryId     String        @db.ObjectId
-  account     Account       @relation(fields: [accountId], references: [id])
-  entry       JournalEntry  @relation(fields: [entryId], references: [id])
+  entryId     String       @db.ObjectId
+  account     Account      @relation(fields: [accountId], references: [id])
+  entry       JournalEntry @relation(fields: [entryId], references: [id])
 }
 
 model LeaveEntitlement {
@@ -324,29 +339,31 @@ model ModuleAccess {
 }
 
 model Organization {
-  id             String   @id @default(auto()) @map("_id") @db.ObjectId
-  name           String
-  description    String?
-  type           String
-  industry       String?
-  status         String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  settings       Json?
-  modules        Json?
-  logoUrl        String?
-  address        Json?
-  phoneNumber    String?
-  email          String?
-  website        String?
-  walletAddress  String?
-  activeModules  String[]
-  maxModules     Int      @default(3)
+  id                String            @id @default(auto()) @map("_id") @db.ObjectId
+  name              String
+  description       String?
+  type              String
+  industry          String?
+  status            String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  settings          Json?
+  modules           Json?
+  logoUrl           String?
+  address           Json?
+  phoneNumber       String?
+  email             String?
+  website           String?
+  walletAddress     String?
+  activeModules     String[]
+  maxModules        Int               @default(3)
   waitlistedModules String[]
-  users          User[]   @relation("OrgUsers")
-  businessPartners BusinessPartner[]
-  vendors        Vendor[]
-  notifications  Notification[] @relation("OrgNotifications")
+  users             User[]            @relation("OrgUsers")
+  businessPartners  BusinessPartner[]
+  vendors           Vendor[]
+  notifications     Notification[]    @relation("OrgNotifications")
+  jobPostings       JobPosting[]      @relation("OrgJobPostings")
+  jobApplications   JobApplication[]  @relation("OrgJobApplications")
 
   @@map("organizations")
 }
@@ -382,27 +399,27 @@ model Unit {
 }
 
 model User {
-  id               String        @id @default(auto()) @map("_id") @db.ObjectId
-  username         String        @unique
-  email            String        @unique
+  id               String         @id @default(auto()) @map("_id") @db.ObjectId
+  username         String         @unique
+  email            String         @unique
   password         String
   role             String
   department       String?
   firstName        String?
   lastName         String?
   phoneNumber      String?
-  organizationId   String        @db.ObjectId
-  organization     Organization? @relation("OrgUsers", fields: [organizationId], references: [id])
-  vendorId         String?       @db.ObjectId
-  isOwner          Boolean?      @default(false)
-  isActive         Boolean?      @default(false)
-  emailVerified    Boolean?      @default(false)
+  organizationId   String         @db.ObjectId
+  organization     Organization?  @relation("OrgUsers", fields: [organizationId], references: [id])
+  vendorId         String?        @db.ObjectId
+  isOwner          Boolean?       @default(false)
+  isActive         Boolean?       @default(false)
+  emailVerified    Boolean?       @default(false)
   activationToken  String?
   tokenExpiresAt   DateTime?
   moduleAccess     ModuleAccess[] @relation("UserModuleAccess")
   permissions      Json?
   position         String?
-  status           String?       @default("active")
+  status           String?        @default("active")
   lastLogin        DateTime?
   employeeId       String?
   hireDate         DateTime?
@@ -424,17 +441,19 @@ model User {
   legalDetails     Json?
   address          Json?
   avatarUrl        String?
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 
   // Relations
-  timeTrackingEntries TimeTrackingEntry[]
-  meetings            Meeting[]
-  meetingAttendees    MeetingAttendee[]
-  assignedTasks       Task[] @relation("TaskAssignee")
-  createdTasks        Task[] @relation("TaskCreator")
-  taskComments        TaskComment[]
-  notifications       Notification[] @relation("UserNotifications")
+  timeTrackingEntries   TimeTrackingEntry[]
+  meetings              Meeting[]
+  meetingAttendees      MeetingAttendee[]
+  assignedTasks         Task[]              @relation("TaskAssignee")
+  createdTasks          Task[]              @relation("TaskCreator")
+  taskComments          TaskComment[]
+  notifications         Notification[]      @relation("UserNotifications")
+  jobPostings           JobPosting[]        @relation("UserJobPostings")
+  jobApplicationReviews JobApplication[]    @relation("UserJobApplicationReviews")
 
   @@map("users")
 }
@@ -652,30 +671,30 @@ model verifications {
 }
 
 model TimeTrackingEntry {
-  id             String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId         String   @db.ObjectId
-  organizationId String   @db.ObjectId
-  projectId      String?  @db.ObjectId
-  taskId         String?  @db.ObjectId
+  id             String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId         String    @db.ObjectId
+  organizationId String    @db.ObjectId
+  projectId      String?   @db.ObjectId
+  taskId         String?   @db.ObjectId
   description    String
   type           String
   status         String
   startTime      DateTime
   endTime        DateTime?
-  duration       Int?     // in minutes
+  duration       Int? // in minutes
   timezone       String
   location       String?
   tags           String[]
   notes          String?
-  billable       Boolean  @default(false)
+  billable       Boolean   @default(false)
   hourlyRate     Float?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   // Relations
-  user    User @relation(fields: [userId], references: [id])
+  user    User     @relation(fields: [userId], references: [id])
   project Project? @relation(fields: [projectId], references: [id])
-  task    Task? @relation(fields: [taskId], references: [id])
+  task    Task?    @relation(fields: [taskId], references: [id])
 
   @@map("time_tracking_entries")
 }
@@ -701,21 +720,21 @@ model Meeting {
   updatedAt      DateTime @updatedAt
 
   // Relations
-  organizer User @relation(fields: [organizerId], references: [id])
+  organizer User              @relation(fields: [organizerId], references: [id])
   attendees MeetingAttendee[]
 
   @@map("meetings")
 }
 
 model MeetingAttendee {
-  id         String   @id @default(auto()) @map("_id") @db.ObjectId
-  meetingId  String   @db.ObjectId
-  userId     String   @db.ObjectId
-  timezone   String
-  status     String
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  meetingId    String    @db.ObjectId
+  userId       String    @db.ObjectId
+  timezone     String
+  status       String
   responseTime DateTime?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   // Relations
   meeting Meeting @relation(fields: [meetingId], references: [id])
@@ -725,13 +744,13 @@ model MeetingAttendee {
 }
 
 model Task {
-  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  id             String    @id @default(auto()) @map("_id") @db.ObjectId
   title          String
   description    String?
-  assigneeId     String   @db.ObjectId
-  assignerId     String   @db.ObjectId
-  organizationId String   @db.ObjectId
-  projectId      String?  @db.ObjectId
+  assigneeId     String    @db.ObjectId
+  assignerId     String    @db.ObjectId
+  organizationId String    @db.ObjectId
+  projectId      String?   @db.ObjectId
   status         String
   priority       String
   estimatedHours Float?
@@ -741,15 +760,15 @@ model Task {
   tags           String[]
   attachments    Json?
   dependencies   String[]
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   // Relations
-  assignee        User @relation("TaskAssignee", fields: [assigneeId], references: [id])
-  assigner        User @relation("TaskCreator", fields: [assignerId], references: [id])
-  project         Project? @relation(fields: [projectId], references: [id])
-  timeTracking    TimeTrackingEntry[]
-  comments        TaskComment[]
+  assignee     User                @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  assigner     User                @relation("TaskCreator", fields: [assignerId], references: [id])
+  project      Project?            @relation(fields: [projectId], references: [id])
+  timeTracking TimeTrackingEntry[]
+  comments     TaskComment[]
 
   @@map("tasks")
 }
@@ -772,16 +791,16 @@ model TaskComment {
 }
 
 model Project {
-  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  id             String    @id @default(auto()) @map("_id") @db.ObjectId
   name           String
   description    String?
-  organizationId String   @db.ObjectId
+  organizationId String    @db.ObjectId
   status         String
   startDate      DateTime?
   endDate        DateTime?
   timezone       String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   // Relations
   timeTracking TimeTrackingEntry[]
@@ -791,20 +810,90 @@ model Project {
 }
 
 model Notification {
-  id             String   @id @default(auto()) @map("_id") @db.ObjectId
-  type           String   // meeting, task, approval, system, user, finance, inventory
+  id             String       @id @default(auto()) @map("_id") @db.ObjectId
+  type           String // meeting, task, approval, system, user, finance, inventory
   title          String
   message        String
-  userId         String   @db.ObjectId
-  user           User     @relation("UserNotifications", fields: [userId], references: [id])
-  organizationId String   @db.ObjectId
+  userId         String       @db.ObjectId
+  user           User         @relation("UserNotifications", fields: [userId], references: [id])
+  organizationId String       @db.ObjectId
   organization   Organization @relation("OrgNotifications", fields: [organizationId], references: [id])
-  priority       String   @default("medium") // low, medium, high
-  isRead         Boolean  @default(false)
+  priority       String       @default("medium") // low, medium, high
+  isRead         Boolean      @default(false)
   actionUrl      String?
-  metadata       String?  // JSON string for additional data
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  metadata       String? // JSON string for additional data
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
   @@map("notifications")
+}
+
+model JobPosting {
+  id                  String           @id @default(auto()) @map("_id") @db.ObjectId
+  organizationId      String           @db.ObjectId
+  organization        Organization     @relation("OrgJobPostings", fields: [organizationId], references: [id])
+  title               String
+  department          String
+  location            String
+  employmentType      String
+  experienceLevel     String
+  salary              Json?
+  description         String
+  requirements        Json?
+  responsibilities    Json?
+  benefits            Json?
+  applicationDeadline DateTime?
+  status              String           @default("draft")
+  isPublic            Boolean          @default(true)
+  publicId            String           @unique
+  views               Int              @default(0)
+  applications        Int              @default(0)
+  createdBy           String           @db.ObjectId
+  createdByUser       User             @relation("UserJobPostings", fields: [createdBy], references: [id])
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  JobApplication      JobApplication[]
+
+  @@map("job_postings")
+}
+
+model JobApplication {
+  id                  String       @id @default(auto()) @map("_id") @db.ObjectId
+  jobPostingId        String       @db.ObjectId
+  jobPosting          JobPosting   @relation(fields: [jobPostingId], references: [id])
+  organizationId      String       @db.ObjectId
+  organization        Organization @relation("OrgJobApplications", fields: [organizationId], references: [id])
+  firstName           String
+  lastName            String
+  email               String
+  phone               String?
+  dateOfBirth         DateTime?
+  gender              String?
+  address             Json?
+  currentPosition     String?
+  currentCompany      String?
+  experience          Int?
+  education           String?
+  skills              Json?
+  certifications      Json?
+  languages           Json?
+  coverLetter         String?
+  expectedSalary      Json?
+  availability        String?
+  resume              Json?
+  additionalDocuments Json?
+  status              String       @default("pending")
+  reviewedBy          String?      @db.ObjectId
+  reviewedByUser      User?        @relation("UserJobApplicationReviews", fields: [reviewedBy], references: [id])
+  reviewedAt          DateTime?
+  reviewNotes         String?
+  interviews          Json?
+  communications      Json?
+  source              String       @default("website")
+  ipAddress           String?
+  userAgent           String?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  @@map("job_applications")
 }

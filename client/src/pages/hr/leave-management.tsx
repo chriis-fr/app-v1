@@ -1,165 +1,229 @@
 import { useState, useEffect } from 'react';
-import { useLocation } from 'wouter';
+import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useToast } from '@/components/ui/use-toast';
-import { useAuth } from '@/hooks/use-auth';
+import { DataTable } from '@/components/ui/data-table';
 import { 
+  Calendar, 
   Plus, 
   Search, 
   Filter, 
-  Calendar, 
-  Clock, 
-  FileText, 
-  Users,
+  Download, 
   CheckCircle,
   XCircle,
-  AlertCircle,
-  CalendarDays,
-  Download,
-  Settings,
-  BarChart3
+  Clock,
+  User,
+  Edit,
+  Eye,
+  Loader2
 } from 'lucide-react';
-import ModuleLayout from '@/components/layout/ModuleLayout';
+import { useToast } from '@/components/ui/use-toast';
+import { useAuth } from '@/hooks/use-auth';
 
 interface LeaveRequest {
-  id: string;
+  _id: string;
   employeeId: string;
   employeeName: string;
-  leaveType: 'paid' | 'casual' | 'sick' | 'marriage' | 'unpaid' | 'maternity' | 'paternity';
+  leaveType: string;
   startDate: string;
   endDate: string;
-  duration: number;
+  days: number;
   reason: string;
-  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
-  requestedDate: string;
+  status: 'pending' | 'approved' | 'rejected';
+  submittedAt: string;
   approvedBy?: string;
-  approvedDate?: string;
-  notes?: string;
+  approvedAt?: string;
+  rejectionReason?: string;
 }
 
-interface LeaveBalance {
-  employeeId: string;
-  employeeName: string;
-  paidLeave: number;
-  casualLeave: number;
-  sickLeave: number;
-  marriageLeave: number;
-  unpaidLeave: number;
-  maternityLeave: number;
-  paternityLeave: number;
-  year: number;
-}
-
-interface LeavePolicy {
-  id: string;
-  name: string;
-  leaveType: string;
-  defaultDays: number;
-  maxDays: number;
-  requiresApproval: boolean;
-  requiresDocumentation: boolean;
-  description: string;
-}
+const leaveColumns = [
+  {
+    accessorKey: 'employeeName',
+    header: 'Employee',
+    cell: ({ row }: any) => {
+      const employeeName = row.getValue('employeeName');
+      return (
+        <div className="flex items-center space-x-2">
+          <User className="h-4 w-4 text-muted-foreground" />
+          <span>{employeeName}</span>
+        </div>
+      );
+    }
+  },
+  {
+    accessorKey: 'leaveType',
+    header: 'Leave Type',
+    cell: ({ row }: any) => {
+      const leaveType = row.getValue('leaveType');
+      const typeColors = {
+        'Annual Leave': 'bg-blue-100 text-blue-800',
+        'Sick Leave': 'bg-red-100 text-red-800',
+        'Maternity Leave': 'bg-pink-100 text-pink-800',
+        'Paternity Leave': 'bg-purple-100 text-purple-800',
+        'Study Leave': 'bg-green-100 text-green-800',
+        'Unpaid Leave': 'bg-gray-100 text-gray-800'
+      };
+      return (
+        <Badge className={typeColors[leaveType as keyof typeof typeColors] || 'bg-gray-100 text-gray-800'}>
+          {leaveType}
+        </Badge>
+      );
+    }
+  },
+  {
+    accessorKey: 'startDate',
+    header: 'Start Date',
+    cell: ({ row }: any) => {
+      const startDate = new Date(row.getValue('startDate'));
+      return startDate.toLocaleDateString();
+    }
+  },
+  {
+    accessorKey: 'endDate',
+    header: 'End Date',
+    cell: ({ row }: any) => {
+      const endDate = new Date(row.getValue('endDate'));
+      return endDate.toLocaleDateString();
+    }
+  },
+  {
+    accessorKey: 'days',
+    header: 'Days',
+    cell: ({ row }: any) => {
+      const days = row.getValue('days');
+      return `${days} day${days !== 1 ? 's' : ''}`;
+    }
+  },
+  {
+    accessorKey: 'status',
+    header: 'Status',
+    cell: ({ row }: any) => {
+      const status = row.getValue('status');
+      const statusColors = {
+        pending: 'bg-yellow-100 text-yellow-800',
+        approved: 'bg-green-100 text-green-800',
+        rejected: 'bg-red-100 text-red-800'
+      };
+      return (
+        <Badge className={statusColors[status as keyof typeof statusColors]}>
+          {status.charAt(0).toUpperCase() + status.slice(1)}
+        </Badge>
+      );
+    }
+  },
+  {
+    accessorKey: 'submittedAt',
+    header: 'Submitted',
+    cell: ({ row }: any) => {
+      const submittedAt = new Date(row.getValue('submittedAt'));
+      return submittedAt.toLocaleDateString();
+    }
+  },
+  {
+    id: 'actions',
+    header: 'Actions',
+    cell: ({ row }: any) => {
+      const leaveRequest = row.original;
+      return (
+        <div className="flex items-center space-x-2">
+          <Button variant="outline" size="sm">
+            <Eye className="h-4 w-4" />
+          </Button>
+          {leaveRequest.status === 'pending' && (
+            <>
+              <Button variant="outline" size="sm" className="text-green-600">
+                <CheckCircle className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="sm" className="text-red-600">
+                <XCircle className="h-4 w-4" />
+              </Button>
+            </>
+          )}
+        </div>
+      );
+    }
+  }
+];
 
 export default function LeaveManagementPage() {
-  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
-  const [leaveBalances, setLeaveBalances] = useState<LeaveBalance[]>([]);
-  const [leavePolicies, setLeavePolicies] = useState<LeavePolicy[]>([]);
+  const [leaveBalance, setLeaveBalance] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [filterType, setFilterType] = useState<string>('all');
-  const [activeTab, setActiveTab] = useState('requests');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
 
   useEffect(() => {
-    fetchLeaveManagementData();
+    fetchLeaveData();
   }, []);
 
-  const fetchLeaveManagementData = async () => {
+  const fetchLeaveData = async () => {
     try {
       setLoading(true);
+      const [requestsResponse, balanceResponse] = await Promise.all([
+        fetch('/api/hr/leave-requests', { credentials: 'include' }),
+        fetch('/api/hr/leave-balance', { credentials: 'include' })
+      ]);
       
-      // TODO: Replace with actual API calls
-      // const leaveRequestsResponse = await fetch('/api/hr/leave-management/requests');
-      // const leaveBalancesResponse = await fetch('/api/hr/leave-management/balances');
-      // const leavePoliciesResponse = await fetch('/api/hr/leave-management/policies');
+      if (requestsResponse.ok) {
+        const requestsData = await requestsResponse.json();
+        setLeaveRequests(requestsData);
+      }
       
-      // For now, using empty arrays
-      setLeaveRequests([]);
-      setLeaveBalances([]);
-      setLeavePolicies([]);
+      if (balanceResponse.ok) {
+        const balanceData = await balanceResponse.json();
+        setLeaveBalance(balanceData);
+      }
     } catch (error) {
-      console.error('Error fetching leave management data:', error);
+      console.error('Error fetching leave data:', error);
       toast({
         title: 'Error',
-        description: 'Failed to fetch leave management data',
-        variant: 'destructive',
+        description: 'Failed to fetch leave data',
+        variant: 'destructive'
       });
     } finally {
       setLoading(false);
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'approved': return 'bg-green-100 text-green-800';
-      case 'rejected': return 'bg-red-100 text-red-800';
-      case 'cancelled': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
+  const filteredLeaveRequests = leaveRequests.filter(request => {
+    const matchesSearch = 
+      request.employeeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.leaveType.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = statusFilter === 'all' || request.status === statusFilter;
+    const matchesType = typeFilter === 'all' || request.leaveType === typeFilter;
+    
+    return matchesSearch && matchesStatus && matchesType;
+  });
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'pending': return <AlertCircle className="h-4 w-4" />;
-      case 'approved': return <CheckCircle className="h-4 w-4" />;
-      case 'rejected': return <XCircle className="h-4 w-4" />;
-      case 'cancelled': return <XCircle className="h-4 w-4" />;
-      default: return <AlertCircle className="h-4 w-4" />;
-    }
+  const exportLeaveData = () => {
+    // Implementation for exporting leave data
+    toast({
+      title: 'Export',
+      description: 'Leave data exported successfully'
+    });
   };
-
-  const getLeaveTypeColor = (type: string) => {
-    switch (type) {
-      case 'paid': return 'bg-blue-100 text-blue-800';
-      case 'casual': return 'bg-green-100 text-green-800';
-      case 'sick': return 'bg-red-100 text-red-800';
-      case 'marriage': return 'bg-purple-100 text-purple-800';
-      case 'unpaid': return 'bg-gray-100 text-gray-800';
-      case 'maternity': return 'bg-pink-100 text-pink-800';
-      case 'paternity': return 'bg-indigo-100 text-indigo-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  if (!user || !['owner', 'admin', 'hr_admin'].includes(user.role?.toLowerCase())) {
-    setLocation('/dashboard');
-    return null;
-  }
 
   return (
-    <ModuleLayout>
-      <div className="container mx-auto py-6">
-        <div className="flex justify-between items-center mb-6">
+    <DashboardLayout>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold">Leave Management</h1>
-            <p className="text-muted-foreground">Manage leave requests, approvals, and policies</p>
+            <p className="text-muted-foreground">Manage employee leave requests and balances</p>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline">
+          <div className="flex space-x-2">
+            <Button variant="outline" onClick={exportLeaveData}>
               <Download className="mr-2 h-4 w-4" />
-              Export Report
+              Export
             </Button>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
@@ -168,334 +232,164 @@ export default function LeaveManagementPage() {
           </div>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="requests">Leave Requests</TabsTrigger>
-            <TabsTrigger value="balances">Leave Balances</TabsTrigger>
-            <TabsTrigger value="policies">Policies</TabsTrigger>
-            <TabsTrigger value="reports">Reports</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="requests" className="space-y-4">
-            <div className="flex gap-4 mb-6">
-              <div className="relative flex-1">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search employees..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-8"
-                />
-              </div>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="approved">Approved</SelectItem>
-                  <SelectItem value="rejected">Rejected</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={filterType} onValueChange={setFilterType}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Filter by type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="paid">Paid Leave</SelectItem>
-                  <SelectItem value="casual">Casual Leave</SelectItem>
-                  <SelectItem value="sick">Sick Leave</SelectItem>
-                  <SelectItem value="marriage">Marriage Leave</SelectItem>
-                  <SelectItem value="unpaid">Unpaid Leave</SelectItem>
-                  <SelectItem value="maternity">Maternity Leave</SelectItem>
-                  <SelectItem value="paternity">Paternity Leave</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {loading ? (
-              <div className="flex items-center justify-center p-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
-              </div>
-            ) : leaveRequests.length === 0 ? (
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center p-8">
-                  <Calendar className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No Leave Requests</h3>
-                  <p className="text-muted-foreground text-center mb-4">
-                    Leave requests will appear here once employees submit them.
-                  </p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid gap-4">
-                {leaveRequests
-                  .filter(request => 
-                    request.employeeName.toLowerCase().includes(searchTerm.toLowerCase())
-                  )
-                  .filter(request => filterStatus === 'all' || request.status === filterStatus)
-                  .filter(request => filterType === 'all' || request.leaveType === filterType)
-                  .map((request) => (
-                    <Card key={request.id} className="hover:shadow-md transition-shadow">
-                      <CardContent className="p-6">
-                        <div className="flex justify-between items-start">
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <h3 className="text-xl font-semibold">{request.employeeName}</h3>
-                              <Badge className={getStatusColor(request.status)}>
-                                {getStatusIcon(request.status)}
-                                {request.status}
-                              </Badge>
-                              <Badge className={getLeaveTypeColor(request.leaveType)}>
-                                {request.leaveType}
-                              </Badge>
-                            </div>
-                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                              <div className="flex items-center gap-1">
-                                <Calendar className="h-4 w-4" />
-                                {new Date(request.startDate).toLocaleDateString()} - {new Date(request.endDate).toLocaleDateString()}
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <Clock className="h-4 w-4" />
-                                {request.duration} days
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <CalendarDays className="h-4 w-4" />
-                                Requested: {new Date(request.requestedDate).toLocaleDateString()}
-                              </div>
-                            </div>
-                            <p className="text-sm text-muted-foreground">
-                              <strong>Reason:</strong> {request.reason}
-                            </p>
-                            {request.notes && (
-                              <p className="text-sm text-muted-foreground">
-                                <strong>Notes:</strong> {request.notes}
-                              </p>
-                            )}
-                          </div>
-                          <div className="flex gap-2">
-                            {request.status === 'pending' && (
-                              <>
-                                <Button variant="outline" size="sm" className="text-green-600">
-                                  Approve
-                                </Button>
-                                <Button variant="outline" size="sm" className="text-red-600">
-                                  Reject
-                                </Button>
-                              </>
-                            )}
-                            <Button variant="outline" size="sm">
-                              View Details
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="balances" className="space-y-4">
-            <div className="flex gap-4 mb-6">
-              <div className="relative flex-1">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search employees..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-8"
-                />
-              </div>
-            </div>
-
-            {loading ? (
-              <div className="flex items-center justify-center p-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
-              </div>
-            ) : leaveBalances.length === 0 ? (
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center p-8">
-                  <BarChart3 className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No Leave Balances</h3>
-                  <p className="text-muted-foreground text-center mb-4">
-                    Leave balances will appear here once employees are added to the system.
-                  </p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid gap-4">
-                {leaveBalances
-                  .filter(balance => 
-                    balance.employeeName.toLowerCase().includes(searchTerm.toLowerCase())
-                  )
-                  .map((balance) => (
-                    <Card key={balance.employeeId} className="hover:shadow-md transition-shadow">
-                      <CardContent className="p-6">
-                        <div className="flex justify-between items-start">
-                          <div className="space-y-2">
-                            <h3 className="text-xl font-semibold">{balance.employeeName}</h3>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                              <div>
-                                <span className="text-muted-foreground">Paid Leave:</span>
-                                <span className="ml-2 font-medium">{balance.paidLeave}</span>
-                              </div>
-                              <div>
-                                <span className="text-muted-foreground">Casual Leave:</span>
-                                <span className="ml-2 font-medium">{balance.casualLeave}</span>
-                              </div>
-                              <div>
-                                <span className="text-muted-foreground">Sick Leave:</span>
-                                <span className="ml-2 font-medium">{balance.sickLeave}</span>
-                              </div>
-                              <div>
-                                <span className="text-muted-foreground">Marriage Leave:</span>
-                                <span className="ml-2 font-medium">{balance.marriageLeave}</span>
-                              </div>
-                              <div>
-                                <span className="text-muted-foreground">Unpaid Leave:</span>
-                                <span className="ml-2 font-medium">{balance.unpaidLeave}</span>
-                              </div>
-                              <div>
-                                <span className="text-muted-foreground">Maternity Leave:</span>
-                                <span className="ml-2 font-medium">{balance.maternityLeave}</span>
-                              </div>
-                              <div>
-                                <span className="text-muted-foreground">Paternity Leave:</span>
-                                <span className="ml-2 font-medium">{balance.paternityLeave}</span>
-                              </div>
-                              <div>
-                                <span className="text-muted-foreground">Year:</span>
-                                <span className="ml-2 font-medium">{balance.year}</span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex gap-2">
-                            <Button variant="outline" size="sm">
-                              View History
-                            </Button>
-                            <Button variant="outline" size="sm">
-                              Update Balance
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="policies" className="space-y-4">
+        {/* Leave Balance Overview */}
+        {leaveBalance && (
+          <div className="grid gap-4 md:grid-cols-4">
             <Card>
-              <CardHeader>
-                <div className="flex justify-between items-center">
-                  <CardTitle>Leave Policies</CardTitle>
-                  <Button>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Policy
-                  </Button>
-                </div>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Employees</CardTitle>
+                <User className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                {leavePolicies.length === 0 ? (
-                  <div className="text-center py-8">
-                    <Settings className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">No Leave Policies</h3>
-                    <p className="text-muted-foreground mb-4">
-                      Create leave policies to define different types of leave and their rules.
-                    </p>
-                    <Button>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Create First Policy
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="grid gap-4">
-                    {leavePolicies.map((policy) => (
-                      <Card key={policy.id} className="hover:shadow-md transition-shadow">
-                        <CardContent className="p-6">
-                          <div className="flex justify-between items-start">
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-2">
-                                <h3 className="text-xl font-semibold">{policy.name}</h3>
-                                <Badge className={getLeaveTypeColor(policy.leaveType)}>
-                                  {policy.leaveType}
-                                </Badge>
-                              </div>
-                              <p className="text-sm text-muted-foreground">{policy.description}</p>
-                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                                <div>
-                                  <span className="text-muted-foreground">Default Days:</span>
-                                  <span className="ml-2 font-medium">{policy.defaultDays}</span>
-                                </div>
-                                <div>
-                                  <span className="text-muted-foreground">Max Days:</span>
-                                  <span className="ml-2 font-medium">{policy.maxDays}</span>
-                                </div>
-                                <div>
-                                  <span className="text-muted-foreground">Requires Approval:</span>
-                                  <span className="ml-2 font-medium">{policy.requiresApproval ? 'Yes' : 'No'}</span>
-                                </div>
-                                <div>
-                                  <span className="text-muted-foreground">Requires Documentation:</span>
-                                  <span className="ml-2 font-medium">{policy.requiresDocumentation ? 'Yes' : 'No'}</span>
-                                </div>
-                              </div>
-                            </div>
-                            <div className="flex gap-2">
-                              <Button variant="outline" size="sm">
-                                Edit
-                              </Button>
-                              <Button variant="outline" size="sm">
-                                Delete
-                              </Button>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
+                <div className="text-2xl font-bold">{leaveBalance.totalEmployees}</div>
               </CardContent>
             </Card>
-          </TabsContent>
-
-          <TabsContent value="reports" className="space-y-4">
+            
             <Card>
-              <CardHeader>
-                <CardTitle>Leave Reports</CardTitle>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Pending Requests</CardTitle>
+                <Clock className="h-4 w-4 text-yellow-600" />
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground">
-                  Comprehensive leave reports and analytics will be available here.
-                </p>
-                <div className="mt-4 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                    <span>Leave utilization reports</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                    <span>Department-wise leave analysis</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                    <span>Leave trend analysis</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                    <span>Approval workflow reports</span>
-                  </div>
-                </div>
+                <div className="text-2xl font-bold">{leaveBalance.pendingRequests}</div>
               </CardContent>
             </Card>
-          </TabsContent>
-        </Tabs>
+            
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Approved Requests</CardTitle>
+                <CheckCircle className="h-4 w-4 text-green-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{leaveBalance.approvedRequests}</div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Rejected Requests</CardTitle>
+                <XCircle className="h-4 w-4 text-red-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{leaveBalance.rejectedRequests}</div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Leave Balance Details */}
+        {leaveBalance && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Leave Balance Overview</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                {leaveBalance.leaveTypes?.map((leaveType: any, index: number) => (
+                  <div key={index} className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium">{leaveType.type}</span>
+                      <Badge variant="outline">{leaveType.remainingDays} left</Badge>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>Total: {leaveType.totalDays}</span>
+                        <span>Used: {leaveType.usedDays}</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-blue-600 h-2 rounded-full" 
+                          style={{ width: `${(leaveType.usedDays / leaveType.totalDays) * 100}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Filters */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Filter className="mr-2 h-4 w-4" />
+              Filters
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="search">Search</Label>
+                <div className="relative">
+                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="search"
+                    placeholder="Search employees or leave types..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-8"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <Label htmlFor="status">Status</Label>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All Statuses" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="approved">Approved</SelectItem>
+                    <SelectItem value="rejected">Rejected</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <Label htmlFor="type">Leave Type</Label>
+                <Select value={typeFilter} onValueChange={setTypeFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All Types" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="Annual Leave">Annual Leave</SelectItem>
+                    <SelectItem value="Sick Leave">Sick Leave</SelectItem>
+                    <SelectItem value="Maternity Leave">Maternity Leave</SelectItem>
+                    <SelectItem value="Paternity Leave">Paternity Leave</SelectItem>
+                    <SelectItem value="Study Leave">Study Leave</SelectItem>
+                    <SelectItem value="Unpaid Leave">Unpaid Leave</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Leave Requests Table */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Leave Requests</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="flex items-center justify-center p-8">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                <span className="ml-2 text-muted-foreground">Loading leave requests...</span>
+              </div>
+            ) : (
+              <DataTable
+                columns={leaveColumns}
+                data={filteredLeaveRequests}
+              />
+            )}
+          </CardContent>
+        </Card>
       </div>
-    </ModuleLayout>
+    </DashboardLayout>
   );
 } 

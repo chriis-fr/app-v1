@@ -24,6 +24,8 @@ model Organization {
   settings      Json?
   roles         Json?
   users         User[]
+  jobPostings   JobPosting[]      @relation("OrgJobPostings")
+  jobApplications JobApplication[] @relation("OrgJobApplications")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -44,6 +46,7 @@ model User {
   organizationId String?      @db.ObjectId
   organization  Organization? @relation(fields: [organizationId], references: [id])
   isOwner       Boolean?
+  isActive       Boolean?      @default(false)
   status        String?       @default("active")
   lastLogin     DateTime?
   employeeId    String?
@@ -67,6 +70,11 @@ model User {
   address       Json?
   moduleAccess  ModuleAccess[]
   permissions   Json?         @default("[]")
+  jobPostings   JobPosting[]        @relation("UserJobPostings")
+  jobApplicationReviews JobApplication[] @relation("UserJobApplicationReviews")
+  meetings      Meeting[]     @relation("UserMeetings")
+  meetingAttendees MeetingAttendee[] @relation("UserMeetingAttendees")
+  timeTrackingEntries TimeTrackingEntry[] @relation("UserTimeTracking")
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
@@ -95,10 +103,14 @@ model TimeTrackingEntry {
   type           String
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+  
+  // Relations
+  user           User     @relation("UserTimeTracking", fields: [userId], references: [id])
 }
 
 model Meeting {
   id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  organizerId    String   @db.ObjectId
   organizationId String   @db.ObjectId
   title          String
   description    String?
@@ -109,6 +121,7 @@ model Meeting {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   attendees      MeetingAttendee[]
+  organizer      User     @relation("UserMeetings", fields: [organizerId], references: [id])
 }
 
 model MeetingAttendee {
@@ -118,6 +131,7 @@ model MeetingAttendee {
   status    String
   joinedAt  DateTime?
   meeting   Meeting? @relation(fields: [meetingId], references: [id])
+  user      User     @relation("UserMeetingAttendees", fields: [userId], references: [id])
 }
 
 model Task {
@@ -132,4 +146,74 @@ model Task {
   timezone       String
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
-} 
+}
+
+model JobPosting {
+  id                  String           @id @default(auto()) @map("_id") @db.ObjectId
+  organizationId      String           @db.ObjectId
+  organization        Organization     @relation("OrgJobPostings", fields: [organizationId], references: [id])
+  title               String
+  department          String
+  location            String
+  employmentType      String
+  experienceLevel     String
+  salary              Json?
+  description         String
+  requirements        Json?
+  responsibilities    Json?
+  benefits            Json?
+  applicationDeadline DateTime?
+  status              String           @default("draft")
+  isPublic            Boolean          @default(true)
+  publicId            String           @unique
+  views               Int              @default(0)
+  applications        Int              @default(0)
+  createdBy           String           @db.ObjectId
+  createdByUser       User             @relation("UserJobPostings", fields: [createdBy], references: [id])
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  JobApplication      JobApplication[]
+
+  @@map("job_postings")
+}
+
+model JobApplication {
+  id                  String       @id @default(auto()) @map("_id") @db.ObjectId
+  jobPostingId        String       @db.ObjectId
+  jobPosting          JobPosting   @relation(fields: [jobPostingId], references: [id])
+  organizationId      String       @db.ObjectId
+  organization        Organization @relation("OrgJobApplications", fields: [organizationId], references: [id])
+  firstName           String
+  lastName            String
+  email               String
+  phone               String?
+  dateOfBirth         DateTime?
+  gender              String?
+  address             Json?
+  currentPosition     String?
+  currentCompany      String?
+  experience          Int?
+  education           String?
+  skills              Json?
+  certifications      Json?
+  languages           Json?
+  coverLetter         String?
+  expectedSalary      Json?
+  availability        String?
+  resume              Json?
+  additionalDocuments Json?
+  status              String       @default("pending")
+  reviewedBy          String?      @db.ObjectId
+  reviewedByUser      User?        @relation("UserJobApplicationReviews", fields: [reviewedBy], references: [id])
+  reviewedAt          DateTime?
+  reviewNotes         String?
+  interviews          Json?
+  communications      Json?
+  source              String       @default("website")
+  ipAddress           String?
+  userAgent           String?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  @@map("job_applications")
+}

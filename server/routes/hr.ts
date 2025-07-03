@@ -2,8 +2,10 @@ import express, { Request, Response, NextFunction } from 'express';
 import { Employee, Attendance, Payroll } from '../mongodb/models/hr';
 import { isAuthenticated } from '../middleware/auth';
 import { checkModuleAccess } from '../middleware/module-access';
+import { PrismaClient } from '@prisma/client';
 
 const router = express.Router();
+const prisma = new PrismaClient();
 
 // Middleware to check if user is HR admin or owner
 const isHRAdminOrOwner = (req: Request, res: Response, next: NextFunction) => {
@@ -1203,6 +1205,204 @@ router.get('/dashboard-summary', isAuthenticated, checkModuleAccess('hr'), async
   } catch (error) {
     console.error('Error fetching HR dashboard summary:', error);
     res.status(500).json({ message: 'Error fetching HR dashboard summary' });
+  }
+});
+
+// HR Module Settings Management
+router.get('/settings', isAuthenticated, async (req: AuthRequest, res) => {
+  try {
+    const organizationId = req.user?.organizationId;
+    if (!organizationId) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    // Get organization settings from Prisma
+    const organization = await prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { settings: true }
+    });
+
+    if (!organization) {
+      return res.status(404).json({ error: 'Organization not found' });
+    }
+
+    const settings = organization.settings as any;
+    const hrSettings = settings?.modules?.moduleSettings?.hr || {
+      enableLeaveManagement: true,
+      enablePayroll: true,
+      enablePerformanceReviews: true,
+      enableTimeTracking: true,
+      enableRecruitment: true,
+      enableTraining: true,
+      enableBenefits: true,
+      enableAttendance: true,
+      enableTermination: true,
+      enableSkillMatching: true,
+      enableCredentialVerification: true,
+      policies: {
+        leavePolicy: {
+          annualLeaveDays: 21,
+          sickLeaveDays: 10,
+          maternityLeaveDays: 90,
+          paternityLeaveDays: 14,
+          carryForwardDays: 5,
+          maxCarryForwardDays: 10
+        },
+        attendancePolicy: {
+          workingHours: 8,
+          overtimeThreshold: 40,
+          lateThreshold: 15,
+          earlyDepartureThreshold: 15,
+          gracePeriod: 5
+        },
+        payrollPolicy: {
+          paymentFrequency: 'monthly',
+          paymentDay: 25,
+          overtimeRate: 1.5,
+          holidayPay: 2.0,
+          taxDeduction: true,
+          socialSecurity: true
+        },
+        performancePolicy: {
+          reviewFrequency: 'quarterly',
+          ratingScale: 5,
+          probationPeriod: 90,
+          improvementPlanDuration: 30
+        }
+      },
+      workflows: {
+        leaveApproval: ['manager', 'hr'],
+        recruitmentApproval: ['hr', 'department_head'],
+        terminationApproval: ['hr', 'executive'],
+        performanceReview: ['manager', 'hr'],
+        payrollApproval: ['hr', 'finance']
+      },
+      notifications: {
+        leaveRequests: true,
+        attendanceAlerts: true,
+        payrollReminders: true,
+        performanceReviews: true,
+        recruitmentUpdates: true,
+        terminationNotifications: true
+      },
+      integrations: {
+        payrollSystem: '',
+        timeTrackingSystem: '',
+        recruitmentPlatform: '',
+        learningManagementSystem: '',
+        benefitsProvider: '',
+        backgroundCheckService: ''
+      },
+      customFields: {
+        employee: [],
+        leave: [],
+        performance: [],
+        recruitment: []
+      }
+    };
+
+    res.json(hrSettings);
+  } catch (error) {
+    console.error('Error fetching HR settings:', error);
+    res.status(500).json({ error: 'Failed to fetch HR settings' });
+  }
+});
+
+router.put('/settings', isAuthenticated, async (req: AuthRequest, res) => {
+  try {
+    const organizationId = req.user?.organizationId;
+    if (!organizationId) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    // Check if user has HR admin permissions
+    const user = await prisma.user.findUnique({
+      where: { id: req.user?.id },
+      select: { role: true, permissions: true }
+    });
+
+    const canManageHRSettings = ['owner', 'admin', 'hr'].includes(user?.role || '');
+    if (!canManageHRSettings) {
+      return res.status(403).json({ error: 'Insufficient permissions to manage HR settings' });
+    }
+
+    const hrSettings = req.body;
+
+    // Get current organization settings
+    const organization = await prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { settings: true }
+    });
+
+    if (!organization) {
+      return res.status(404).json({ error: 'Organization not found' });
+    }
+
+    const currentSettings = organization.settings as any || {};
+    
+    // Update HR module settings
+    const updatedSettings = {
+      ...currentSettings,
+      modules: {
+        ...currentSettings.modules,
+        moduleSettings: {
+          ...currentSettings.modules?.moduleSettings,
+          hr: hrSettings
+        }
+      }
+    };
+
+    // Update organization settings
+    await prisma.organization.update({
+      where: { id: organizationId },
+      data: { settings: updatedSettings }
+    });
+
+    res.json({ message: 'HR settings updated successfully', settings: hrSettings });
+  } catch (error) {
+    console.error('Error updating HR settings:', error);
+    res.status(500).json({ error: 'Failed to update HR settings' });
+  }
+});
+
+// Get HR module feature status
+router.get('/features/status', isAuthenticated, async (req: AuthRequest, res) => {
+  try {
+    const organizationId = req.user?.organizationId;
+    if (!organizationId) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const organization = await prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { settings: true }
+    });
+
+    if (!organization) {
+      return res.status(404).json({ error: 'Organization not found' });
+    }
+
+    const settings = organization.settings as any;
+    const hrSettings = settings?.modules?.moduleSettings?.hr || {};
+
+    const featureStatus = {
+      leaveManagement: hrSettings.enableLeaveManagement ?? true,
+      payroll: hrSettings.enablePayroll ?? true,
+      performanceReviews: hrSettings.enablePerformanceReviews ?? true,
+      timeTracking: hrSettings.enableTimeTracking ?? true,
+      recruitment: hrSettings.enableRecruitment ?? true,
+      training: hrSettings.enableTraining ?? true,
+      benefits: hrSettings.enableBenefits ?? true,
+      attendance: hrSettings.enableAttendance ?? true,
+      termination: hrSettings.enableTermination ?? true,
+      skillMatching: hrSettings.enableSkillMatching ?? true,
+      credentialVerification: hrSettings.enableCredentialVerification ?? true
+    };
+
+    res.json(featureStatus);
+  } catch (error) {
+    console.error('Error fetching HR feature status:', error);
+    res.status(500).json({ error: 'Failed to fetch HR feature status' });
   }
 });
 
