@@ -55,16 +55,20 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     try {
       setLoading(true);
       const response = await fetch('/api/notifications', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+        credentials: 'include'
       });
       
       if (response.ok) {
         const data = await response.json();
-        setNotifications(data);
+        // Transform the data to match the expected format
+        const transformedData = data.map((notification: any) => ({
+          ...notification,
+          timestamp: new Date(notification.createdAt)
+        }));
+        setNotifications(transformedData);
       } else {
         // Fallback to mock data if API fails
+        console.log('API failed, using mock data');
         setNotifications(generateMockNotifications());
       }
     } catch (error) {
@@ -147,10 +151,8 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   const markAsRead = async (notificationId: string) => {
     try {
       await fetch(`/api/notifications/${notificationId}/read`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+        method: 'PUT',
+        credentials: 'include'
       });
       
       setNotifications(prev => 
@@ -166,10 +168,8 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   const markAllAsRead = async () => {
     try {
       await fetch('/api/notifications/read-all', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+        method: 'PUT',
+        credentials: 'include'
       });
       
       setNotifications(prev => 

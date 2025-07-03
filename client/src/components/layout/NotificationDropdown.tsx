@@ -31,7 +31,8 @@ export default function NotificationDropdown() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const [isOpen, setIsOpen] = useState(false);
-  const { notifications, unreadCount, loading, markAsRead, markAllAsRead } = useNotifications();
+  const { notifications, loading, markAsRead, markAllAsRead } = useNotifications();
+  const unreadCount = notifications.filter(n => !n.isRead).length;
 
   const getNotificationIcon = (type: string) => {
     switch (type) {

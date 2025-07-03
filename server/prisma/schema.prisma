@@ -26,6 +26,7 @@ model Organization {
   users         User[]
   jobPostings   JobPosting[]      @relation("OrgJobPostings")
   jobApplications JobApplication[] @relation("OrgJobApplications")
+  notifications Notification[]    @relation("OrgNotifications")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -75,6 +76,7 @@ model User {
   meetings      Meeting[]     @relation("UserMeetings")
   meetingAttendees MeetingAttendee[] @relation("UserMeetingAttendees")
   timeTrackingEntries TimeTrackingEntry[] @relation("UserTimeTracking")
+  notifications Notification[] @relation("UserNotifications")
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
@@ -118,6 +120,13 @@ model Meeting {
   endTime        DateTime
   status         String
   type           String
+  timezone       String
+  location       String?
+  isVirtual      Boolean  @default(false)
+  meetingUrl     String?
+  recurring      Json?
+  reminders      Json?
+  notes          String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   attendees      MeetingAttendee[]
@@ -125,13 +134,16 @@ model Meeting {
 }
 
 model MeetingAttendee {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  meetingId String   @db.ObjectId
-  userId    String   @db.ObjectId
-  status    String
-  joinedAt  DateTime?
-  meeting   Meeting? @relation(fields: [meetingId], references: [id])
-  user      User     @relation("UserMeetingAttendees", fields: [userId], references: [id])
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  meetingId    String    @db.ObjectId
+  userId       String    @db.ObjectId
+  timezone     String
+  status       String
+  responseTime DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  meeting      Meeting   @relation(fields: [meetingId], references: [id])
+  user         User      @relation("UserMeetingAttendees", fields: [userId], references: [id])
 }
 
 model Task {
@@ -216,4 +228,23 @@ model JobApplication {
   updatedAt           DateTime     @updatedAt
 
   @@map("job_applications")
+}
+
+model Notification {
+  id             String       @id @default(auto()) @map("_id") @db.ObjectId
+  type           String // meeting, task, approval, system, user, finance, inventory
+  title          String
+  message        String
+  userId         String       @db.ObjectId
+  user           User         @relation("UserNotifications", fields: [userId], references: [id])
+  organizationId String       @db.ObjectId
+  organization   Organization @relation("OrgNotifications", fields: [organizationId], references: [id])
+  priority       String       @default("medium") // low, medium, high
+  isRead         Boolean      @default(false)
+  actionUrl      String?
+  metadata       String? // JSON string for additional data
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@map("notifications")
 }

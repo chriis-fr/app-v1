@@ -25,7 +25,7 @@ import { UserDocument } from './models/User';
 import cookieParser from 'cookie-parser';
 import { availableModules } from '../shared/schema';
 import cors from 'cors';
-import { sendActivationEmail, testEmailConnection, sendTestEmail } from './services/emailService';
+import { sendActivationEmail, testEmailConnection, sendTestEmail, sendMeetingNotification, sendNotificationEmail } from './services/emailService';
 import { Types } from 'mongoose';
 import * as mongoose from 'mongoose';
 // import { createNotification } from './services/ai-insights';
@@ -147,8 +147,29 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
     actionUrl?: string;
     metadata?: any;
   }) => {
-    // Mock implementation - just log the notification
-    console.log('Notification created:', data);
+    try {
+      console.log('Creating notification:', data);
+      
+      // Create notification in Prisma
+      const notification = await prisma.notification.create({
+        data: {
+          type: data.type,
+          title: data.title,
+          message: data.message,
+          userId: data.userId,
+          organizationId: data.organizationId,
+          priority: data.priority || 'medium',
+          actionUrl: data.actionUrl,
+          metadata: data.metadata ? JSON.stringify(data.metadata) : null,
+        }
+      });
+      
+      console.log('Notification created successfully:', notification.id);
+      return notification;
+    } catch (error) {
+      console.error('Error creating notification:', error);
+      // Don't throw error to avoid breaking the main flow
+    }
   };
 
   // Set up authentication routes
@@ -2467,9 +2488,181 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
     }
   });
 
+  // Test Prisma connection
+  app.get('/api/test-prisma', async (req, res) => {
+    try {
+      const userCount = await prisma.user.count();
+      const meetingCount = await prisma.meeting.count();
+      
+      // Check if notification model exists
+      const hasNotificationModel = !!prisma.notification;
+      let notificationCount = 0;
+      
+      if (hasNotificationModel) {
+        try {
+          notificationCount = await prisma.notification.count();
+        } catch (error) {
+          console.error('Error counting notifications:', error);
+        }
+      }
+      
+      res.json({ 
+        message: 'Prisma connection working', 
+        userCount, 
+        meetingCount,
+        notificationCount,
+        hasNotificationModel,
+        availableModels: Object.keys(prisma),
+        models: {
+          user: typeof prisma.user,
+          meeting: typeof prisma.meeting,
+          notification: typeof prisma.notification
+        }
+      });
+    } catch (error) {
+      console.error('Prisma test error:', error);
+      res.status(500).json({ error: 'Prisma connection failed', details: error.message });
+    }
+  });
+
+  // Notifications endpoint
+  app.get('/api/notifications', async (req, res) => {
+    try {
+      if (!req.user || !req.user.organizationId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      console.log('Available Prisma models:', Object.keys(prisma));
+      console.log('Notification model available:', !!prisma.notification);
+
+      const { limit = 50, unreadOnly = false } = req.query;
+      
+      let whereClause: any = {
+        userId: req.user.id,
+        organizationId: req.user.organizationId
+      };
+
+      if (unreadOnly === 'true') {
+        whereClause.isRead = false;
+      }
+
+      // Check if notification model exists
+      if (!prisma.notification) {
+        console.error('Notification model not available in Prisma client');
+        console.log('Returning mock notifications as fallback');
+        
+        // Return mock notifications as fallback
+        const mockNotifications = [
+          {
+            id: '1',
+            type: 'meeting',
+            title: 'Meeting Invitation',
+            message: 'You have been invited to a team meeting',
+            priority: 'medium',
+            isRead: false,
+            actionUrl: '/meetings',
+            metadata: JSON.stringify({ meetingId: 'mock-1' }),
+            createdAt: new Date().toISOString()
+          },
+          {
+            id: '2',
+            type: 'task',
+            title: 'Task Assignment',
+            message: 'New task assigned: Review project documentation',
+            priority: 'high',
+            isRead: false,
+            actionUrl: '/tasks',
+            metadata: JSON.stringify({ taskId: 'mock-1' }),
+            createdAt: new Date(Date.now() - 3600000).toISOString()
+          }
+        ];
+        
+        return res.json(mockNotifications);
+      }
+
+      const notifications = await prisma.notification.findMany({
+        where: whereClause,
+        orderBy: { createdAt: 'desc' },
+        take: Number(limit),
+        select: {
+          id: true,
+          type: true,
+          title: true,
+          message: true,
+          priority: true,
+          isRead: true,
+          actionUrl: true,
+          metadata: true,
+          createdAt: true
+        }
+      });
+
+      // Parse metadata JSON strings back to objects
+      const parsedNotifications = notifications.map(notification => ({
+        ...notification,
+        metadata: notification.metadata ? JSON.parse(notification.metadata) : null
+      }));
+
+      res.json(parsedNotifications);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+      res.status(500).json({ error: 'Failed to fetch notifications' });
+    }
+  });
+
+  // Mark notification as read
+  app.put('/api/notifications/:id/read', async (req, res) => {
+    try {
+      if (!req.user || !req.user.organizationId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const { id } = req.params;
+
+      const notification = await prisma.notification.update({
+        where: {
+          id,
+          userId: req.user.id,
+          organizationId: req.user.organizationId
+        },
+        data: { isRead: true }
+      });
+
+      res.json(notification);
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+      res.status(500).json({ error: 'Failed to mark notification as read' });
+    }
+  });
+
+  // Mark all notifications as read
+  app.put('/api/notifications/read-all', async (req, res) => {
+    try {
+      if (!req.user || !req.user.organizationId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      await prisma.notification.updateMany({
+        where: {
+          userId: req.user.id,
+          organizationId: req.user.organizationId,
+          isRead: false
+        },
+        data: { isRead: true }
+      });
+
+      res.json({ message: 'All notifications marked as read' });
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+      res.status(500).json({ error: 'Failed to mark notifications as read' });
+    }
+  });
+
   // Meeting API endpoints
   app.post('/api/meetings', async (req, res) => {
     try {
+      console.log('Meeting creation request:', { user: req.user, body: req.body });
+      
       if (!req.user || !req.user.organizationId) {
         return res.status(401).json({ error: 'Not authenticated' });
       }
@@ -2482,10 +2675,27 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
 
       // Check if user has permission to schedule meetings
       // Allow HR, admin, owner, executive, and board to schedule meetings
-      const canSchedule = ['owner', 'executive', 'board', 'admin', 'hr'].includes(req.user.role);
+      const canSchedule = ['owner', 'executive', 'board', 'admin', 'hr'].includes(req.user.role) || req.user.isOwner;
+      console.log('Permission check:', { role: req.user.role, isOwner: req.user.isOwner, canSchedule });
+      
       if (!canSchedule) {
         return res.status(403).json({ error: 'Insufficient permissions to schedule meetings' });
       }
+
+      console.log('Creating meeting with data:', {
+        title,
+        description,
+        organizerId: req.user.id,
+        organizationId: req.user.organizationId,
+        type,
+        status: req.user.role === 'hr' ? 'pending_approval' : 'scheduled',
+        startTime: new Date(startTime),
+        endTime: new Date(endTime),
+        timezone,
+        location,
+        isVirtual: isVirtual || false,
+        meetingUrl
+      });
 
       const meeting = await prisma.meeting.create({
         data: {
@@ -2504,6 +2714,8 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
         } as any
       });
 
+      console.log('Meeting created successfully:', meeting);
+
       // Create meeting attendees
       if (attendees && attendees.length > 0) {
         const attendeeData = attendees.map((attendee: any) => ({
@@ -2519,14 +2731,19 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
 
         // Send notifications to attendees
         for (const attendee of attendees) {
+          console.log('Processing attendee:', attendee);
+          
           // Get attendee user details
           const attendeeUser = await prisma.user.findUnique({
             where: { id: attendee.userId }
           });
 
+          console.log('Found attendee user:', attendeeUser ? { id: attendeeUser.id, email: attendeeUser.email } : 'Not found');
+
           if (attendeeUser) {
             // Create in-app notification
-            await createNotification({
+            console.log('Creating notification for attendee:', attendeeUser.id);
+            const notification = await createNotification({
               type: 'meeting',
               title: 'Meeting Invitation',
               message: `You have been invited to "${title}" on ${new Date(startTime).toLocaleDateString()}`,
@@ -2536,14 +2753,15 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
               actionUrl: `/meetings`,
               metadata: { meetingId: meeting.id }
             });
+            console.log('Notification created:', notification ? notification.id : 'Failed');
 
             // Send email notification
-            const { sendMeetingNotification } = await import('./services/emailService');
             const meetingDate = new Date(startTime).toLocaleDateString();
             const meetingTime = new Date(startTime).toLocaleTimeString();
             const organizerName = `${(req.user as any)?.firstName || ''} ${(req.user as any)?.lastName || ''}`.trim();
             
-            await sendMeetingNotification(
+            console.log('Sending email to:', attendeeUser.email);
+            const emailResult = await sendMeetingNotification(
               attendeeUser.email,
               `${attendeeUser.firstName} ${attendeeUser.lastName}`,
               title,
@@ -2554,6 +2772,7 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
               isVirtual || false,
               meetingUrl
             );
+            console.log('Email result:', emailResult);
           }
         }
       }
@@ -2581,7 +2800,6 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
           });
 
           // Send email notification to executives
-          const { sendNotificationEmail } = await import('./services/emailService');
           await sendNotificationEmail(
             executive.email,
             `${executive.firstName} ${executive.lastName}`,
@@ -2596,7 +2814,16 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
       res.status(201).json(meeting);
     } catch (error) {
       console.error('Error creating meeting:', error);
-      res.status(500).json({ error: 'Failed to create meeting' });
+      console.error('Error details:', {
+        message: error.message,
+        code: error.code,
+        meta: error.meta,
+        stack: error.stack
+      });
+      res.status(500).json({ 
+        error: 'Failed to create meeting',
+        details: error.message 
+      });
     }
   });
 
