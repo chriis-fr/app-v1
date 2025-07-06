@@ -221,7 +221,13 @@ export default function Sidebar() {
                   'flex items-center gap-3 px-3 py-2 rounded-lg mb-1 transition-colors cursor-pointer hover:bg-gray-50',
                   openDropdown === item.id && 'bg-gray-100'
                 )}
-                onClick={() => setLocation(item.route)}
+                onClick={() => {
+                  if (item.id === 'hr' && user?.isOwner) {
+                    setLocation('/dashboard/hr/info');
+                  } else {
+                    setLocation(item.route);
+                  }
+                }}
               >
                 <item.icon className="h-5 w-5 text-gray-400" />
                 <span className="text-sm text-gray-600">{item.name}</span>

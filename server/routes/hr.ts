@@ -16,6 +16,23 @@ router.get('/test', (req: Request, res: Response) => {
   res.json({ message: 'HR routes are working' });
 });
 
+// Payroll settings schema
+const payrollSettingsSchema = z.object({
+  taxRate: z.number().min(0).max(50),
+  benefitsRate: z.number().min(0).max(20),
+  overtimeRate: z.number().min(1).max(3),
+  currency: z.string(),
+  paymentFrequency: z.enum(['weekly', 'biweekly', 'monthly']),
+  autoProcess: z.boolean(),
+  requireApproval: z.boolean(),
+  deductions: z.object({
+    healthInsurance: z.number().min(0).max(10),
+    retirementPlan: z.number().min(0).max(10),
+    lifeInsurance: z.number().min(0).max(5),
+    otherDeductions: z.number().min(0).max(10)
+  })
+});
+
 // Helper function to get user and organization from request
 const getUserAndOrg = (req: any) => {
   console.log('getUserAndOrg called with req.user:', req.user);
@@ -2101,6 +2118,81 @@ router.post('/employees/payroll-onboard', async (req, res) => {
       error: 'Failed to add employee to payroll',
       details: error.message 
     });
+  }
+});
+
+// GET /api/hr/payroll-settings - Get payroll settings for organization
+router.get('/payroll-settings', isAuthenticated, checkModuleAccess('hr'), async (req: Request, res: Response) => {
+  try {
+    const { user, organizationId } = getUserAndOrg(req);
+    
+    // Get organization settings for payroll
+    const organization = await prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { settings: true }
+    });
+    
+    // Default payroll settings
+    const defaultSettings = {
+      taxRate: 15,
+      benefitsRate: 5,
+      overtimeRate: 1.5,
+      currency: 'USD',
+      paymentFrequency: 'monthly',
+      autoProcess: false,
+      requireApproval: true,
+      deductions: {
+        healthInsurance: 2,
+        retirementPlan: 3,
+        lifeInsurance: 1,
+        otherDeductions: 0
+      }
+    };
+    
+    // Return settings from organization or defaults
+    const settings = organization?.settings?.payroll || defaultSettings;
+    res.json(settings);
+  } catch (error) {
+    console.error('Error fetching payroll settings:', error);
+    res.status(500).json({ error: 'Failed to fetch payroll settings' });
+  }
+});
+
+// POST /api/hr/payroll-settings - Update payroll settings for organization
+router.post('/payroll-settings', isAuthenticated, checkModuleAccess('hr'), isHRAdminOrOwner, async (req: Request, res: Response) => {
+  try {
+    const { user, organizationId } = getUserAndOrg(req);
+    
+    const validatedData = payrollSettingsSchema.parse(req.body);
+    
+    // Update organization settings with new payroll settings
+    const organization = await prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { settings: true }
+    });
+    
+    const currentSettings = organization?.settings || {};
+    const updatedSettings = {
+      ...currentSettings,
+      payroll: validatedData
+    };
+    
+    await prisma.organization.update({
+      where: { id: organizationId },
+      data: { settings: updatedSettings }
+    });
+    
+    res.json({
+      success: true,
+      message: 'Payroll settings updated successfully',
+      settings: validatedData
+    });
+  } catch (error) {
+    console.error('Error updating payroll settings:', error);
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Validation error', details: error.errors });
+    }
+    res.status(500).json({ error: 'Failed to update payroll settings' });
   }
 });
 

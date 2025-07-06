@@ -13,6 +13,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import PayrollOnboarding from '@/components/hr/PayrollOnboarding';
 
 interface Employee {
   id: string;
@@ -79,8 +80,11 @@ export default function EmployeeHRDetail() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPayrollModal, setShowPayrollModal] = useState(false);
+  const [payrollHistory, setPayrollHistory] = useState<any[]>([]);
+  const [loadingPayrollHistory, setLoadingPayrollHistory] = useState(false);
 
-  const fetchEmployee = async () => {
+    const fetchEmployee = async () => {
     try {
       setLoading(true);
       setError(null);
@@ -219,18 +223,18 @@ export default function EmployeeHRDetail() {
       };
       
       setEmployee(employeeWithDefaults);
-    } catch (err) {
+      } catch (err) {
       console.error('Error fetching employee:', err);
-      setError(String(err));
+        setError(String(err));
       toast({
         title: 'Error',
         description: 'Failed to fetch employee data',
         variant: 'destructive',
       });
-    } finally {
-      setLoading(false);
-    }
-  };
+      } finally {
+        setLoading(false);
+      }
+    };
 
   const handleSave = async (section: string, data: any) => {
     if (!employee) return;
@@ -287,9 +291,49 @@ export default function EmployeeHRDetail() {
     }
   };
 
+  const handlePayrollSuccess = () => {
+    // Refresh employee data to show updated payroll information
+    fetchEmployee();
+    fetchPayrollHistory();
+    setShowPayrollModal(false);
+    toast({
+      title: 'Success',
+      description: 'Employee added to payroll successfully',
+    });
+  };
+
+  const fetchPayrollHistory = async () => {
+    if (!employee) return;
+    
+    setLoadingPayrollHistory(true);
+    try {
+      const response = await fetch(`/api/hr/employees/${employee.id}/payroll-history`, {
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const history = await response.json();
+        setPayrollHistory(history);
+      }
+    } catch (error) {
+      console.error('Error fetching payroll history:', error);
+    } finally {
+      setLoadingPayrollHistory(false);
+    }
+  };
+
   useEffect(() => {
     fetchEmployee();
   }, [id]);
+
+  useEffect(() => {
+    if (employee) {
+      fetchPayrollHistory();
+    }
+  }, [employee]);
 
   if (loading) {
     return (
@@ -694,12 +738,7 @@ export default function EmployeeHRDetail() {
                   <Button 
                     variant="outline" 
                     size="sm"
-                    onClick={() => {
-                      toast({
-                        title: 'Payroll',
-                        description: 'Employee added to payroll successfully',
-                      });
-                    }}
+                    onClick={() => setShowPayrollModal(true)}
                   >
                     <DollarSign className="h-4 w-4 mr-2" />
                     Add to Payroll
@@ -832,6 +871,44 @@ export default function EmployeeHRDetail() {
                     Save Changes
                   </Button>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Payroll History */}
+            <Card className="mt-4">
+              <CardHeader>
+                <CardTitle>Payroll History</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {loadingPayrollHistory ? (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    <span>Loading payroll history...</span>
+                  </div>
+                ) : payrollHistory.length > 0 ? (
+                  <div className="space-y-2">
+                    {payrollHistory.map((entry, index) => (
+                      <div key={index} className="flex justify-between items-center p-3 border rounded">
+                        <div>
+                          <p className="font-medium">{entry.period}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {entry.paymentMethod} • {entry.status}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-medium">{entry.currency} {entry.netPay}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {new Date(entry.processedAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-center text-muted-foreground py-4">
+                    No payroll history found. Add employee to payroll to see history.
+                  </p>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -1046,6 +1123,29 @@ export default function EmployeeHRDetail() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Payroll Onboarding Modal */}
+      {showPayrollModal && employee && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">Add {employee.firstName} {employee.lastName} to Payroll</h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowPayrollModal(false)}
+              >
+                ✕
+              </Button>
+            </div>
+            <PayrollOnboarding
+              employee={employee}
+              onClose={() => setShowPayrollModal(false)}
+              onSuccess={handlePayrollSuccess}
+            />
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 } 

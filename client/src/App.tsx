@@ -46,6 +46,7 @@ import FinanceModulePage from '@/pages/finance/module';
 import SupportPage from '@/pages/support-page';
 import HRPage from '@/pages/hr';
 import HRInfoPage from '@/pages/modules/hr-info';
+import HRReportsPage from '@/pages/dashboard/hr/reports';
 import { HRReports } from './components/hr/HRReports';
 import AnalyticsPage from '@/pages/analytics';
 import EmployeeHRDetail from '@/pages/hr/employees/[id]';
@@ -110,7 +111,7 @@ function App() {
               <ProtectedRoute path="/hr" component={HRPage} requiredModule="hr" />
               <ProtectedRoute path="/dashboard/hr" component={HRPage} requiredModule="hr" />
               <ProtectedRoute path="/dashboard/hr/info" component={HRInfoPage} requiredModule="hr" />
-              <ProtectedRoute path="/dashboard/hr/reports" component={HRReports} requiredModule="hr" />
+              <ProtectedRoute path="/dashboard/hr/reports" component={HRReportsPage} requiredModule="hr" />
               
               {/* HR Submodule Routes - All redirect to main HR page */}
               <ProtectedRoute path="/dashboard/hr/attendance" component={HRPage} requiredModule="hr" />

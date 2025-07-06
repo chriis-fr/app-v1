@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { DataTable } from '@/components/ui/data-table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import {
   Calendar, FileText, Settings, Briefcase, CreditCard, Package, Building, Activity, Target,
   CalendarDays, Receipt, Users2, Clock4, CheckCircle, XCircle, AlertCircle
 } from 'lucide-react';
+import { HRReports } from '@/components/hr/HRReports';
 import { useToast } from '@/components/ui/use-toast';
 import { Employee, columns as employeeColumns } from '@/pages/hr/columns';
 import { useAuth } from '@/hooks/use-auth';
@@ -315,6 +316,10 @@ export default function HRMain() {
               <TabsTrigger value="activity-logs" className="flex items-center gap-2">
                 <Activity className="h-4 w-4" />
                 Activity Logs
+              </TabsTrigger>
+              <TabsTrigger value="reports" className="flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Reports
               </TabsTrigger>
               <TabsTrigger value="settings" className="flex items-center gap-2">
                 <Settings className="h-4 w-4" />
@@ -649,20 +654,141 @@ export default function HRMain() {
 
             {/* Payroll Management Tab */}
             <TabsContent value="payroll" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <div className="flex justify-between items-center">
-                  <CardTitle>Payroll Management</CardTitle>
-                    <Button onClick={() => setLocation('/hr/payroll')}>
-                      <DollarSign className="mr-2 h-4 w-4" />
-                      Process Payroll
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">Salary processing, payslips, deductions, bonuses, and payroll reports will be implemented here.</p>
-                </CardContent>
-              </Card>
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold">Payroll Management</h2>
+                  <p className="text-muted-foreground">Employee payroll data and salary information</p>
+                </div>
+                <Button onClick={() => setLocation('/hr/payroll')}>
+                  <DollarSign className="mr-2 h-4 w-4" />
+                  Go to Payroll
+                </Button>
+              </div>
+
+              {/* Employee Payroll Cards */}
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {loading ? (
+                  Array.from({ length: 6 }).map((_, index) => (
+                    <Card key={index} className="animate-pulse">
+                      <CardHeader className="pb-2">
+                        <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="h-6 bg-gray-200 rounded w-1/2 mb-2"></div>
+                        <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+                      </CardContent>
+                    </Card>
+                  ))
+                ) : (
+                  employees
+                    .filter((emp: any) => emp.status === 'active' && emp.isActive !== false)
+                    .slice(0, 6)
+                    .map((employee: any) => {
+                      const salaryAmount = employee.salaryAmount || 0;
+                      const taxRate = 0.15; // 15% tax rate
+                      const benefitsRate = 0.05; // 5% benefits rate
+                      const taxDeduction = salaryAmount * taxRate;
+                      const benefitsDeduction = salaryAmount * benefitsRate;
+                      const netPay = salaryAmount - taxDeduction - benefitsDeduction;
+                      
+                      return (
+                        <Card key={employee.id || employee._id} className="hover:shadow-md transition-shadow">
+                          <CardHeader className="pb-2">
+                            <div className="flex items-center justify-between">
+                              <CardTitle className="text-sm font-medium">
+                                {employee.firstName} {employee.lastName}
+                              </CardTitle>
+                              <Badge variant={employee.salaryAmount && employee.salaryAmount > 0 ? "default" : "secondary"}>
+                                {employee.salaryAmount && employee.salaryAmount > 0 ? 'Active' : 'Pending'}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground">{employee.position || 'Employee'}</p>
+                          </CardHeader>
+                          <CardContent className="space-y-2">
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-muted-foreground">Gross Salary:</span>
+                              <span className="font-medium">${salaryAmount.toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-muted-foreground">Tax:</span>
+                              <span className="text-red-600 text-sm">-${taxDeduction.toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-muted-foreground">Benefits:</span>
+                              <span className="text-orange-600 text-sm">-${benefitsDeduction.toLocaleString()}</span>
+                            </div>
+                            <div className="border-t pt-2">
+                              <div className="flex justify-between items-center">
+                                <span className="text-sm font-medium">Net Pay:</span>
+                                <span className="font-bold text-green-600">${netPay.toLocaleString()}</span>
+                              </div>
+                            </div>
+                            <div className="flex justify-between items-center text-xs text-muted-foreground">
+                              <span>Payment: {employee.payoutMethod || 'Bank Transfer'}</span>
+                              <span>{employee.currencyPreference || 'USD'}</span>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })
+                )}
+              </div>
+
+              {/* Payroll Summary */}
+              {!loading && employees.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Payroll Summary</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid gap-4 md:grid-cols-4">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-blue-600">
+                          {employees.filter((emp: any) => emp.status === 'active' && emp.isActive !== false).length}
+                        </div>
+                        <div className="text-sm text-muted-foreground">Active Employees</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-green-600">
+                          ${employees
+                            .filter((emp: any) => emp.salaryAmount && emp.salaryAmount > 0)
+                            .reduce((sum: number, emp: any) => sum + (emp.salaryAmount || 0), 0)
+                            .toLocaleString()}
+                        </div>
+                        <div className="text-sm text-muted-foreground">Total Gross Payroll</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-red-600">
+                          -${employees
+                            .filter((emp: any) => emp.salaryAmount && emp.salaryAmount > 0)
+                            .reduce((sum: number, emp: any) => {
+                              const salary = emp.salaryAmount || 0;
+                              const taxDeduction = salary * 0.15;
+                              const benefitsDeduction = salary * 0.05;
+                              return sum + taxDeduction + benefitsDeduction;
+                            }, 0)
+                            .toLocaleString()}
+                        </div>
+                        <div className="text-sm text-muted-foreground">Total Deductions</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-green-600">
+                          ${employees
+                            .filter((emp: any) => emp.salaryAmount && emp.salaryAmount > 0)
+                            .reduce((sum: number, emp: any) => {
+                              const salary = emp.salaryAmount || 0;
+                              const taxDeduction = salary * 0.15;
+                              const benefitsDeduction = salary * 0.05;
+                              return sum + salary - taxDeduction - benefitsDeduction;
+                            }, 0)
+                            .toLocaleString()}
+                        </div>
+                        <div className="text-sm text-muted-foreground">Total Net Payroll</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
 
             {/* Expense Management Tab */}
@@ -715,6 +841,206 @@ export default function HRMain() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-muted-foreground">Audit trail of HR actions, user activities, and system logs will be displayed here.</p>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Reports Tab */}
+            <TabsContent value="reports" className="space-y-6">
+              {/* Enhanced Header */}
+              <div className="relative rounded-xl overflow-hidden mb-8 bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100 shadow-sm">
+                <div className="flex items-center justify-between px-8 py-8">
+                  <div className="flex items-center gap-4">
+                    <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full p-4 shadow-lg">
+                      <BarChart className="h-8 w-8" />
+                    </div>
+                    <div>
+                      <h2 className="text-3xl font-bold text-indigo-900 mb-1">HR Reports & Analytics</h2>
+                      <p className="text-indigo-700 text-sm">Generate, view, and export comprehensive HR reports for your organization.</p>
+                    </div>
+                  </div>
+                  <Button 
+                    onClick={() => setLocation('/dashboard/hr/reports')}
+                    className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-lg"
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    View Full Reports
+                  </Button>
+                </div>
+              </div>
+
+              {/* Quick Report Cards */}
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                <Card className="group hover:shadow-lg transition-all duration-300 cursor-pointer border-2 hover:border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100" onClick={() => setLocation('/dashboard/hr/reports')}>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm font-semibold flex items-center gap-2 text-blue-800">
+                        <div className="bg-blue-600 text-white rounded-full p-1">
+                          <Users className="h-3 w-3" />
+                        </div>
+                        Employee Summary
+                      </CardTitle>
+                      <div className="text-blue-400 group-hover:text-blue-600 transition-colors">
+                        <FileText className="h-4 w-4" />
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-xs text-blue-600 mb-3 font-medium">Comprehensive employee information report</p>
+                    <div className="text-3xl font-bold text-blue-700 mb-1">{employees.length}</div>
+                    <p className="text-xs text-blue-500">Total employees</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="group hover:shadow-lg transition-all duration-300 cursor-pointer border-2 hover:border-green-200 bg-gradient-to-br from-green-50 to-green-100" onClick={() => setLocation('/dashboard/hr/reports')}>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm font-semibold flex items-center gap-2 text-green-800">
+                        <div className="bg-green-600 text-white rounded-full p-1">
+                          <DollarSign className="h-3 w-3" />
+                        </div>
+                        Payroll Report
+                      </CardTitle>
+                      <div className="text-green-400 group-hover:text-green-600 transition-colors">
+                        <FileText className="h-4 w-4" />
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-xs text-green-600 mb-3 font-medium">Monthly payroll and compensation analysis</p>
+                    <div className="text-3xl font-bold text-green-700 mb-1">
+                      ${employees
+                        .filter((emp: any) => emp.salaryAmount && emp.salaryAmount > 0)
+                        .reduce((sum: number, emp: any) => sum + (emp.salaryAmount || 0), 0)
+                        .toLocaleString()}
+                    </div>
+                    <p className="text-xs text-green-500">Total payroll</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="group hover:shadow-lg transition-all duration-300 cursor-pointer border-2 hover:border-orange-200 bg-gradient-to-br from-orange-50 to-orange-100" onClick={() => setLocation('/dashboard/hr/reports')}>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm font-semibold flex items-center gap-2 text-orange-800">
+                        <div className="bg-orange-600 text-white rounded-full p-1">
+                          <Calendar className="h-3 w-3" />
+                        </div>
+                        Leave Report
+                      </CardTitle>
+                      <div className="text-orange-400 group-hover:text-orange-600 transition-colors">
+                        <FileText className="h-4 w-4" />
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-xs text-orange-600 mb-3 font-medium">Leave requests and attendance tracking</p>
+                    <div className="text-3xl font-bold text-orange-700 mb-1">{leaveRequests.length}</div>
+                    <p className="text-xs text-orange-500">Pending requests</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="group hover:shadow-lg transition-all duration-300 cursor-pointer border-2 hover:border-purple-200 bg-gradient-to-br from-purple-50 to-purple-100" onClick={() => setLocation('/dashboard/hr/reports')}>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm font-semibold flex items-center gap-2 text-purple-800">
+                        <div className="bg-purple-600 text-white rounded-full p-1">
+                          <Briefcase className="h-3 w-3" />
+                        </div>
+                        Hiring Report
+                      </CardTitle>
+                      <div className="text-purple-400 group-hover:text-purple-600 transition-colors">
+                        <FileText className="h-4 w-4" />
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-xs text-purple-600 mb-3 font-medium">Recruitment and hiring analytics</p>
+                    <div className="text-3xl font-bold text-purple-700 mb-1">0</div>
+                    <p className="text-xs text-purple-500">Active positions</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="group hover:shadow-lg transition-all duration-300 cursor-pointer border-2 hover:border-indigo-200 bg-gradient-to-br from-indigo-50 to-indigo-100" onClick={() => setLocation('/dashboard/hr/reports')}>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm font-semibold flex items-center gap-2 text-indigo-800">
+                        <div className="bg-indigo-600 text-white rounded-full p-1">
+                          <Target className="h-3 w-3" />
+                        </div>
+                        Performance Report
+                      </CardTitle>
+                      <div className="text-indigo-400 group-hover:text-indigo-600 transition-colors">
+                        <FileText className="h-4 w-4" />
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-xs text-indigo-600 mb-3 font-medium">Employee performance and reviews</p>
+                    <div className="text-3xl font-bold text-indigo-700 mb-1">{employees.length}</div>
+                    <p className="text-xs text-indigo-500">Employees to review</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="group hover:shadow-lg transition-all duration-300 cursor-pointer border-2 hover:border-red-200 bg-gradient-to-br from-red-50 to-red-100" onClick={() => setLocation('/dashboard/hr/reports')}>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm font-semibold flex items-center gap-2 text-red-800">
+                        <div className="bg-red-600 text-white rounded-full p-1">
+                          <Activity className="h-3 w-3" />
+                        </div>
+                        Turnover Report
+                      </CardTitle>
+                      <div className="text-red-400 group-hover:text-red-600 transition-colors">
+                        <FileText className="h-4 w-4" />
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-xs text-red-600 mb-3 font-medium">Employee retention and turnover analysis</p>
+                    <div className="text-3xl font-bold text-red-700 mb-1">0%</div>
+                    <p className="text-xs text-red-500">Turnover rate</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Report Generator */}
+              <Card className="border-2 border-dashed border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50">
+                <CardHeader className="pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-blue-600 text-white rounded-full p-2">
+                      <FileText className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-xl font-bold text-blue-900">Advanced Report Generator</CardTitle>
+                      <CardDescription className="text-blue-700">Create comprehensive HR reports with custom parameters and export options</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="bg-white rounded-xl shadow-lg border border-blue-100 p-6">
+                    <div className="mb-4">
+                      <h3 className="text-lg font-semibold text-gray-800 mb-2">Available Report Types</h3>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                          Employee Summary
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                          Payroll Analysis
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                          Leave Reports
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                          Performance Reviews
+                        </div>
+                      </div>
+                    </div>
+                    <HRReports />
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>

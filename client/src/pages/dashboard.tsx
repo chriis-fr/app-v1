@@ -16,7 +16,7 @@ import HRMain from '@/components/modules/hr/HRMain';
 import AccountingMain from '@/components/modules/accounting/AccountingMain';
 import BlockchainMain from '@/components/modules/blockchain/BlockchainMain';
 import CRMMain from '@/components/modules/crm/CRMMain';
-import { BarChart3, Users, DollarSign, Package, AlertTriangle, CheckCircle, TrendingUp, TrendingDown } from 'lucide-react';
+import { BarChart3, Users, DollarSign, Package, AlertTriangle, CheckCircle, TrendingUp, TrendingDown, UserPlus, Calendar, Briefcase, Building2, ShoppingCart, FileText, CreditCard } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 
@@ -119,6 +119,179 @@ export default function Dashboard() {
                 Last updated: {new Date().toLocaleDateString()}
               </div>
             </div>
+
+            {/* Module Summaries */}
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {/* HR Module Summary */}
+              {orgModules.includes('hr') && (
+                <Card className="group hover:shadow-lg transition-all duration-300 border-2 hover:border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm font-semibold flex items-center gap-2 text-blue-800">
+                        <div className="bg-blue-600 text-white rounded-full p-1">
+                          <Users className="h-3 w-3" />
+                        </div>
+                        HR Management
+                      </CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-blue-600">Total Employees</span>
+                        <span className="font-bold text-blue-700">{employees?.length || 0}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-blue-600">Active</span>
+                        <span className="font-bold text-blue-700">
+                          {employees?.filter((e: any) => e.status === 'active').length || 0}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-blue-600">This Month</span>
+                        <span className="font-bold text-blue-700">
+                          {employees?.filter((e: any) => {
+                            const joinDate = new Date(e.hireDate || e.createdAt);
+                            const thisMonth = new Date();
+                            return joinDate.getMonth() === thisMonth.getMonth() && 
+                                   joinDate.getFullYear() === thisMonth.getFullYear();
+                          }).length || 0}
+                        </span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* POS Module Summary */}
+              {orgModules.includes('pos') && (
+                <Card className="group hover:shadow-lg transition-all duration-300 border-2 hover:border-green-200 bg-gradient-to-br from-green-50 to-green-100">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm font-semibold flex items-center gap-2 text-green-800">
+                        <div className="bg-green-600 text-white rounded-full p-1">
+                          <ShoppingCart className="h-3 w-3" />
+                        </div>
+                        Point of Sale
+                      </CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-green-600">Total Orders</span>
+                        <span className="font-bold text-green-700">{posOrders?.length || 0}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-green-600">Customers</span>
+                        <span className="font-bold text-green-700">{customers?.length || 0}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-green-600">Products</span>
+                        <span className="font-bold text-green-700">{inventory?.length || 0}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Accounting Module Summary */}
+              {orgModules.includes('accounting') && (
+                <Card className="group hover:shadow-lg transition-all duration-300 border-2 hover:border-purple-200 bg-gradient-to-br from-purple-50 to-purple-100">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm font-semibold flex items-center gap-2 text-purple-800">
+                        <div className="bg-purple-600 text-white rounded-full p-1">
+                          <CreditCard className="h-3 w-3" />
+                        </div>
+                        Accounting
+                      </CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-purple-600">Transactions</span>
+                        <span className="font-bold text-purple-700">0</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-purple-600">Accounts</span>
+                        <span className="font-bold text-purple-700">0</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-purple-600">Reports</span>
+                        <span className="font-bold text-purple-700">0</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Blockchain Module Summary */}
+              {orgModules.includes('blockchain') && (
+                <Card className="group hover:shadow-lg transition-all duration-300 border-2 hover:border-orange-200 bg-gradient-to-br from-orange-50 to-orange-100">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm font-semibold flex items-center gap-2 text-orange-800">
+                        <div className="bg-orange-600 text-white rounded-full p-1">
+                          <Building2 className="h-3 w-3" />
+                        </div>
+                        Blockchain
+                      </CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-orange-600">Transactions</span>
+                        <span className="font-bold text-orange-700">0</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-orange-600">Wallets</span>
+                        <span className="font-bold text-orange-700">0</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-orange-600">Smart Contracts</span>
+                        <span className="font-bold text-orange-700">0</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* CRM Module Summary */}
+              {orgModules.includes('crm') && (
+                <Card className="group hover:shadow-lg transition-all duration-300 border-2 hover:border-indigo-200 bg-gradient-to-br from-indigo-50 to-indigo-100">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm font-semibold flex items-center gap-2 text-indigo-800">
+                        <div className="bg-indigo-600 text-white rounded-full p-1">
+                          <Briefcase className="h-3 w-3" />
+                        </div>
+                        CRM
+                      </CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-indigo-600">Leads</span>
+                        <span className="font-bold text-indigo-700">0</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-indigo-600">Customers</span>
+                        <span className="font-bold text-indigo-700">0</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-indigo-600">Deals</span>
+                        <span className="font-bold text-indigo-700">0</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+
         {/* High-level analytics and company stats only. No module dashboards. */}
         {['pos','hr','accounting','blockchain'].some(m => orgModules.includes(m)) && (
               <div className="transform transition-all duration-300 hover:scale-[1.01]">
