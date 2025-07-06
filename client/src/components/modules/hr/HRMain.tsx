@@ -154,7 +154,15 @@ export default function HRMain() {
       // Handle responses
       if (employeesResponse.ok) {
       const employeesData = await employeesResponse.json();
-        setEmployees(employeesData.filter((emp: any) => emp.role !== 'owner'));
+        // Transform the data to map _id to id for frontend compatibility
+        const transformedEmployees = employeesData
+          .filter((emp: any) => emp.role !== 'owner')
+          .map((emp: any) => ({
+            ...emp,
+            id: emp._id || emp.id, // Use _id if id doesn't exist
+            _id: emp._id // Keep _id for backward compatibility
+          }));
+        setEmployees(transformedEmployees);
       }
 
       if (payrollResponse.ok) {
@@ -518,10 +526,10 @@ export default function HRMain() {
                   <p className="text-muted-foreground">Manage job postings, candidates, and hiring process</p>
                 </div>
                 <Button onClick={() => setLocation('/hr/hiring')}>
-                  <Plus className="mr-2 h-4 w-4" />
+                      <Plus className="mr-2 h-4 w-4" />
                   Manage Hiring
-                </Button>
-              </div>
+                    </Button>
+                  </div>
               <Card>
                 <CardHeader>
                   <CardTitle>Quick Actions</CardTitle>
@@ -547,46 +555,21 @@ export default function HRMain() {
 
             {/* Employees Tab */}
             <TabsContent value="employees" className="space-y-4">
-          <div className="flex justify-between items-center mb-6 pt-2 mt-2">
-            <h1 className="text-2xl font-bold">Employee Management</h1>
-            <div className="flex gap-2">
-              <Select value={loginAccessFilter} onValueChange={v => setLoginAccessFilter(v as any)}>
-                <SelectTrigger className="w-36">
-                  <SelectValue placeholder="Login Access" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Employees</SelectItem>
-                  <SelectItem value="login">With Login</SelectItem>
-                  <SelectItem value="no-login">No Login</SelectItem>
-                </SelectContent>
-              </Select>
+              <Card>
+                <CardHeader>
+                  <div className="flex justify-between items-center">
+                    <CardTitle>Employee Management</CardTitle>
               <Button onClick={() => setLocation('/hr/new')}>
                 <Plus className="mr-2 h-4 w-4" />
                 Add Employee
               </Button>
             </div>
-          </div>
-          <div className="mb-6">
-            <div className="relative">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search employees..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8"
-              />
-            </div>
-          </div>
-              
-              <Card className="shadow-lg border-blue-100">
-                <CardHeader>
-                  <CardTitle>Employee Management</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <DataTable
                     columns={employeeColumns}
                     data={filteredEmployees}
-                    onRowClick={(employee) => setLocation(`/hr/employees/${employee.id}`)}
+                    onRowClick={(employee) => setLocation(`/hr/employees/${employee.id}`, { state: { employee } })}
                   />
                 </CardContent>
               </Card>

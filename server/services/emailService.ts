@@ -1,4 +1,4 @@
-import nodemailer from 'nodemailer';
+import * as nodemailer from 'nodemailer';
 
 // Email configuration
 const emailConfig = {
@@ -411,6 +411,114 @@ The Chains ERP Team
     return { success: true, messageId: info.messageId };
   } catch (error) {
     console.error('❌ Failed to send notification email:', error);
+    return { success: false, error: error as Error };
+  }
+};
+
+// Send payroll notification email
+export const sendPayrollNotification = async (
+  userEmail: string,
+  userName: string,
+  payrollAmount: number,
+  currency: string,
+  paymentMethod: string,
+  period: string,
+  transactionHash?: string
+) => {
+  const mailOptions = {
+    from: `"Chains ERP" <${emailConfig.auth.user}>`,
+    to: userEmail,
+    subject: `Payroll Payment Processed - ${period}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; text-align: center; border-radius: 10px 10px 0 0;">
+          <div style="margin-bottom: 20px;">
+            <img src="https://chains-erp.com/chainsnobg.png" 
+              alt="Chains ERP Logo" 
+              style="max-width: 150px; height: auto; border-radius: 8px;">
+          </div>
+          <h1 style="margin: 0; font-size: 28px;">Payroll Payment Processed</h1>
+          <p style="margin: 10px 0 0 0; opacity: 0.9;">Your payroll payment has been successfully processed</p>
+        </div>
+        
+        <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px;">
+          <h2 style="color: #333; margin-top: 0;">Hello ${userName},</h2>
+          
+          <p style="color: #666; line-height: 1.6;">
+            Your payroll payment for ${period} has been successfully processed and sent to your account.
+          </p>
+          
+          <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #28a745;">
+            <h3 style="color: #333; margin-top: 0;">Payment Details</h3>
+            <p style="color: #666; margin: 5px 0;"><strong>Amount:</strong> ${currency} ${payrollAmount.toFixed(2)}</p>
+            <p style="color: #666; margin: 5px 0;"><strong>Payment Method:</strong> ${paymentMethod}</p>
+            <p style="color: #666; margin: 5px 0;"><strong>Period:</strong> ${period}</p>
+            <p style="color: #666; margin: 5px 0;"><strong>Status:</strong> <span style="color: #28a745; font-weight: bold;">Completed</span></p>
+            ${transactionHash ? `<p style="color: #666; margin: 5px 0;"><strong>Transaction Hash:</strong> <code style="background: #f8f9fa; padding: 2px 4px; border-radius: 3px;">${transactionHash}</code></p>` : ''}
+          </div>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${process.env.FRONTEND_URL || 'http://localhost:5000'}/hr/payroll" 
+               style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                      color: white; 
+                      padding: 15px 30px; 
+                      text-decoration: none; 
+                      border-radius: 25px; 
+                      display: inline-block; 
+                      font-weight: bold;
+                      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);">
+              View Payroll Details
+            </a>
+          </div>
+          
+          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #dee2e6;">
+            <p style="color: #666; font-size: 14px; margin: 0;">
+              <strong>Note:</strong> Please allow 1-3 business days for the payment to appear in your account.
+            </p>
+            ${paymentMethod === 'crypto' ? '<p style="color: #666; font-size: 14px; margin: 10px 0 0 0;"><strong>Crypto Payment:</strong> The transaction may take a few minutes to be confirmed on the blockchain.</p>' : ''}
+          </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 20px; color: #6c757d; font-size: 12px;">
+          <p>This is an automated message from Chains ERP</p>
+          <p>Please do not reply to this email</p>
+        </div>
+      </div>
+    `,
+    text: `
+Payroll Payment Processed
+
+Hello ${userName},
+
+Your payroll payment for ${period} has been successfully processed and sent to your account.
+
+Payment Details:
+Amount: ${currency} ${payrollAmount.toFixed(2)}
+Payment Method: ${paymentMethod}
+Period: ${period}
+Status: Completed
+${transactionHash ? `Transaction Hash: ${transactionHash}` : ''}
+
+Please allow 1-3 business days for the payment to appear in your account.
+${paymentMethod === 'crypto' ? 'Crypto Payment: The transaction may take a few minutes to be confirmed on the blockchain.' : ''}
+
+Best regards,
+The Chains ERP Team
+    `,
+  };
+
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log('✅ Payroll notification email sent successfully');
+    console.log('📧 Payroll email details:', {
+      messageId: info.messageId,
+      to: userEmail,
+      subject: mailOptions.subject,
+      previewUrl: nodemailer.getTestMessageUrl(info),
+    });
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('❌ Failed to send payroll notification email:', error);
     return { success: false, error: error as Error };
   }
 }; 

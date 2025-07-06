@@ -11,12 +11,19 @@ import { z } from 'zod';
 const router = express.Router();
 const prisma = new PrismaClient();
 
+// Test endpoint to check if HR routes are working
+router.get('/test', (req: Request, res: Response) => {
+  res.json({ message: 'HR routes are working' });
+});
+
 // Helper function to get user and organization from request
 const getUserAndOrg = (req: any) => {
+  console.log('getUserAndOrg called with req.user:', req.user);
   const user = req.user;
   const organizationId = user?.organizationId;
   
   if (!user || !organizationId) {
+    console.error('User or organization not found. User:', user, 'organizationId:', organizationId);
     throw new Error('User or organization not found');
   }
   
@@ -293,7 +300,6 @@ router.get('/leave-balance', isAuthenticated, checkModuleAccess('hr'), async (re
     res.status(500).json({ error: 'Failed to fetch leave balance' });
   }
 });
-const prisma = new PrismaClient();
 
 // Middleware to check if user is HR admin or owner
 const isHRAdminOrOwner = (req: Request, res: Response, next: NextFunction) => {
@@ -311,6 +317,7 @@ router.get('/employees', isAuthenticated, checkModuleAccess('hr'), isHRAdminOrOw
   try {
     const { user, organizationId } = getUserAndOrg(req);
     
+    // Fetch users with login access from Prisma
     const users = await prisma.user.findMany({
       where: { organizationId },
       select: {
@@ -322,27 +329,69 @@ router.get('/employees', isAuthenticated, checkModuleAccess('hr'), isHRAdminOrOw
         role: true,
         status: true,
         username: true,
+        position: true,
+        hireDate: true,
+        salaryAmount: true,
+        payoutMethod: true,
+        currencyPreference: true,
         createdAt: true,
         updatedAt: true
       }
     });
     
+    // Transform users to employee format
     const transformedUsers = users.map((user: any) => ({
-      _id: user.id,
+      id: user.id,
       firstName: user.firstName,
       lastName: user.lastName,
       email: user.email,
       department: user.department,
       role: user.role,
-      status: user.status,
+      status: user.status || 'active',
+      position: user.position || 'Not specified',
+      joinDate: user.hireDate ? user.hireDate.toISOString() : user.createdAt.toISOString(),
       isActive: user.status === 'active',
       canLogin: !!user.username,
       username: user.username,
+      salaryAmount: user.salaryAmount,
+      payoutMethod: user.payoutMethod,
+      currencyPreference: user.currencyPreference,
       createdAt: user.createdAt.toISOString(),
-      updatedAt: user.updatedAt.toISOString()
+      updatedAt: user.updatedAt.toISOString(),
+      source: 'user' // Indicate this came from User model
     }));
 
-    res.json(transformedUsers);
+    // Fetch employees without login access from MongoDB
+    const employees = await Employee.find({ organizationId }).lean();
+    
+    // Transform employees to match the same format
+    const transformedEmployees = employees.map((employee: any) => ({
+      id: employee._id.toString(),
+      firstName: employee.firstName,
+      lastName: employee.lastName,
+      email: employee.email,
+      department: employee.department,
+      role: 'employee', // Default role for non-login employees
+      status: employee.status || 'active',
+      position: employee.position || 'Not specified',
+      joinDate: employee.createdAt ? new Date(employee.createdAt).toISOString() : new Date().toISOString(),
+      isActive: employee.status === 'active',
+      canLogin: false, // These employees don't have login access
+      username: null,
+      salaryAmount: employee.salaryAmount || null,
+      payoutMethod: employee.payoutMethod || null,
+      currencyPreference: employee.currencyPreference || null,
+      createdAt: new Date(employee.createdAt).toISOString(),
+      updatedAt: new Date(employee.updatedAt).toISOString(),
+      source: 'employee', // Indicate this came from Employee model
+      employeeId: employee.employeeId
+    }));
+
+    // Combine both arrays
+    const allEmployees = [...transformedUsers, ...transformedEmployees];
+
+    console.log('Combined employees:', allEmployees);
+    res.json(allEmployees);
   } catch (error) {
     console.error('Error fetching employees:', error);
     res.status(500).json({ error: 'Failed to fetch employees' });
@@ -352,172 +401,293 @@ router.get('/employees', isAuthenticated, checkModuleAccess('hr'), isHRAdminOrOw
 // Get employee by ID (HR admin, owner, or self)
 router.get('/employees/:id', isAuthenticated, checkModuleAccess('hr'), async (req: Request, res: Response) => {
   try {
+    console.log('Individual employee endpoint called with ID:', req.params.id);
+    console.log('Request user:', req.user);
     const { user, organizationId } = getUserAndOrg(req);
+    const { id } = req.params;
+    
     // Allow HR admins, owners, or self
-    const canView = user.role === 'hr_admin' || user.isOwner || user.id === req.params.id;
+    const canView = user.role === 'hr_admin' || user.isOwner || user.id === id;
+    console.log('User role:', user.role, 'isOwner:', user.isOwner, 'user.id:', user.id, 'requested id:', id, 'canView:', canView);
     if (!canView) {
       return res.status(403).json({ message: 'Access denied' });
     }
-    // Strict organization filtering
-    const employee = await Employee.findOne({
-      _id: req.params.id,
-      organizationId: organizationId
-    })
-      .select('-password')
-      .lean();
-    if (!employee || typeof employee !== 'object' || Array.isArray(employee)) {
-      return res.status(404).json({ message: 'Employee not found' });
-    }
-    // Try to find the linked user (if any)
-    let userData = null;
-    if (employee.employeeNumber && typeof employee.employeeNumber === 'string') {
-      try {
-        userData = await prisma.user.findUnique({
-          where: { employeeId: employee.employeeNumber },
-          select: {
-            id: true,
-            username: true,
-            email: true,
-            role: true,
-            department: true,
-            position: true,
-            status: true,
-            canLogin: true,
-            isActive: true,
-            emailVerified: true,
-            moduleAccess: true,
-            createdAt: true,
-            updatedAt: true
-          }
-        });
-      } catch (userErr) {
-        userData = null;
+    
+    // First, try to find the employee in Prisma User model (employees with login)
+    let employee = await prisma.user.findFirst({
+      where: { 
+        id: id,
+        organizationId: organizationId 
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        department: true,
+        role: true,
+        status: true,
+        username: true,
+        position: true,
+        hireDate: true,
+        salaryAmount: true,
+        payoutMethod: true,
+        currencyPreference: true,
+        phoneNumber: true,
+        employeeId: true,
+        managerId: true,
+        team: true,
+        location: true,
+        workSchedule: true,
+        emergencyContact: true,
+        skills: true,
+        certifications: true,
+        education: true,
+        performance: true,
+        compensation: true,
+        benefits: true,
+        equipment: true,
+        accessLevels: true,
+        documents: true,
+        wallet: true,
+        legalDetails: true,
+        address: true,
+        createdAt: true,
+        updatedAt: true
+      }
+    });
+    
+    let source = 'user';
+    
+    // If not found in Prisma, try MongoDB Employee model (employees without login)
+    if (!employee) {
+      console.log('Employee not found in Prisma, checking MongoDB Employee model...');
+      const mongoEmployee = await Employee.findOne({ 
+        _id: id,
+        organizationId: organizationId 
+      }).lean();
+      
+      if (mongoEmployee) {
+        employee = {
+          id: mongoEmployee._id.toString(),
+          firstName: mongoEmployee.firstName,
+          lastName: mongoEmployee.lastName,
+          email: mongoEmployee.email,
+          department: mongoEmployee.department,
+          role: 'employee', // Default role for non-login employees
+          status: mongoEmployee.status || 'active',
+          username: null, // No username for non-login employees
+          position: mongoEmployee.position,
+          hireDate: null,
+          salaryAmount: mongoEmployee.salaryAmount || null,
+          payoutMethod: mongoEmployee.payoutMethod || null,
+          currencyPreference: mongoEmployee.currencyPreference || null,
+          phoneNumber: mongoEmployee.phoneNumber || null,
+          employeeId: mongoEmployee.employeeId,
+          managerId: mongoEmployee.managerId || null,
+          team: mongoEmployee.team || null,
+          location: mongoEmployee.location || null,
+          workSchedule: mongoEmployee.workSchedule || null,
+          emergencyContact: mongoEmployee.emergencyContact || null,
+          skills: mongoEmployee.skills || [],
+          certifications: mongoEmployee.certifications || [],
+          education: mongoEmployee.education || null,
+          performance: mongoEmployee.performance || null,
+          compensation: mongoEmployee.compensation || null,
+          benefits: mongoEmployee.benefits || null,
+          equipment: mongoEmployee.equipment || null,
+          accessLevels: mongoEmployee.accessLevels || null,
+          documents: mongoEmployee.documents || [],
+          wallet: mongoEmployee.wallet || null,
+          legalDetails: mongoEmployee.legalDetails || null,
+          address: mongoEmployee.address || null,
+          createdAt: mongoEmployee.createdAt,
+          updatedAt: mongoEmployee.updatedAt
+        };
+        source = 'employee';
       }
     }
-    // Merge employee and user data for frontend compatibility
-    const employeeWithUserData = {
-      ...employee,
-      user: userData ? {
-        id: userData.id,
-        username: userData.username,
-        email: userData.email,
-        role: userData.role,
-        department: userData.department,
-        position: userData.position,
-        status: userData.status,
-        canLogin: userData.canLogin,
-        isActive: userData.isActive,
-        emailVerified: userData.emailVerified,
-        moduleAccess: userData.moduleAccess,
-        createdAt: userData.createdAt,
-        updatedAt: userData.updatedAt
-      } : null
+    
+    if (!employee) {
+      return res.status(404).json({ message: 'Employee not found' });
+    }
+    
+    // Transform the data to match frontend expectations
+    const transformedEmployee = {
+      id: employee.id,
+      firstName: employee.firstName,
+      lastName: employee.lastName,
+      email: employee.email,
+      department: employee.department,
+      role: employee.role,
+      status: employee.status,
+      position: employee.position || 'Not specified',
+      joinDate: employee.hireDate ? employee.hireDate.toISOString() : new Date(employee.createdAt).toISOString(),
+      isActive: employee.status === 'active',
+      canLogin: !!employee.username,
+      username: employee.username,
+      salaryAmount: employee.salaryAmount,
+      payoutMethod: employee.payoutMethod,
+      currencyPreference: employee.currencyPreference,
+      phoneNumber: employee.phoneNumber,
+      employeeId: employee.employeeId,
+      managerId: employee.managerId,
+      team: employee.team,
+      location: employee.location,
+      workSchedule: employee.workSchedule,
+      emergencyContact: employee.emergencyContact,
+      skills: employee.skills,
+      certifications: employee.certifications,
+      education: employee.education,
+      performance: employee.performance,
+      compensation: employee.compensation,
+      benefits: employee.benefits,
+      equipment: employee.equipment,
+      accessLevels: employee.accessLevels,
+      documents: employee.documents,
+      wallet: employee.wallet,
+      legalDetails: employee.legalDetails,
+      address: employee.address,
+      createdAt: new Date(employee.createdAt).toISOString(),
+      updatedAt: new Date(employee.updatedAt).toISOString(),
+      source: source // Indicate which model this came from
     };
-    res.json(employeeWithUserData);
+    
+    res.json(transformedEmployee);
   } catch (error) {
     console.error('Error fetching employee:', error);
     res.status(500).json({ message: 'Error fetching employee' });
   }
 });
 
-// DEPRECATED: Employee creation is now handled via the user creation route (/api/users)
-// router.post('/employees', isAuthenticated, checkModuleAccess('hr'), isHRAdminOrOwner, async (req: Request, res: Response) => {
-//   try {
-//     const {
-//       firstName, lastName, email, username, password, department, position, employmentType, salary, benefits, supervisor, canLogin, role, moduleAccess
-//     } = req.body;
-//
-//     // Validate required fields
-//     if (!firstName || !lastName || !department || !position || !employmentType || !salary) {
-//       return res.status(400).json({ message: 'Missing required employee fields.' });
-//     }
-//
-//     // If login is enabled, validate user fields
-//     if (canLogin) {
-//       if (!email || !username || !password || !role || !Array.isArray(moduleAccess) || moduleAccess.length === 0) {
-//         return res.status(400).json({ message: 'Missing required user fields for login-enabled employee.' });
-//       }
-//       // Check for existing user/email
-//       const existingUser = await require('../models/User').default.findOne({ $or: [ { email }, { username } ] });
-//       if (existingUser) {
-//         return res.status(409).json({ message: 'A user with this email or username already exists.' });
-//       }
-//     }
-//
-//     // Create Employee first
-//     const employee = new Employee({
-//       firstName,
-//       lastName,
-//       department,
-//       position,
-//       employmentType,
-//       salary,
-//       benefits,
-//       supervisor,
-//       canLogin: !!canLogin,
-//       role: canLogin ? role : 'Employee',
-//       status: 'Active',
-//       organizationId: req.user!.organizationId
-//     });
-//     await employee.save();
-//
-//     let user = null;
-//     if (canLogin) {
-//       const bcrypt = require('bcrypt');
-//       const saltRounds = 10;
-//       const hashedPassword = await bcrypt.hash(password, saltRounds);
-//       // Use employee._id as employeeNumber for linking
-//       const employeeNumber = employee._id.toString();
-//       // Create User
-//       const UserModel = require('../models/User').default;
-//       user = new UserModel({
-//         firstName,
-//         lastName,
-//         email,
-//         username,
-//         password: hashedPassword,
-//         department,
-//         position,
-//         status: 'active',
-//         employeeId: employeeNumber,
-//         organizationId: req.user!.organizationId,
-//         role,
-//         moduleAccess,
-//         canLogin: true,
-//         isOwner: false,
-//         isActive: false, // Set to false until activation
-//         emailVerified: false
-//       });
-//       await user.save();
-//       // Link employee to user (optional: store userId in employee if desired)
-//       employee.employeeNumber = employeeNumber;
-//       await employee.save();
-//       // TODO: Send activation email here if desired
-//     }
-//
-//     res.status(201).json({ employee, user });
-//   } catch (error) {
-//     console.error('Error creating employee:', error);
-//     res.status(500).json({ message: 'Error creating employee' });
-//   }
-// });
-
 // Update employee (HR admin only)
 router.put('/employees/:id', isAuthenticated, checkModuleAccess('hr'), isHRAdminOrOwner, async (req: Request, res: Response) => {
     try {
     const { user, organizationId } = getUserAndOrg(req);
-    const employee = await Employee.findOneAndUpdate(
-      { _id: req.params.id, organizationId: organizationId },
+    const { id } = req.params;
+    
+    // First, try to update in Prisma User model (employees with login)
+    let updatedEmployee = await prisma.user.updateMany({
+      where: { 
+        id: id,
+        organizationId: organizationId 
+      },
+      data: req.body
+    });
+    
+    let source = 'user';
+    
+    // If no rows were updated in Prisma, try MongoDB Employee model (employees without login)
+    if (updatedEmployee.count === 0) {
+      console.log('Employee not found in Prisma, updating in MongoDB Employee model...');
+      const mongoEmployee = await Employee.findOneAndUpdate(
+        { _id: id, organizationId: organizationId },
       { $set: req.body },
       { new: true }
-    ).select('-password');
-
-    if (!employee) {
+      );
+      
+      if (mongoEmployee) {
+        // Transform MongoDB employee to match the expected format
+        updatedEmployee = {
+          id: mongoEmployee._id.toString(),
+          firstName: mongoEmployee.firstName,
+          lastName: mongoEmployee.lastName,
+          email: mongoEmployee.email,
+          department: mongoEmployee.department,
+          role: 'employee',
+          status: mongoEmployee.status || 'active',
+          username: null,
+          position: mongoEmployee.position,
+          hireDate: null,
+          salaryAmount: mongoEmployee.salaryAmount || null,
+          payoutMethod: mongoEmployee.payoutMethod || null,
+          currencyPreference: mongoEmployee.currencyPreference || null,
+          phoneNumber: mongoEmployee.phoneNumber || null,
+          employeeId: mongoEmployee.employeeId,
+          managerId: mongoEmployee.managerId || null,
+          team: mongoEmployee.team || null,
+          location: mongoEmployee.location || null,
+          workSchedule: mongoEmployee.workSchedule || null,
+          emergencyContact: mongoEmployee.emergencyContact || null,
+          skills: mongoEmployee.skills || [],
+          certifications: mongoEmployee.certifications || [],
+          education: mongoEmployee.education || null,
+          performance: mongoEmployee.performance || null,
+          compensation: mongoEmployee.compensation || null,
+          benefits: mongoEmployee.benefits || null,
+          equipment: mongoEmployee.equipment || null,
+          accessLevels: mongoEmployee.accessLevels || null,
+          documents: mongoEmployee.documents || [],
+          wallet: mongoEmployee.wallet || null,
+          legalDetails: mongoEmployee.legalDetails || null,
+          address: mongoEmployee.address || null,
+          createdAt: mongoEmployee.createdAt,
+          updatedAt: mongoEmployee.updatedAt
+        };
+        source = 'employee';
+      } else {
       return res.status(404).json({ message: 'Employee not found' });
     }
+    } else {
+      // If updated in Prisma, fetch the updated user data
+      const userData = await prisma.user.findFirst({
+        where: { 
+          id: id,
+          organizationId: organizationId 
+        }
+      });
+      
+      if (userData) {
+        updatedEmployee = userData;
+      } else {
+        return res.status(404).json({ message: 'Employee not found' });
+      }
+    }
+    
+    // Transform the data to match frontend expectations
+    const transformedEmployee = {
+      id: updatedEmployee.id,
+      firstName: updatedEmployee.firstName,
+      lastName: updatedEmployee.lastName,
+      email: updatedEmployee.email,
+      department: updatedEmployee.department,
+      role: updatedEmployee.role,
+      status: updatedEmployee.status,
+      position: updatedEmployee.position || 'Not specified',
+      joinDate: updatedEmployee.hireDate ? updatedEmployee.hireDate.toISOString() : new Date(updatedEmployee.createdAt).toISOString(),
+      isActive: updatedEmployee.status === 'active',
+      canLogin: !!updatedEmployee.username,
+      username: updatedEmployee.username,
+      salaryAmount: updatedEmployee.salaryAmount,
+      payoutMethod: updatedEmployee.payoutMethod,
+      currencyPreference: updatedEmployee.currencyPreference,
+      phoneNumber: updatedEmployee.phoneNumber,
+      employeeId: updatedEmployee.employeeId,
+      managerId: updatedEmployee.managerId,
+      team: updatedEmployee.team,
+      location: updatedEmployee.location,
+      workSchedule: updatedEmployee.workSchedule,
+      emergencyContact: updatedEmployee.emergencyContact,
+      skills: updatedEmployee.skills,
+      certifications: updatedEmployee.certifications,
+      education: updatedEmployee.education,
+      performance: updatedEmployee.performance,
+      compensation: updatedEmployee.compensation,
+      benefits: updatedEmployee.benefits,
+      equipment: updatedEmployee.equipment,
+      accessLevels: updatedEmployee.accessLevels,
+      documents: updatedEmployee.documents,
+      wallet: updatedEmployee.wallet,
+      legalDetails: updatedEmployee.legalDetails,
+      address: updatedEmployee.address,
+      createdAt: new Date(updatedEmployee.createdAt).toISOString(),
+      updatedAt: new Date(updatedEmployee.updatedAt).toISOString(),
+      source: source
+    };
 
-    res.json(employee);
+    res.json(transformedEmployee);
     } catch (error) {
+    console.error('Error updating employee:', error);
     res.status(500).json({ message: 'Error updating employee' });
     }
 });
@@ -1705,6 +1875,232 @@ router.get('/features/status', isAuthenticated, async (req: AuthRequest, res) =>
   } catch (error) {
     console.error('Error fetching HR feature status:', error);
     res.status(500).json({ error: 'Failed to fetch HR feature status' });
+  }
+});
+
+// Payroll routes with accounting integration
+router.get('/payroll', isAuthenticated, checkModuleAccess('hr'), isHRAdminOrOwner, async (req: Request, res: Response) => {
+  try {
+    const { user, organizationId } = getUserAndOrg(req);
+    
+    // Get payroll data with accounting integration
+    const payrollData = await getPayrollData(organizationId);
+    
+    res.json(payrollData);
+  } catch (error) {
+    console.error('Error fetching payroll data:', error);
+    res.status(500).json({ error: 'Failed to fetch payroll data' });
+  }
+});
+
+router.post('/payroll/process', isAuthenticated, checkModuleAccess('hr'), isHRAdminOrOwner, async (req: Request, res: Response) => {
+  try {
+    const { user, organizationId } = getUserAndOrg(req);
+    const { periodStart, periodEnd, employeeIds } = req.body;
+    
+    // Process payroll with accounting integration
+    const payrollService = new PayrollService();
+    const payrollRun = await payrollService.processPayroll({
+      organizationId,
+      period: { startDate: new Date(periodStart), endDate: new Date(periodEnd) },
+      employeeIds: employeeIds || [],
+      approvedBy: req.user.id
+    });
+    
+    // Create accounting entries for the payroll run
+    await createPayrollAccountingEntries(payrollRun);
+    
+    res.json({
+      success: true,
+      payrollRun,
+      message: 'Payroll processed successfully with accounting integration'
+    });
+  } catch (error) {
+    console.error('Error processing payroll:', error);
+    res.status(500).json({ error: 'Failed to process payroll' });
+  }
+});
+
+router.get('/payroll/accounting-summary', isAuthenticated, checkModuleAccess('hr'), isHRAdminOrOwner, async (req: Request, res: Response) => {
+  try {
+    const { user, organizationId } = getUserAndOrg(req);
+    
+    // Get payroll accounting summary for finance dashboard
+    const accountingSummary = await getPayrollAccountingSummary(organizationId);
+    
+    res.json(accountingSummary);
+  } catch (error) {
+    console.error('Error fetching payroll accounting summary:', error);
+    res.status(500).json({ error: 'Failed to fetch payroll accounting summary' });
+  }
+});
+
+// Helper functions for payroll accounting integration
+async function getPayrollData(organizationId: string) {
+  // Mock payroll data with accounting integration
+  return [
+    {
+      id: '1',
+      employeeName: 'John Doe',
+      employeeId: 'emp001',
+      netSalary: 5000,
+      currency: 'USD',
+      status: 'processed',
+      date: new Date().toISOString(),
+      accountingEntry: {
+        reference: 'PAYROLL-001',
+        description: 'Monthly payroll - John Doe',
+        debit: 5000,
+        credit: 5000,
+        account: 'Payroll Expense'
+      }
+    },
+    {
+      id: '2',
+      employeeName: 'Jane Smith',
+      employeeId: 'emp002',
+      netSalary: 4500,
+      currency: 'USD',
+      status: 'processed',
+      date: new Date().toISOString(),
+      accountingEntry: {
+        reference: 'PAYROLL-002',
+        description: 'Monthly payroll - Jane Smith',
+        debit: 4500,
+        credit: 4500,
+        account: 'Payroll Expense'
+      }
+    }
+  ];
+}
+
+async function createPayrollAccountingEntries(payrollRun: any) {
+  // Create accounting journal entries for payroll
+  console.log('Creating accounting entries for payroll run:', payrollRun.id);
+  
+  // In a real implementation, this would create actual journal entries
+  // in the accounting system and sync with the finance module
+  const accountingEntry = {
+    date: new Date(),
+    reference: `PAYROLL-${payrollRun.id}`,
+    description: `Payroll for period ${payrollRun.period.startDate.toLocaleDateString()} - ${payrollRun.period.endDate.toLocaleDateString()}`,
+    totalAmount: payrollRun.totalAmount,
+    employeeCount: payrollRun.employeeCount,
+    status: 'posted'
+  };
+  
+  console.log('Accounting entry created:', accountingEntry);
+  return accountingEntry;
+}
+
+async function getPayrollAccountingSummary(organizationId: string) {
+  // Mock payroll accounting summary for finance dashboard
+  return {
+    totalPayrollExpense: 9500,
+    totalTaxPayable: 1900,
+    totalBenefitsPayable: 950,
+    totalNetPay: 6650,
+    currency: 'USD',
+    period: {
+      start: new Date().toISOString(),
+      end: new Date().toISOString()
+    },
+    accountingEntries: [
+      {
+        reference: 'PAYROLL-001',
+        description: 'Monthly payroll processing',
+        amount: 9500,
+        type: 'expense',
+        date: new Date().toISOString()
+      }
+    ]
+  };
+}
+
+// Payroll onboarding endpoint
+router.post('/employees/payroll-onboard', async (req, res) => {
+  try {
+    const {
+      employeeId,
+      fullName,
+      country,
+      currencyPreference,
+      payoutMethod,
+      walletAddress,
+      bankAccountNumber,
+      bankName,
+      taxId,
+      salaryAmount,
+      salaryFrequency,
+      contractType,
+      startDate,
+      deductions
+    } = req.body;
+
+    // Validate required fields
+    if (!employeeId || !fullName || !country || !salaryAmount || !taxId) {
+      return res.status(400).json({ 
+        error: 'Missing required fields: employeeId, fullName, country, salaryAmount, taxId' 
+      });
+    }
+
+    // Update the existing employee with payroll data
+    const updatedEmployee = await prisma.user.update({
+      where: { id: employeeId },
+      data: {
+        fullName,
+        country,
+        currencyPreference,
+        payoutMethod,
+        walletAddress,
+        taxId,
+        salaryAmount: parseFloat(salaryAmount),
+        salaryFrequency,
+        contractType,
+        startDate: new Date(startDate),
+        deductions: deductions || {},
+        // Update bank account info if provided
+        wallet: {
+          bankAccounts: bankAccountNumber && bankName ? [{
+            bankName,
+            accountNumber: bankAccountNumber,
+            accountType: 'checking',
+            isDefault: true
+          }] : []
+        }
+      }
+    });
+
+    // Create notification for the employee
+    await prisma.notification.create({
+      data: {
+        type: 'payroll',
+        title: 'Added to Payroll System',
+        message: `You have been successfully added to the payroll system. Your salary will be processed according to your payment preferences.`,
+        userId: employeeId,
+        organizationId: req.user.organizationId,
+        priority: 'medium'
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'Employee successfully added to payroll',
+      employee: {
+        id: updatedEmployee.id,
+        fullName: updatedEmployee.fullName,
+        salaryAmount: updatedEmployee.salaryAmount,
+        payoutMethod: updatedEmployee.payoutMethod,
+        currencyPreference: updatedEmployee.currencyPreference
+      }
+    });
+
+  } catch (error) {
+    console.error('Error adding employee to payroll:', error);
+    res.status(500).json({ 
+      error: 'Failed to add employee to payroll',
+      details: error.message 
+    });
   }
 });
 

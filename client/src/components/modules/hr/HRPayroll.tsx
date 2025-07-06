@@ -45,7 +45,12 @@ export default function HRPayroll() {
         const employee = employeesData.find((emp: Employee) => emp.id === record.employeeId);
         return {
           ...record,
-          employeeName: employee ? `${employee.firstName} ${employee.lastName}` : 'Unknown',
+          employeeName: employee ? `${employee.firstName} ${employee.lastName}` : record.employeeName || 'Unknown',
+          // Ensure we have fallback values for required fields
+          netSalary: record.netSalary || record.amount || 0,
+          currency: record.currency || 'USD',
+          status: record.status || 'pending',
+          paymentDate: record.paymentDate || record.date || null,
         };
       });
 
@@ -64,13 +69,19 @@ export default function HRPayroll() {
 
   const columns = [
     { accessorKey: 'employeeName', header: 'Employee Name' },
-    { accessorKey: 'amount', header: 'Amount',
-      cell: ({ row }: { row: any }) => `$${row.original.amount.toFixed(2)}`
+    { accessorKey: 'netSalary', header: 'Amount',
+      cell: ({ row }: { row: any }) => {
+        const amount = row.original.netSalary || row.original.amount || 0;
+        return `$${Number(amount).toFixed(2)}`;
+      }
     },
     { accessorKey: 'currency', header: 'Currency' },
     { accessorKey: 'status', header: 'Status' },
-    { accessorKey: 'date', header: 'Date',
-      cell: ({ row }: { row: any }) => new Date(row.original.date).toLocaleDateString()
+    { accessorKey: 'paymentDate', header: 'Date',
+      cell: ({ row }: { row: any }) => {
+        const date = row.original.paymentDate || row.original.date;
+        return date ? new Date(date).toLocaleDateString() : 'N/A';
+      }
     },
   ];
 

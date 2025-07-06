@@ -144,7 +144,7 @@ export default function HiringPage() {
         setCandidates(candidates);
       } else {
         console.log('📭 No job postings found, setting empty candidates');
-        setCandidates([]);
+      setCandidates([]);
       }
     } catch (error) {
       console.error('💥 Error fetching hiring data:', error);

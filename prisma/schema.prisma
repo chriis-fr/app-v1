@@ -364,6 +364,8 @@ model Organization {
   notifications     Notification[]    @relation("OrgNotifications")
   jobPostings       JobPosting[]      @relation("OrgJobPostings")
   jobApplications   JobApplication[]  @relation("OrgJobApplications")
+  payrollRuns       PayrollRun[]      @relation("OrgPayrollRuns")
+  payrollConfigs    PayrollConfig[]   @relation("OrgPayrollConfigs")
 
   @@map("organizations")
 }
@@ -440,6 +442,9 @@ model User {
   wallet           Json?
   legalDetails     Json?
   address          Json?
+  paymentPreference String? @default("bank") // bank, crypto, hybrid
+  cryptoWallets    Json? // Array of crypto wallet addresses
+  bankAccounts     Json? // Array of bank account details
   avatarUrl        String?
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
@@ -454,6 +459,8 @@ model User {
   notifications         Notification[]      @relation("UserNotifications")
   jobPostings           JobPosting[]        @relation("UserJobPostings")
   jobApplicationReviews JobApplication[]    @relation("UserJobApplicationReviews")
+  payrollApprovals     PayrollRun[]        @relation("UserPayrollApprovals")
+  payrollEntries        PayrollEntry[]      @relation("UserPayrollEntries")
 
   @@map("users")
 }
@@ -896,4 +903,74 @@ model JobApplication {
   updatedAt           DateTime     @updatedAt
 
   @@map("job_applications")
+}
+
+model PayrollRun {
+  id             String        @id @default(auto()) @map("_id") @db.ObjectId
+  organizationId String        @db.ObjectId
+  organization   Organization  @relation("OrgPayrollRuns", fields: [organizationId], references: [id])
+  periodStart    DateTime
+  periodEnd      DateTime
+  totalAmount    Float
+  currency       String
+  employeeCount  Int
+  status         String        @default("draft") // draft, pending_approval, approved, processing, completed, failed
+  approvedBy     String?       @db.ObjectId
+  approvedByUser User?         @relation("UserPayrollApprovals", fields: [approvedBy], references: [id])
+  approvedAt     DateTime?
+  processedAt    DateTime?
+  entries        PayrollEntry[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@map("payroll_runs")
+}
+
+model PayrollEntry {
+  id               String      @id @default(auto()) @map("_id") @db.ObjectId
+  payrollRunId     String      @db.ObjectId
+  payrollRun       PayrollRun  @relation(fields: [payrollRunId], references: [id])
+  employeeId       String      @db.ObjectId
+  employee         User        @relation("UserPayrollEntries", fields: [employeeId], references: [id])
+  baseSalary       Float
+  overtimeHours    Float?
+  overtimeRate     Float?
+  bonuses          Float?
+  taxDeduction     Float
+  benefitsDeduction Float
+  otherDeductions  Float
+  netPay           Float
+  paymentMethod    String      // bank, crypto, hybrid
+  bankAccount      Json?
+  cryptoWallet     Json?
+  status           String      @default("pending") // pending, approved, processing, completed, failed
+  processedAt      DateTime?
+  transactionHash  String?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  @@map("payroll_entries")
+}
+
+model PayrollConfig {
+  id                String       @id @default(auto()) @map("_id") @db.ObjectId
+  organizationId    String       @db.ObjectId
+  organization      Organization @relation("OrgPayrollConfigs", fields: [organizationId], references: [id])
+  paymentMethod     String       @default("traditional") // traditional, crypto, hybrid
+  currency          String       @default("USD")
+  cryptoCurrency    String?
+  paymentSchedule   String       @default("monthly") // weekly, biweekly, monthly
+  paymentDay        Int          @default(1)
+  autoProcess       Boolean      @default(false)
+  requireApproval   Boolean      @default(true)
+  taxDeductions     Boolean      @default(true)
+  benefitsDeductions Boolean     @default(true)
+  overtimeEnabled   Boolean      @default(true)
+  bonusEnabled      Boolean      @default(true)
+  taxRates          Json?        // Tax rates by location/income level
+  benefitRates      Json?        // Benefit deduction rates
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  @@map("payroll_configs")
 }

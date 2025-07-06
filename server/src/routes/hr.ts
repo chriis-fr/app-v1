@@ -171,7 +171,7 @@ router.put('/:id/compensation', async (req: Request, res: Response) => {
 
 // When fetching users for HR, exclude owners
 router.get('/employees', async (req: Request, res: Response) => {
-  console.log('Fetching employees----------------------------------');
+
   try {
     // Exclude owners from employee list and filter by organizationId
     const orgId = req.user?.organizationId;
@@ -230,7 +230,7 @@ router.get('/employees', async (req: Request, res: Response) => {
     // Combine both arrays
     const allEmployees = [...formattedUsersWithLogin, ...formattedBasicEmployees];
 
-    console.log(`Found ${usersWithLogin.length} users with login and ${basicEmployees.length} basic employees`);
+
     res.json(allEmployees);
   } catch (error) {
     console.error('Error fetching employees:', error);
@@ -241,7 +241,7 @@ router.get('/employees', async (req: Request, res: Response) => {
 // When creating a new user/employee, allow canLogin to be set (default false for non-login roles)
 router.post('/employees', async (req: Request, res: Response) => {
   try {
-    console.log('HR router: Creating employee with data:', req.body);
+
     
     // Validate required fields
     if (!req.body.firstName || !req.body.lastName || !req.body.department || !req.body.organizationId) {
@@ -268,12 +268,12 @@ router.post('/employees', async (req: Request, res: Response) => {
         status: 'active'
       };
 
-      console.log('HR router: Creating user account:', userData);
+
 
       const user = new UserModel(userData);
       await user.save();
       
-      console.log('HR router: User account created successfully:', user._id);
+      
       res.status(201).json(user);
     } else {
       // Create employee record for basic employees (no login)
@@ -312,11 +312,11 @@ router.post('/employees', async (req: Request, res: Response) => {
         // Note: Not setting userId field to avoid unique index constraint violation
       };
 
-      console.log('HR router: Creating employee record:', employeeData);
+      
 
       const employee = await Employee.create(employeeData);
       
-      console.log('HR router: Employee record created successfully:', employee._id);
+      
       res.status(201).json(employee);
     }
   } catch (error: any) {

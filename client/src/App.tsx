@@ -54,6 +54,7 @@ import HRSettingsPage from '@/pages/hr/settings';
 import HiringPage from '@/pages/hr/hiring';
 import TimesheetsPage from '@/pages/hr/timesheets';
 import LeaveManagementPage from '@/pages/hr/leave-management';
+import PayrollPage from '@/pages/hr/payroll';
 import NotificationsPage from '@/pages/notifications';
 import PublicJobApplication from '@/pages/jobs/[publicId]';
 
@@ -103,7 +104,8 @@ function App() {
               <ProtectedRoute path="/hr/hiring" component={HiringPage} requiredModule="hr" />
               <ProtectedRoute path="/hr/timesheets" component={TimesheetsPage} requiredModule="hr" />
               <ProtectedRoute path="/hr/leave-management" component={LeaveManagementPage} requiredModule="hr" />
-              <Route path="/hr/employees/:id" component={EmployeeHRDetail} />
+              <ProtectedRoute path="/hr/payroll" component={PayrollPage} requiredModule="hr" />
+              <ProtectedRoute path="/hr/employees/:id" component={EmployeeHRDetail} requiredModule="hr" />
               <ProtectedRoute path="/hr/new" component={NewEmployeePage} requiredModule="hr" />
               <ProtectedRoute path="/hr" component={HRPage} requiredModule="hr" />
               <ProtectedRoute path="/dashboard/hr" component={HRPage} requiredModule="hr" />

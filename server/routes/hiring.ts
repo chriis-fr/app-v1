@@ -771,3 +771,4 @@ router.post('/job-postings/sample', async (req, res) => {
 });
 
 export default router;
+ 

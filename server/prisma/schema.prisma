@@ -69,6 +69,20 @@ model User {
   wallet        Json?
   legalDetails  Json?
   address       Json?
+  
+  // Enhanced Payroll & Onboarding Fields
+  fullName      String?       // Display name for payroll
+  country       String?       // For tax and compliance
+  currencyPreference String?  // USD, KES, etc.
+  payoutMethod  String?       // stellar_wallet, mpesa, bank_transfer, etc.
+  walletAddress String?       // Stellar wallet or phone number for mobile money
+  taxId         String?       // For tax reporting
+  salaryAmount  Float?        // Base pay
+  salaryFrequency String?     // monthly, biweekly, etc.
+  contractType  String?       // full_time, part_time, contract, etc.
+  startDate     DateTime?     // Employment start date
+  deductions    Json?         // List of recurring deductions (loans, pensions)
+  
   moduleAccess  ModuleAccess[]
   permissions   Json?         @default("[]")
   jobPostings   JobPosting[]        @relation("UserJobPostings")

@@ -145,7 +145,7 @@ const leaveColumns = [
           )}
         </div>
       );
-    }
+}
   }
 ];
 
@@ -196,7 +196,7 @@ export default function LeaveManagementPage() {
     const matchesSearch = 
       request.employeeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       request.leaveType.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     const matchesStatus = statusFilter === 'all' || request.status === statusFilter;
     const matchesType = typeFilter === 'all' || request.leaveType === typeFilter;
     
@@ -254,7 +254,7 @@ export default function LeaveManagementPage() {
                 <div className="text-2xl font-bold">{leaveBalance.pendingRequests}</div>
               </CardContent>
             </Card>
-            
+
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Approved Requests</CardTitle>
@@ -265,16 +265,16 @@ export default function LeaveManagementPage() {
               </CardContent>
             </Card>
             
-            <Card>
+              <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Rejected Requests</CardTitle>
                 <XCircle className="h-4 w-4 text-red-600" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{leaveBalance.rejectedRequests}</div>
-              </CardContent>
-            </Card>
-          </div>
+                </CardContent>
+              </Card>
+                            </div>
         )}
 
         {/* Leave Balance Details */}
@@ -290,21 +290,21 @@ export default function LeaveManagementPage() {
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium">{leaveType.type}</span>
                       <Badge variant="outline">{leaveType.remainingDays} left</Badge>
-                    </div>
+                              </div>
                     <div className="space-y-1">
                       <div className="flex justify-between text-xs text-muted-foreground">
                         <span>Total: {leaveType.totalDays}</span>
                         <span>Used: {leaveType.usedDays}</span>
-                      </div>
+                              </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
                         <div 
                           className="bg-blue-600 h-2 rounded-full" 
                           style={{ width: `${(leaveType.usedDays / leaveType.totalDays) * 100}%` }}
                         ></div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                              </div>
+                          </div>
+                        </div>
+                  ))}
               </div>
             </CardContent>
           </Card>
@@ -323,17 +323,17 @@ export default function LeaveManagementPage() {
               <div>
                 <Label htmlFor="search">Search</Label>
                 <div className="relative">
-                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
                     id="search"
                     placeholder="Search employees or leave types..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-8"
-                  />
-                </div>
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-8"
+                />
               </div>
-              
+            </div>
+
               <div>
                 <Label htmlFor="status">Status</Label>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -349,7 +349,7 @@ export default function LeaveManagementPage() {
                 </Select>
               </div>
               
-              <div>
+                              <div>
                 <Label htmlFor="type">Leave Type</Label>
                 <Select value={typeFilter} onValueChange={setTypeFilter}>
                   <SelectTrigger>
@@ -365,30 +365,30 @@ export default function LeaveManagementPage() {
                     <SelectItem value="Unpaid Leave">Unpaid Leave</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
 
         {/* Leave Requests Table */}
-        <Card>
-          <CardHeader>
+            <Card>
+              <CardHeader>
             <CardTitle>Leave Requests</CardTitle>
-          </CardHeader>
-          <CardContent>
+              </CardHeader>
+              <CardContent>
             {loading ? (
               <div className="flex items-center justify-center p-8">
                 <Loader2 className="h-6 w-6 animate-spin text-primary" />
                 <span className="ml-2 text-muted-foreground">Loading leave requests...</span>
-              </div>
-            ) : (
+                  </div>
+                ) : (
               <DataTable
                 columns={leaveColumns}
                 data={filteredLeaveRequests}
               />
-            )}
-          </CardContent>
-        </Card>
+                )}
+              </CardContent>
+            </Card>
       </div>
     </DashboardLayout>
   );

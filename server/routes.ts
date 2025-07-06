@@ -148,7 +148,7 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
     metadata?: any;
   }) => {
     try {
-      console.log('Creating notification:', data);
+
       
       // Create notification in Prisma
       const notification = await prisma.notification.create({
@@ -1192,7 +1192,7 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
   app.get('/api/accounting/ledger', async (_req, res) => {
     try {
       // Mock ledger data for testing
-      const ledger = [
+      let ledger = [
         {
           id: '1',
           date: new Date('2024-03-01'),
@@ -1227,11 +1227,59 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
           updatedAt: new Date()
         }
       ];
+
+      // Add payroll accounting data if available
+      if (global.payrollAccountingData && global.payrollAccountingData.length > 0) {
+        const payrollEntries = global.payrollAccountingData.map((payroll, index) => ({
+          id: `payroll-${index + 1}`,
+          date: payroll.date,
+          description: payroll.description,
+          type: 'debit',
+          amount: payroll.amount,
+          balance: 0, // Will be calculated
+          category: 'expense',
+          subcategory: 'payroll',
+          details: payroll.details,
+          createdAt: payroll.createdAt,
+          updatedAt: payroll.updatedAt
+        }));
+        
+        ledger = [...ledger, ...payrollEntries];
+      }
       
       res.json(ledger);
     } catch (error) {
       console.error('Error fetching ledger:', error);
       res.status(500).json({ message: "Failed to fetch ledger" });
+    }
+  });
+
+  // Payroll accounting integration endpoint
+  app.get('/api/accounting/payroll', async (_req, res) => {
+    try {
+      const payrollData = global.payrollAccountingData || [];
+      
+      // Calculate payroll summary
+      const summary = {
+        totalPayrollExpense: payrollData.reduce((sum, entry) => sum + entry.amount, 0),
+        totalTaxPayable: payrollData.reduce((sum, entry) => sum + (entry.details?.totalTaxDeductions || 0), 0),
+        totalBenefitsPayable: payrollData.reduce((sum, entry) => sum + (entry.details?.totalBenefitsDeductions || 0), 0),
+        totalNetPay: payrollData.reduce((sum, entry) => sum + (entry.details?.totalNetPay || 0), 0),
+        employeeCount: payrollData.reduce((sum, entry) => sum + (entry.details?.employeeCount || 0), 0),
+        currency: 'USD',
+        period: {
+          start: new Date().toISOString(),
+          end: new Date().toISOString()
+        }
+      };
+      
+      res.json({
+        summary,
+        entries: payrollData
+      });
+    } catch (error) {
+      console.error('Error fetching payroll accounting data:', error);
+      res.status(500).json({ message: "Failed to fetch payroll accounting data" });
     }
   });
 
@@ -2532,8 +2580,7 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
         return res.status(401).json({ error: 'Not authenticated' });
       }
 
-      console.log('Available Prisma models:', Object.keys(prisma));
-      console.log('Notification model available:', !!prisma.notification);
+      
 
       const { limit = 50, unreadOnly = false } = req.query;
       
@@ -2549,7 +2596,7 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
       // Check if notification model exists
       if (!prisma.notification) {
         console.error('Notification model not available in Prisma client');
-        console.log('Returning mock notifications as fallback');
+
         
         // Return mock notifications as fallback
         const mockNotifications = [
@@ -2714,7 +2761,7 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
         } as any
       });
 
-      console.log('Meeting created successfully:', meeting);
+      
 
       // Create meeting attendees
       if (attendees && attendees.length > 0) {
@@ -2731,18 +2778,18 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
 
         // Send notifications to attendees
         for (const attendee of attendees) {
-          console.log('Processing attendee:', attendee);
+  
           
           // Get attendee user details
           const attendeeUser = await prisma.user.findUnique({
             where: { id: attendee.userId }
           });
 
-          console.log('Found attendee user:', attendeeUser ? { id: attendeeUser.id, email: attendeeUser.email } : 'Not found');
+          
 
           if (attendeeUser) {
             // Create in-app notification
-            console.log('Creating notification for attendee:', attendeeUser.id);
+
             const notification = await createNotification({
               type: 'meeting',
               title: 'Meeting Invitation',
@@ -2760,7 +2807,7 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
             const meetingTime = new Date(startTime).toLocaleTimeString();
             const organizerName = `${(req.user as any)?.firstName || ''} ${(req.user as any)?.lastName || ''}`.trim();
             
-            console.log('Sending email to:', attendeeUser.email);
+
             const emailResult = await sendMeetingNotification(
               attendeeUser.email,
               `${attendeeUser.firstName} ${attendeeUser.lastName}`,
