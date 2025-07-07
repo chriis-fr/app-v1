@@ -18,6 +18,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/components/ui/use-toast';
 import { hasFullAccess } from '@/utils/access';
+import { AISettings } from '@/components/ai';
 
 interface OrganizationFormData {
   name: string;
@@ -428,6 +429,7 @@ export default function OrganizationSettingsPage() {
                   <TabsTrigger value="payroll">Payroll</TabsTrigger>
                   <TabsTrigger value="benefits">Benefits</TabsTrigger>
                   <TabsTrigger value="compliance">Compliance</TabsTrigger>
+                  <TabsTrigger value="ai">AI Assistant</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="general">
@@ -1170,6 +1172,21 @@ export default function OrganizationSettingsPage() {
                       Save Compliance Settings
                     </Button>
                   </form>
+                </TabsContent>
+
+                <TabsContent value="ai">
+                  <AISettings 
+                    organizationId={user?.organizationId}
+                    currentSettings={{
+                      isEnabled: true, // TODO: Get from organization settings
+                      allowPersonalAI: true,
+                      allowOrganizationAI: true,
+                    }}
+                    onSettingsChange={(settings) => {
+                      console.log('AI Settings changed:', settings);
+                      // TODO: Save to organization settings
+                    }}
+                  />
                 </TabsContent>
               </Tabs>
             </CardContent>

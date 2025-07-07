@@ -3,6 +3,7 @@ import React from 'react';
 import CompactSidebar from '../layout/CompactSidebar';
 import Sidebar from '../layout/Sidebar';
 import Header from '../layout/Header';
+import { AIFloatingButton } from '../ai';
 import { useAuth } from '@/hooks/use-auth';
 import { useLocation } from 'wouter';
 
@@ -52,6 +53,15 @@ export function DashboardLayout({ children }: React.PropsWithChildren) {
           </div>
         </>
       )}
+      
+      {/* AI Floating Button - appears on all dashboards */}
+      <div className="relative">
+        <AIFloatingButton 
+          isEnabled={true} // TODO: Get from organization settings
+          userRole={user?.role}
+          organizationId={user?.organizationId}
+        />
+      </div>
     </div>
   );
 }

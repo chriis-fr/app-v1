@@ -16,6 +16,7 @@ import type { User as PrismaUser, Prisma } from '../node_modules/.prisma/client'
 import type { User as SharedUser } from '@shared/schema';
 import bcrypt from 'bcryptjs';
 import hrRouter from './src/routes/hr';
+import aiRouter from './routes/ai';
 import jwt from 'jsonwebtoken';
 import { getCountryConfig } from '@/config/countries';
 import { businessTypeConfig } from './config/business-types';
@@ -180,6 +181,9 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
 
   // Mount HR routes
   app.use('/api/hr', hrRouter);
+
+  // Mount AI routes
+  app.use('/api/ai', aiRouter);
 
   // User profile routes
   app.put('/api/user/profile', async (req: Request, res: Response) => {
