@@ -27,6 +27,7 @@ interface NotificationContextType {
   fetchNotifications: () => Promise<void>;
   markAsRead: (notificationId: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
+  deleteNotification: (notificationId: string) => Promise<void>;
   addNotification: (notification: Notification) => void;
 }
 
@@ -165,6 +166,21 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     }
   };
 
+  const deleteNotification = async (notificationId: string) => {
+    try {
+      await fetch(`/api/notifications/${notificationId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      
+      setNotifications(prev => 
+        prev.filter(notif => notif.id !== notificationId)
+      );
+    } catch (error) {
+      console.error('Error deleting notification:', error);
+    }
+  };
+
   const markAllAsRead = async () => {
     try {
       await fetch('/api/notifications/read-all', {
@@ -207,6 +223,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     fetchNotifications,
     markAsRead,
     markAllAsRead,
+    deleteNotification,
     addNotification
   };
 

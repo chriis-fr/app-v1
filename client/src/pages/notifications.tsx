@@ -136,7 +136,7 @@ export default function NotificationsPage() {
   const markAsRead = async (notificationId: string) => {
     try {
       await fetch(`/api/notifications/${notificationId}/read`, {
-        method: 'POST',
+        method: 'PUT',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -152,10 +152,27 @@ export default function NotificationsPage() {
     }
   };
 
+  const deleteNotification = async (notificationId: string) => {
+    try {
+      await fetch(`/api/notifications/${notificationId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      setNotifications(prev => 
+        prev.filter(notif => notif.id !== notificationId)
+      );
+    } catch (error) {
+      console.error('Error deleting notification:', error);
+    }
+  };
+
   const markAllAsRead = async () => {
     try {
       await fetch('/api/notifications/read-all', {
-        method: 'POST',
+        method: 'PUT',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -251,12 +268,33 @@ export default function NotificationsPage() {
               Stay updated with organizational activities and important alerts
             </p>
           </div>
-          <Button
-            onClick={() => setLocation('/dashboard')}
-            variant="outline"
-          >
-            Back to Dashboard
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={async () => {
+                try {
+                  await fetch('/api/notifications/sample', {
+                    method: 'POST',
+                    headers: {
+                      'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
+                  });
+                  fetchNotifications();
+                } catch (error) {
+                  console.error('Error creating sample notifications:', error);
+                }
+              }}
+              variant="outline"
+              size="sm"
+            >
+              Create Sample Notifications
+            </Button>
+            <Button
+              onClick={() => setLocation('/dashboard')}
+              variant="outline"
+            >
+              Back to Dashboard
+            </Button>
+          </div>
         </div>
 
         <Card className="mb-6">
@@ -374,18 +412,31 @@ export default function NotificationsPage() {
                             <span className="capitalize">{notification.type}</span>
                           </div>
                         </div>
-                        {notification.actionUrl && (
+                        <div className="flex items-center gap-2">
+                          {notification.actionUrl && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setLocation(notification.actionUrl!);
+                              }}
+                            >
+                              View
+                            </Button>
+                          )}
                           <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
                             onClick={(e) => {
                               e.stopPropagation();
-                              setLocation(notification.actionUrl!);
+                              deleteNotification(notification.id);
                             }}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
                           >
-                            View
+                            <X className="h-4 w-4" />
                           </Button>
-                        )}
+                        </div>
                       </div>
                     </div>
                   </div>

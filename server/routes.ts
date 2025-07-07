@@ -2905,137 +2905,7 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
     }
   });
 
-  // Notifications endpoint
-  app.get('/api/notifications', async (req, res) => {
-    try {
-      if (!req.user || !req.user.organizationId) {
-        return res.status(401).json({ error: 'Not authenticated' });
-      }
 
-      
-
-      const { limit = 50, unreadOnly = false } = req.query;
-      
-      let whereClause: any = {
-        userId: req.user.id,
-        organizationId: req.user.organizationId
-      };
-
-      if (unreadOnly === 'true') {
-        whereClause.isRead = false;
-      }
-
-      // Check if notification model exists
-      if (!prisma.notification) {
-        console.error('Notification model not available in Prisma client');
-
-        
-        // Return mock notifications as fallback
-        const mockNotifications = [
-          {
-            id: '1',
-            type: 'meeting',
-            title: 'Meeting Invitation',
-            message: 'You have been invited to a team meeting',
-            priority: 'medium',
-            isRead: false,
-            actionUrl: '/meetings',
-            metadata: JSON.stringify({ meetingId: 'mock-1' }),
-            createdAt: new Date().toISOString()
-          },
-          {
-            id: '2',
-            type: 'task',
-            title: 'Task Assignment',
-            message: 'New task assigned: Review project documentation',
-            priority: 'high',
-            isRead: false,
-            actionUrl: '/tasks',
-            metadata: JSON.stringify({ taskId: 'mock-1' }),
-            createdAt: new Date(Date.now() - 3600000).toISOString()
-          }
-        ];
-        
-        return res.json(mockNotifications);
-      }
-
-      const notifications = await prisma.notification.findMany({
-        where: whereClause,
-        orderBy: { createdAt: 'desc' },
-        take: Number(limit),
-        select: {
-          id: true,
-          type: true,
-          title: true,
-          message: true,
-          priority: true,
-          isRead: true,
-          actionUrl: true,
-          metadata: true,
-          createdAt: true
-        }
-      });
-
-      // Parse metadata JSON strings back to objects
-      const parsedNotifications = notifications.map(notification => ({
-        ...notification,
-        metadata: notification.metadata ? JSON.parse(notification.metadata) : null
-      }));
-
-      res.json(parsedNotifications);
-    } catch (error) {
-      console.error('Error fetching notifications:', error);
-      res.status(500).json({ error: 'Failed to fetch notifications' });
-    }
-  });
-
-  // Mark notification as read
-  app.put('/api/notifications/:id/read', async (req, res) => {
-    try {
-      if (!req.user || !req.user.organizationId) {
-        return res.status(401).json({ error: 'Not authenticated' });
-      }
-
-      const { id } = req.params;
-
-      const notification = await prisma.notification.update({
-        where: {
-          id,
-          userId: req.user.id,
-          organizationId: req.user.organizationId
-        },
-        data: { isRead: true }
-      });
-
-      res.json(notification);
-    } catch (error) {
-      console.error('Error marking notification as read:', error);
-      res.status(500).json({ error: 'Failed to mark notification as read' });
-    }
-  });
-
-  // Mark all notifications as read
-  app.put('/api/notifications/read-all', async (req, res) => {
-    try {
-      if (!req.user || !req.user.organizationId) {
-        return res.status(401).json({ error: 'Not authenticated' });
-      }
-
-      await prisma.notification.updateMany({
-        where: {
-          userId: req.user.id,
-          organizationId: req.user.organizationId,
-          isRead: false
-        },
-        data: { isRead: true }
-      });
-
-      res.json({ message: 'All notifications marked as read' });
-    } catch (error) {
-      console.error('Error marking all notifications as read:', error);
-      res.status(500).json({ error: 'Failed to mark notifications as read' });
-    }
-  });
 
   // Meeting API endpoints
   app.post('/api/meetings', async (req, res) => {
@@ -3418,54 +3288,124 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
     }
   });
 
-  // Notifications endpoints
+  // Notifications endpoints - Real data from database
   app.get('/api/notifications', async (req, res) => {
     try {
       if (!req.user || !req.user.organizationId) {
         return res.status(401).json({ error: 'Not authenticated' });
       }
 
-      // Return mock notifications for now
-      const mockNotifications = [
-        {
-          id: '1',
-          type: 'meeting',
-          title: 'Upcoming Team Meeting',
-          message: 'Team standup meeting starts in 15 minutes',
-          timestamp: new Date(Date.now() - 5 * 60 * 1000),
-          isRead: false,
-          priority: 'high',
-          actionUrl: '/meetings',
-          metadata: { meetingId: 'meeting-1' }
-        },
-        {
-          id: '2',
-          type: 'task',
-          title: 'Task Assignment',
-          message: 'New task assigned: Review Q4 financial reports',
-          timestamp: new Date(Date.now() - 30 * 60 * 1000),
-          isRead: false,
-          priority: 'medium',
-          actionUrl: '/hr/tasks',
-          metadata: { taskId: 'task-1' }
-        },
-        {
-          id: '3',
-          type: 'approval',
-          title: 'Approval Required',
-          message: 'Invoice #INV-2024-001 requires your approval',
-          timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
-          isRead: false,
-          priority: 'high',
-          actionUrl: '/finance',
-          metadata: { amount: 2500 }
-        }
-      ];
+      const { limit = 50, unreadOnly = false } = req.query;
+      
+      let whereClause: any = {
+        userId: req.user.id,
+        organizationId: req.user.organizationId
+      };
 
-      res.json(mockNotifications);
+      if (unreadOnly === 'true') {
+        whereClause.isRead = false;
+      }
+
+      const notifications = await prisma.notification.findMany({
+        where: whereClause,
+        orderBy: { createdAt: 'desc' },
+        take: Number(limit),
+        select: {
+          id: true,
+          type: true,
+          title: true,
+          message: true,
+          priority: true,
+          isRead: true,
+          actionUrl: true,
+          metadata: true,
+          createdAt: true
+        }
+      });
+
+      // Parse metadata JSON strings back to objects and format for frontend
+      const formattedNotifications = notifications.map(notification => ({
+        ...notification,
+        timestamp: notification.createdAt,
+        metadata: notification.metadata ? JSON.parse(notification.metadata) : null
+      }));
+
+      res.json(formattedNotifications);
     } catch (error) {
       console.error('Error fetching notifications:', error);
       res.status(500).json({ message: "Failed to fetch notifications" });
+    }
+  });
+
+  // Mark notification as read
+  app.put('/api/notifications/:id/read', async (req, res) => {
+    try {
+      if (!req.user || !req.user.organizationId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const { id } = req.params;
+
+      const notification = await prisma.notification.update({
+        where: {
+          id,
+          userId: req.user.id,
+          organizationId: req.user.organizationId
+        },
+        data: { isRead: true }
+      });
+
+      res.json(notification);
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+      res.status(500).json({ error: 'Failed to mark notification as read' });
+    }
+  });
+
+  // Mark all notifications as read
+  app.put('/api/notifications/read-all', async (req, res) => {
+    try {
+      if (!req.user || !req.user.organizationId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      await prisma.notification.updateMany({
+        where: {
+          userId: req.user.id,
+          organizationId: req.user.organizationId,
+          isRead: false
+        },
+        data: { isRead: true }
+      });
+
+      res.json({ message: 'All notifications marked as read' });
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+      res.status(500).json({ error: 'Failed to mark notifications as read' });
+    }
+  });
+
+  // Delete notification
+  app.delete('/api/notifications/:id', async (req, res) => {
+    try {
+      if (!req.user || !req.user.organizationId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const { id } = req.params;
+
+      await prisma.notification.delete({
+        where: {
+          id,
+          userId: req.user.id,
+          organizationId: req.user.organizationId
+        }
+      });
+
+      res.json({ message: 'Notification deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting notification:', error);
+      res.status(500).json({ error: 'Failed to delete notification' });
     }
   });
 
@@ -3555,6 +3495,95 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
     } catch (error) {
       console.error('Error updating organization:', error);
       res.status(500).json({ message: "Failed to update organization" });
+    }
+  });
+
+  // Create sample notifications for testing
+  app.post('/api/notifications/sample', async (req, res) => {
+    try {
+      if (!req.user || !req.user.organizationId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      // Create sample notifications
+      const sampleNotifications = [
+        {
+          type: 'meeting',
+          title: 'Team Standup Meeting',
+          message: 'Daily team standup meeting starts in 15 minutes',
+          userId: req.user.id,
+          organizationId: req.user.organizationId,
+          priority: 'high',
+          actionUrl: '/meetings',
+          metadata: JSON.stringify({ meetingId: 'sample-1' })
+        },
+        {
+          type: 'task',
+          title: 'Project Review Required',
+          message: 'New task assigned: Review Q4 financial reports',
+          userId: req.user.id,
+          organizationId: req.user.organizationId,
+          priority: 'medium',
+          actionUrl: '/hr/tasks',
+          metadata: JSON.stringify({ taskId: 'sample-1' })
+        },
+        {
+          type: 'approval',
+          title: 'Invoice Approval',
+          message: 'Invoice #INV-2024-001 requires your approval',
+          userId: req.user.id,
+          organizationId: req.user.organizationId,
+          priority: 'high',
+          actionUrl: '/finance',
+          metadata: JSON.stringify({ amount: 2500 })
+        },
+        {
+          type: 'system',
+          title: 'System Maintenance',
+          message: 'Scheduled maintenance tonight at 2:00 AM UTC',
+          userId: req.user.id,
+          organizationId: req.user.organizationId,
+          priority: 'low',
+          actionUrl: null,
+          metadata: null
+        },
+        {
+          type: 'user',
+          title: 'New Team Member',
+          message: 'John Smith joined the organization',
+          userId: req.user.id,
+          organizationId: req.user.organizationId,
+          priority: 'low',
+          actionUrl: '/users',
+          metadata: JSON.stringify({ userId: 'user-1', userName: 'John Smith' })
+        },
+        {
+          type: 'inventory',
+          title: 'Low Stock Alert',
+          message: 'Product "Premium Widget" is running low on stock',
+          userId: req.user.id,
+          organizationId: req.user.organizationId,
+          priority: 'medium',
+          actionUrl: '/inventory',
+          metadata: JSON.stringify({ itemCount: 5 })
+        }
+      ];
+
+      const createdNotifications = [];
+      for (const notificationData of sampleNotifications) {
+        const notification = await prisma.notification.create({
+          data: notificationData
+        });
+        createdNotifications.push(notification);
+      }
+
+      res.json({ 
+        message: 'Sample notifications created successfully',
+        count: createdNotifications.length 
+      });
+    } catch (error) {
+      console.error('Error creating sample notifications:', error);
+      res.status(500).json({ error: 'Failed to create sample notifications' });
     }
   });
 
