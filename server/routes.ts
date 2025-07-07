@@ -16,7 +16,8 @@ import type { User as PrismaUser, Prisma } from '../node_modules/.prisma/client'
 import type { User as SharedUser } from '@shared/schema';
 import bcrypt from 'bcryptjs';
 import hrRouter from './src/routes/hr';
-import aiRouter from './routes/ai';
+  import aiRouter from './routes/ai';
+  import organizationRouter from './routes/organization';
 import jwt from 'jsonwebtoken';
 import { getCountryConfig } from '@/config/countries';
 import { businessTypeConfig } from './config/business-types';
@@ -188,6 +189,22 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
   // User profile routes
   app.put('/api/user/profile', async (req: Request, res: Response) => {
     try {
+      console.log('=== User Profile Update Request ===');
+      console.log('Request body:', req.body);
+      
+      // Get authentication token
+      const token = req.cookies.token || req.headers.authorization?.replace('Bearer ', '');
+      if (!token) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret') as any;
+      const userId = decoded.id;
+
+      if (!userId) {
+        return res.status(400).json({ message: "User ID not found" });
+      }
+
       const { 
         firstName, 
         lastName, 
@@ -201,17 +218,15 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
         team,
         location,
         workSchedule,
-        emergencyContact,
-        userId
+        emergencyContact
       } = req.body;
       
-      // Get the current user ID from the request or use the provided one
-      const userToUpdate = userId || ''; // Replace with actual user ID from auth
+      console.log('Updating user with ID:', userId);
       
-      // Update the user in MongoDB
-      const updatedUser = await UserModel.findByIdAndUpdate(
-        userToUpdate,
-        { 
+      // Update the user in Prisma
+      const updatedUser = await prisma.user.update({
+        where: { id: userId },
+        data: { 
           firstName, 
           lastName, 
           email, 
@@ -219,22 +234,53 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
           position,
           department,
           employeeId,
-          hireDate,
+          hireDate: hireDate ? new Date(hireDate) : undefined,
           managerId,
           team,
-          location,
-          workSchedule,
-          emergencyContact,
+          location: location ? JSON.stringify(location) : undefined,
+          workSchedule: workSchedule ? JSON.stringify(workSchedule) : undefined,
+          emergencyContact: emergencyContact ? JSON.stringify(emergencyContact) : undefined,
           updatedAt: new Date() 
         },
-        { new: true, select: '-password -__v' }
-      );
+        select: {
+          id: true,
+          username: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          role: true,
+          department: true,
+          phoneNumber: true,
+          position: true,
+          employeeId: true,
+          hireDate: true,
+          managerId: true,
+          team: true,
+          location: true,
+          workSchedule: true,
+          emergencyContact: true,
+          avatarUrl: true,
+          isOwner: true,
+          isActive: true,
+          status: true,
+          lastLogin: true,
+          organizationId: true,
+          createdAt: true,
+          updatedAt: true
+        }
+      });
       
-      if (!updatedUser) {
-        return res.status(404).json({ message: "User not found" });
-      }
+      console.log('User updated successfully:', updatedUser.id);
 
-      res.json(updatedUser);
+      // Parse JSON fields for frontend compatibility
+      const parsedUser = {
+        ...updatedUser,
+        location: updatedUser.location ? JSON.parse(updatedUser.location as string) : null,
+        workSchedule: updatedUser.workSchedule ? JSON.parse(updatedUser.workSchedule as string) : null,
+        emergencyContact: updatedUser.emergencyContact ? JSON.parse(updatedUser.emergencyContact as string) : null,
+      };
+
+      res.json(parsedUser);
     } catch (error) {
       console.error('Error updating profile:', error);
       res.status(500).json({ message: "Failed to update profile" });
@@ -244,16 +290,33 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
   // Add password change endpoint
   app.put('/api/user/password', async (req: Request, res: Response) => {
     try {
-      const { userId, currentPassword, newPassword } = req.body;
+      console.log('=== User Password Change Request ===');
       
-      if (!userId || !currentPassword || !newPassword) {
+      // Get authentication token
+      const token = req.cookies.token || req.headers.authorization?.replace('Bearer ', '');
+      if (!token) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret') as any;
+      const userId = decoded.id;
+
+      if (!userId) {
+        return res.status(400).json({ message: "User ID not found" });
+      }
+
+      const { currentPassword, newPassword } = req.body;
+      
+      if (!currentPassword || !newPassword) {
         return res.status(400).json({ message: "Missing required fields" });
       }
 
-      console.log(newPassword);
+      console.log('Changing password for user:', userId);
       
-      // Find the user in MongoDB
-      const user = await UserModel.findById(userId);
+      // Find the user in Prisma
+      const user = await prisma.user.findUnique({
+        where: { id: userId }
+      });
       
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -269,29 +332,16 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
       // Hash the new password
       const hashedPassword = await hashPassword(newPassword);
       
-      // Update only the password field in MongoDB
-      await UserModel.findByIdAndUpdate(
-        userId,
-        { $set: { password: hashedPassword } },
-        { new: true }
-      );
-      
-      // Try to update in Prisma if the user exists there
-      try {
-        const prismaUser = await prisma.user.findUnique({
-          where: { id: userId }
-        });
-        
-        if (prismaUser) {
-          await prisma.user.update({
-            where: { id: userId },
-            data: { password: hashedPassword }
-          });
+      // Update the password in Prisma
+      await prisma.user.update({
+        where: { id: userId },
+        data: { 
+          password: hashedPassword,
+          updatedAt: new Date()
         }
-      } catch (prismaError) {
-        console.error('Error updating password in Prisma:', prismaError);
-        // Continue even if Prisma update fails
-      }
+      });
+      
+      console.log('Password changed successfully for user:', userId);
       
       res.json({ message: "Password updated successfully" });
     } catch (error) {
@@ -302,15 +352,72 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
 
   // Profile photo upload
   app.post('/api/user/photo', upload.single('photo'), async (req: Request, res: Response) => {
-    // Bypass authentication check
     try {
-    const file = (req as any).file;
-    if (!file) {
-      return res.status(400).json({ message: "No file uploaded" });
-    }
+      console.log('=== User Photo Upload Request ===');
+      
+      // Get authentication token
+      const token = req.cookies.token || req.headers.authorization?.replace('Bearer ', '');
+      if (!token) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
 
-      // Mock response
-      res.json({ url: `/uploads/${file.filename}` });
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret') as any;
+      const userId = decoded.id;
+
+      if (!userId) {
+        return res.status(400).json({ message: "User ID not found" });
+      }
+
+      const file = (req as any).file;
+      if (!file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      console.log('Uploading photo for user:', userId);
+      console.log('File:', file.filename);
+
+      // Update the user's avatar URL in the database
+      const updatedUser = await prisma.user.update({
+        where: { id: userId },
+        data: {
+          avatarUrl: `/uploads/${file.filename}`,
+          updatedAt: new Date()
+        },
+        select: {
+          id: true,
+          username: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          role: true,
+          department: true,
+          phoneNumber: true,
+          position: true,
+          employeeId: true,
+          hireDate: true,
+          managerId: true,
+          team: true,
+          location: true,
+          workSchedule: true,
+          emergencyContact: true,
+          avatarUrl: true,
+          isOwner: true,
+          isActive: true,
+          status: true,
+          lastLogin: true,
+          organizationId: true,
+          createdAt: true,
+          updatedAt: true
+        }
+      });
+
+      console.log('Photo uploaded successfully for user:', updatedUser.id);
+
+      res.json({ 
+        url: `/uploads/${file.filename}`,
+        message: "Photo uploaded successfully",
+        user: updatedUser
+      });
     } catch (error) {
       console.error('Error uploading photo:', error);
       res.status(500).json({ message: "Failed to upload photo" });
@@ -319,12 +426,156 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
 
   // Profile photo deletion
   app.delete('/api/user/photo', async (req: Request, res: Response) => {
-    // Bypass authentication check
     try {
-      res.json({ message: "Photo deleted successfully" });
+      console.log('=== User Photo Deletion Request ===');
+      
+      // Get authentication token
+      const token = req.cookies.token || req.headers.authorization?.replace('Bearer ', '');
+      if (!token) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret') as any;
+      const userId = decoded.id;
+
+      if (!userId) {
+        return res.status(400).json({ message: "User ID not found" });
+      }
+
+      console.log('Deleting photo for user:', userId);
+
+      // Remove the user's avatar URL from the database
+      const updatedUser = await prisma.user.update({
+        where: { id: userId },
+        data: {
+          avatarUrl: null,
+          updatedAt: new Date()
+        },
+        select: {
+          id: true,
+          username: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          role: true,
+          department: true,
+          phoneNumber: true,
+          position: true,
+          employeeId: true,
+          hireDate: true,
+          managerId: true,
+          team: true,
+          location: true,
+          workSchedule: true,
+          emergencyContact: true,
+          avatarUrl: true,
+          isOwner: true,
+          isActive: true,
+          status: true,
+          lastLogin: true,
+          organizationId: true,
+          createdAt: true,
+          updatedAt: true
+        }
+      });
+
+      console.log('Photo deleted successfully for user:', updatedUser.id);
+
+      res.json({ 
+        message: "Photo deleted successfully",
+        user: updatedUser
+      });
     } catch (error) {
       console.error('Error deleting photo:', error);
       res.status(500).json({ message: "Failed to delete photo" });
+    }
+  });
+
+  // Organization logo upload
+  app.post('/api/organization/logo', upload.single('logo'), async (req: Request, res: Response) => {
+    try {
+      const file = (req as any).file;
+      if (!file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      // Get the organization ID from the authenticated user
+      const token = req.cookies.token || req.headers.authorization?.replace('Bearer ', '');
+      if (!token) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret') as any;
+      const organizationId = decoded.organizationId;
+
+      if (!organizationId) {
+        return res.status(400).json({ message: "Organization ID not found" });
+      }
+
+      // Update the organization's logo URL in the database
+      const organization = await Organization.findByIdAndUpdate(
+        organizationId,
+        {
+          $set: {
+            'settings.branding.logo': `/uploads/${file.filename}`,
+            updatedAt: new Date()
+          }
+        },
+        { new: true }
+      );
+
+      if (!organization) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
+
+      res.json({ 
+        url: `/uploads/${file.filename}`,
+        message: "Logo uploaded successfully"
+      });
+    } catch (error) {
+      console.error('Error uploading logo:', error);
+      res.status(500).json({ message: "Failed to upload logo" });
+    }
+  });
+
+  // Organization logo deletion
+  app.delete('/api/organization/logo', async (req: Request, res: Response) => {
+    try {
+      const token = req.cookies.token || req.headers.authorization?.replace('Bearer ', '');
+      if (!token) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret') as any;
+      const organizationId = decoded.organizationId;
+
+      if (!organizationId) {
+        return res.status(400).json({ message: "Organization ID not found" });
+      }
+
+      // Remove the logo URL from the organization settings
+      const organization = await Organization.findByIdAndUpdate(
+        organizationId,
+        {
+          $set: {
+            'settings.branding.logo': null,
+            updatedAt: new Date()
+          }
+        },
+        { new: true }
+      );
+
+      if (!organization) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
+
+      res.json({ 
+        message: "Logo deleted successfully",
+        url: null
+      });
+    } catch (error) {
+      console.error('Error deleting logo:', error);
+      res.status(500).json({ message: "Failed to delete logo" });
     }
   });
 
@@ -1370,50 +1621,86 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
     }
   });
 
+  // Organization Routes
+  app.use('/api/organization', organizationRouter);
+
   // Organization Settings Routes
-  app.get('/api/organization/settings', async (_req, res) => {
+  app.get('/api/organization/settings', isAuthenticated, async (req, res) => {
     try {
-      // Mock organization settings data for testing
-      const settings = {
-        name: 'Acme Corporation',
-        address: '123 Main St, Anytown, USA',
-        phone: '123-456-7890',
-        email: 'contact@acmecorp.com',
-        website: 'www.acmecorp.com',
-        logo: '/uploads/logo.png',
-        theme: {
-          primaryColor: '#1976d2',
-          secondaryColor: '#dc004e',
-          fontFamily: 'Roboto'
-        },
-        modules: ['dashboard', 'order_management', 'inventory', 'hr', 'accounting', 'blockchain'],
-        maxUsers: 10,
-        maxStorage: 1000, // MB
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-      
-      res.json(settings);
+      // Get the user from the request
+      const user = (req as any).user;
+      if (!user || !user.organizationId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      // Get the organization settings from Prisma
+      const organization = await prisma.organization.findUnique({
+        where: { id: user.organizationId }
+      });
+
+      if (!organization) {
+        return res.status(404).json({ error: 'Organization not found' });
+      }
+
+      res.json(organization.settings || {});
     } catch (error) {
       console.error('Error fetching organization settings:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
   });
 
-  app.patch('/api/organization/settings', async (req, res) => {
+  app.put('/api/organization/settings', isAuthenticated, async (req: AuthenticatedRequest, res) => {
     try {
-      const settingsData = req.body;
+      console.log('=== Organization Settings Update ===');
+      console.log('User:', req.user);
+      console.log('Request body:', req.body);
       
-      // Mock organization settings update response
-      const settings = {
-        ...settingsData,
-        updatedAt: new Date()
-      };
+      // Check if user is owner
+      if (!req.user.isOwner) {
+        return res.status(403).json({ error: 'Only organization owners can update settings' });
+      }
+
+      const { settings } = req.body;
       
-      res.json(settings);
+      if (!settings) {
+        return res.status(400).json({ error: 'Settings data is required' });
+      }
+
+      console.log('Settings to update:', settings);
+
+      // Ensure settings is a proper JSON object, not stringified
+      let settingsToSave = settings;
+      if (typeof settings === 'string') {
+        try {
+          settingsToSave = JSON.parse(settings);
+        } catch (parseError) {
+          console.error('Error parsing settings JSON:', parseError);
+          return res.status(400).json({ error: 'Invalid settings format' });
+        }
+      }
+
+      // Update organization settings in Prisma
+      const updatedOrganization = await prisma.organization.update({
+        where: { id: req.user.organizationId },
+        data: {
+          settings: settingsToSave // Store as proper JSON object
+        }
+      });
+
+      console.log('Organization updated successfully:', updatedOrganization.id);
+
+      res.json({
+        success: true,
+        message: 'Organization settings updated successfully',
+        organization: {
+          id: updatedOrganization.id,
+          settings: updatedOrganization.settings
+        }
+      });
+
     } catch (error) {
       console.error('Error updating organization settings:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(500).json({ error: 'Failed to update organization settings' });
     }
   });
 
@@ -1794,7 +2081,7 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
         taxId: orgData.organization.taxId,
         website: orgData.organization.website,
         walletAddress: orgData.organization.walletAddress || '',
-        settings: JSON.stringify({
+        settings: {
           theme: {
             primaryColor: '#282881',
             secondaryColor: '#ffffff',
@@ -1854,10 +2141,51 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
             retention: 30,
             autoBackup: true
           },
+          ai: {
+            isEnabled: true,
+            allowPersonalAI: true,
+            allowOrganizationAI: true,
+            model: 'gpt-3.5-turbo',
+            temperature: 0.7,
+            maxTokens: 1000,
+            moduleSettings: {
+              hr: {
+                enabled: true,
+                canAccessEmployeeData: true,
+                canAccessPayrollData: true,
+                canAccessHiringData: true,
+                canAccessPerformanceData: true
+              },
+              finance: {
+                enabled: true,
+                canAccessFinancialData: true,
+                canAccessAccountingData: true,
+                canAccessBudgetData: true,
+                canAccessTaxData: true
+              },
+              inventory: {
+                enabled: true,
+                canAccessStockData: true,
+                canAccessWarehouseData: true,
+                canAccessSupplyChainData: true
+              },
+              sales: {
+                enabled: true,
+                canAccessCustomerData: true,
+                canAccessSalesData: true,
+                canAccessCRMData: true
+              },
+              general: {
+                enabled: true,
+                canAccessGeneralData: true,
+                canAccessAnalyticsData: true
+              }
+            }
+          },
           kpis: businessPreset.keyKPIs,
           recommendedSettings: businessPreset.recommendedSettings
-        }),
-        roles: JSON.stringify([
+        },
+        roles: [
           {
             name: 'Owner',
             description: 'Full access to all features',
@@ -1888,7 +2216,7 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
               access: 'read'
             }))
           }
-        ]),
+        ],
         waitlistedModules: orgData.waitlistedModules || []
       };
 
@@ -3166,6 +3494,67 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
     } catch (error) {
       console.error('Error marking all notifications as read:', error);
       res.status(500).json({ message: "Failed to mark all notifications as read" });
+    }
+  });
+
+  // Update organization basic info
+  app.put('/api/organization', async (req: Request, res: Response) => {
+    try {
+      console.log('=== Organization Update Request ===');
+      console.log('Request body:', req.body);
+      
+      const token = req.cookies.token || req.headers.authorization?.replace('Bearer ', '');
+      if (!token) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret') as any;
+      const organizationId = decoded.organizationId;
+      const userId = decoded.id;
+
+      if (!organizationId) {
+        return res.status(400).json({ message: "Organization ID not found" });
+      }
+
+      // Check if user is owner
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { isOwner: true, role: true }
+      });
+
+      if (!user || (!user.isOwner && user.role !== 'admin')) {
+        return res.status(403).json({ message: "Only organization owners and admins can update organization info" });
+      }
+
+      const { name, type, industry, size, address, country, taxId, website } = req.body;
+
+      // Update organization in Prisma
+      const updatedOrganization = await prisma.organization.update({
+        where: { id: organizationId },
+        data: {
+          name: name || undefined,
+          type: type || undefined,
+          industry: industry || undefined,
+          size: size || undefined,
+          address: address || undefined,
+          country: country || undefined,
+          taxId: taxId || undefined,
+          website: website || undefined,
+          updatedAt: new Date()
+        }
+      });
+
+      console.log('Organization updated successfully:', updatedOrganization.id);
+
+      res.json({
+        success: true,
+        message: 'Organization updated successfully',
+        organization: updatedOrganization
+      });
+
+    } catch (error) {
+      console.error('Error updating organization:', error);
+      res.status(500).json({ message: "Failed to update organization" });
     }
   });
 

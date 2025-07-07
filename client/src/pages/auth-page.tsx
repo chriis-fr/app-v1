@@ -763,6 +763,47 @@ export default function AuthPage() {
                     workingHours: { start: '09:00', end: '17:00' },
                     holidays: [],
                     customSettings: {},
+                    ai: {
+                      isEnabled: true,
+                      allowPersonalAI: true,
+                      allowOrganizationAI: true,
+                      model: 'gpt-3.5-turbo',
+                      temperature: 0.7,
+                      maxTokens: 1000,
+                      moduleSettings: {
+                        hr: {
+                          enabled: true,
+                          canAccessEmployeeData: true,
+                          canAccessPayrollData: true,
+                          canAccessHiringData: true,
+                          canAccessPerformanceData: true
+                        },
+                        finance: {
+                          enabled: true,
+                          canAccessFinancialData: true,
+                          canAccessAccountingData: true,
+                          canAccessBudgetData: true,
+                          canAccessTaxData: true
+                        },
+                        inventory: {
+                          enabled: true,
+                          canAccessStockData: true,
+                          canAccessWarehouseData: true,
+                          canAccessSupplyChainData: true
+                        },
+                        sales: {
+                          enabled: true,
+                          canAccessCustomerData: true,
+                          canAccessSalesData: true,
+                          canAccessCRMData: true
+                        },
+                        general: {
+                          enabled: true,
+                          canAccessGeneralData: true,
+                          canAccessAnalyticsData: true
+                        }
+                      }
+                    },
                     accounting: undefined,
                     payroll: undefined,
                     benefits: undefined,

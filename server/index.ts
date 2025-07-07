@@ -36,13 +36,16 @@ app.use((req, res, next) => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+      
+      // Only log response data for errors or if it's small
+      if (capturedJsonResponse && (res.statusCode >= 400 || JSON.stringify(capturedJsonResponse).length < 200)) {
+        const responseStr = JSON.stringify(capturedJsonResponse);
+        if (responseStr.length > 200) {
+          logLine += ` :: ${responseStr.slice(0, 200)}...`;
+        } else {
+          logLine += ` :: ${responseStr}`;
+        }
       }
-
-      // if (logLine.length > 80) {
-      //   logLine = logLine.slice(0, 79) + "…";
-      // }
 
       log(logLine);
     }

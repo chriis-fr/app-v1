@@ -103,7 +103,7 @@ export default function HRPayroll() {
           const benefitsDeduction = salaryAmount * (benefitsRate + totalDeductionsRate);
           const netPay = salaryAmount - taxDeduction - benefitsDeduction;
           
-          return {
+        return {
             id: emp.id || emp._id,
             employeeId: emp.employeeId || emp.id || emp._id,
             employeeName: `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || 'Unknown Employee',
@@ -115,8 +115,8 @@ export default function HRPayroll() {
             benefitsDeduction,
             netPay,
             lastUpdated: emp.updatedAt ? new Date(emp.updatedAt) : new Date()
-          };
-        });
+        };
+      });
 
       setPayrollRecords(payrollRecords);
       
@@ -253,7 +253,7 @@ export default function HRPayroll() {
           new Date(record.lastUpdated).toLocaleDateString()
         ])
       ];
-
+      
       const csvContent = csvData.map(row => row.join(',')).join('\n');
       const blob = new Blob([csvContent], { type: 'text/csv' });
       const url = window.URL.createObjectURL(blob);

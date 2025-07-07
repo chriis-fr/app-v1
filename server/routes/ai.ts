@@ -64,8 +64,8 @@ router.post('/chat', async (req, res) => {
     }
 
     // Check if AI is enabled
-    const isEnabled = await aiService.isAIEnabled(organizationId);
-    if (!isEnabled) {
+    const status = await aiService.checkAIStatus(organizationId);
+    if (!status.isEnabled) {
       return res.status(403).json({ error: 'AI is disabled for this organization' });
     }
 
@@ -157,8 +157,8 @@ router.get('/status', async (req, res) => {
       return res.status(400).json({ error: 'Organization ID required' });
     }
 
-    const isEnabled = await aiService.isAIEnabled(organizationId);
-    res.json({ isEnabled });
+    const status = await aiService.checkAIStatus(organizationId);
+    res.json(status);
   } catch (error) {
     console.error('Error checking AI status:', error);
     res.status(500).json({ error: 'Failed to check AI status' });

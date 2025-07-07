@@ -32,6 +32,7 @@ type OrganizationsSettings {
   recommendedModules String[]
   security           OrganizationsSettingsSecurity
   theme              OrganizationsSettingsTheme
+  ai                 OrganizationsSettingsAI
 }
 
 type OrganizationsSettingsBackup {
@@ -218,6 +219,60 @@ type OrganizationsSettingsTheme {
   spacing        String
 }
 
+type OrganizationsSettingsAI {
+  isEnabled              Boolean
+  allowPersonalAI        Boolean
+  allowOrganizationAI    Boolean
+  model                  String
+  temperature            Float
+  maxTokens              Int
+  moduleSettings         OrganizationsSettingsAIModuleSettings
+}
+
+type OrganizationsSettingsAIModuleSettings {
+  hr         OrganizationsSettingsAIModuleSettingsHR
+  finance    OrganizationsSettingsAIModuleSettingsFinance
+  inventory  OrganizationsSettingsAIModuleSettingsInventory
+  sales      OrganizationsSettingsAIModuleSettingsSales
+  general    OrganizationsSettingsAIModuleSettingsGeneral
+}
+
+type OrganizationsSettingsAIModuleSettingsHR {
+  enabled           Boolean
+  canAccessEmployeeData Boolean
+  canAccessPayrollData  Boolean
+  canAccessHiringData   Boolean
+  canAccessPerformanceData Boolean
+}
+
+type OrganizationsSettingsAIModuleSettingsFinance {
+  enabled           Boolean
+  canAccessFinancialData Boolean
+  canAccessAccountingData Boolean
+  canAccessBudgetData     Boolean
+  canAccessTaxData        Boolean
+}
+
+type OrganizationsSettingsAIModuleSettingsInventory {
+  enabled           Boolean
+  canAccessStockData Boolean
+  canAccessWarehouseData Boolean
+  canAccessSupplyChainData Boolean
+}
+
+type OrganizationsSettingsAIModuleSettingsSales {
+  enabled           Boolean
+  canAccessCustomerData Boolean
+  canAccessSalesData Boolean
+  canAccessCRMData  Boolean
+}
+
+type OrganizationsSettingsAIModuleSettingsGeneral {
+  enabled           Boolean
+  canAccessGeneralData Boolean
+  canAccessAnalyticsData Boolean
+}
+
 model AbsencePolicy {
   id String @id @default(auto()) @map("_id") @db.ObjectId
 }
@@ -288,9 +343,9 @@ model Category {
 model Employee {
   id         String @id @default(auto()) @map("_id") @db.ObjectId
   /// Field referred in an index, but found no data to define the type.
-  employeeId Json?  @unique
+  employeeId Json?
   /// Field referred in an index, but found no data to define the type.
-  userId     Json?  @unique
+  userId     Json?
 }
 
 model FinancialPeriod {
@@ -541,21 +596,7 @@ model customers {
   id String @id @default(auto()) @map("_id") @db.ObjectId
 }
 
-model employee {
-  id         String @id @default(auto()) @map("_id") @db.ObjectId
-  /// Field referred in an index, but found no data to define the type.
-  employeeId Json?  @unique
-  /// Field referred in an index, but found no data to define the type.
-  userId     Json?  @unique
-}
 
-model employees {
-  id         String @id @default(auto()) @map("_id") @db.ObjectId
-  /// Field referred in an index, but found no data to define the type.
-  employeeId Json?  @unique
-  /// Field referred in an index, but found no data to define the type.
-  userId     Json?  @unique
-}
 
 model exitinterviews {
   id             String @id @default(auto()) @map("_id") @db.ObjectId

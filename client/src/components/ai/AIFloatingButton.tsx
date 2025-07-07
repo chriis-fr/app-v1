@@ -5,27 +5,22 @@ import { AIChatBox } from './AIChatBox';
 import { useAuth } from '@/hooks/use-auth';
 
 interface AIFloatingButtonProps {
-  isEnabled?: boolean;
   userRole?: string;
   organizationId?: string;
 }
 
-export function AIFloatingButton({ isEnabled = true, userRole, organizationId }: AIFloatingButtonProps) {
-  const { user } = useAuth();
+export function AIFloatingButton({ userRole, organizationId }: AIFloatingButtonProps) {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [aiStatus, setAiStatus] = useState<boolean | null>(null);
+  const { user } = useAuth();
 
   // Check AI status on mount
   useEffect(() => {
     const checkAIStatus = async () => {
       try {
-        const response = await fetch('/api/ai/status', {
-          credentials: 'include',
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setAiStatus(data.isEnabled);
-        }
+        // Check if AI is enabled in organization settings
+        const isEnabled = user?.organization?.settings?.ai?.isEnabled ?? false;
+        setAiStatus(isEnabled);
       } catch (error) {
         console.error('Error checking AI status:', error);
         setAiStatus(false);
@@ -33,10 +28,10 @@ export function AIFloatingButton({ isEnabled = true, userRole, organizationId }:
     };
 
     checkAIStatus();
-  }, []);
+  }, [user?.organization?.settings?.ai?.isEnabled]);
 
   // Don't render if AI is disabled for the organization
-  if (aiStatus === false || (aiStatus === null && !isEnabled)) {
+  if (aiStatus === false) {
     return null;
   }
 

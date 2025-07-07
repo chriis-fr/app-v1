@@ -106,20 +106,25 @@ export default function SettingsPage() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to upload photo');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to upload photo');
       }
 
-      const { url } = await response.json();
+      const { url, user: updatedUser } = await response.json();
       setProfilePhoto(url);
-      setUser(prev => {
-        if (!prev) return null;
-        return {
-          ...prev,
-          avatarUrl: url
-        };
+      setUser(updatedUser);
+      
+      toast({
+        title: 'Success',
+        description: 'Profile photo uploaded successfully',
       });
     } catch (error) {
       console.error('Error uploading photo:', error);
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to upload photo',
+        variant: 'destructive',
+      });
     } finally {
       setIsUploading(false);
     }
@@ -132,19 +137,25 @@ export default function SettingsPage() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to delete photo');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete photo');
       }
 
+      const { user: updatedUser } = await response.json();
       setProfilePhoto(null);
-      setUser(prev => {
-        if (!prev) return null;
-        return {
-          ...prev,
-          avatarUrl: null
-        };
+      setUser(updatedUser);
+      
+      toast({
+        title: 'Success',
+        description: 'Profile photo deleted successfully',
       });
     } catch (error) {
       console.error('Error deleting photo:', error);
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to delete photo',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -156,14 +167,12 @@ export default function SettingsPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          ...data,
-          userId: user?.id, // Include the user ID for the server to identify the user
-        }),
+        body: JSON.stringify(data),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to update profile');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update profile');
       }
 
       const updatedUser = await response.json();
@@ -178,7 +187,7 @@ export default function SettingsPage() {
       console.error('Error updating profile:', error);
       toast({
         title: 'Error',
-        description: 'Failed to update profile',
+        description: error instanceof Error ? error.message : 'Failed to update profile',
         variant: 'destructive',
       });
     } finally {
@@ -196,7 +205,6 @@ export default function SettingsPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId: user?.id,
           currentPassword: data.currentPassword,
           newPassword: data.newPassword,
         }),
@@ -271,8 +279,12 @@ export default function SettingsPage() {
                     onChange={handlePhotoUpload}
                     disabled={isUploading}
                   />
-                  <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white hover:bg-primary/90">
-                    <Camera className="w-4 h-4" />
+                  <div className={`w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white hover:bg-primary/90 transition-colors ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                    {isUploading ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Camera className="w-4 h-4" />
+                    )}
                   </div>
                 </label>
               </div>
@@ -475,11 +487,11 @@ export default function SettingsPage() {
                   ) : (
                     'Change Password'
                   )}
-            </Button>
+                </Button>
               </div>
-          </form>
-        </CardContent>
-      </Card>
+            </form>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

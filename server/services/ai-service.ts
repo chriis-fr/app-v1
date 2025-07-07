@@ -1,5 +1,8 @@
 import { Organization, User } from '../mongodb/models';
 import type { Types } from 'mongoose';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 interface AISettings {
   isEnabled: boolean;
@@ -101,13 +104,24 @@ export class AIService {
   /**
    * Check if AI is enabled for an organization
    */
-  async isAIEnabled(organizationId: string): Promise<boolean> {
+  async checkAIStatus(organizationId: string): Promise<{ isEnabled: boolean }> {
     try {
-      const settings = await this.getAISettings(organizationId);
-      return settings.isEnabled;
+      const organization = await prisma.organization.findUnique({
+        where: { id: organizationId },
+        select: { settings: true }
+      });
+
+      if (!organization) {
+        return { isEnabled: false };
+      }
+
+      const settings = organization.settings as any;
+      const isEnabled = settings?.ai?.isEnabled ?? false;
+
+      return { isEnabled };
     } catch (error) {
       console.error('Error checking AI status:', error);
-      return false;
+      return { isEnabled: false };
     }
   }
 
@@ -123,7 +137,7 @@ export class AIService {
   ): Promise<AIResponse> {
     try {
       // Check if AI is enabled
-      const isEnabled = await this.isAIEnabled(organizationId);
+      const isEnabled = await this.checkAIStatus(organizationId).then(result => result.isEnabled);
       if (!isEnabled) {
         throw new Error('AI is disabled for this organization');
       }

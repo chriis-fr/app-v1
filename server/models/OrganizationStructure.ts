@@ -254,7 +254,6 @@ const organizationStructureSchema = new mongoose.Schema({
 });
 
 // Add indexes for common queries
-organizationStructureSchema.index({ code: 1 });
 organizationStructureSchema.index({ parentId: 1 });
 organizationStructureSchema.index({ type: 1 });
 organizationStructureSchema.index({ status: 1 });

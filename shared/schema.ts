@@ -696,6 +696,47 @@ export interface OrganizationSettings {
     date: string;
   }>;
   customSettings?: Record<string, any>;
+  ai?: {
+    isEnabled: boolean;
+    allowPersonalAI: boolean;
+    allowOrganizationAI: boolean;
+    model: string;
+    temperature: number;
+    maxTokens: number;
+    moduleSettings: {
+      hr: {
+        enabled: boolean;
+        canAccessEmployeeData: boolean;
+        canAccessPayrollData: boolean;
+        canAccessHiringData: boolean;
+        canAccessPerformanceData: boolean;
+      };
+      finance: {
+        enabled: boolean;
+        canAccessFinancialData: boolean;
+        canAccessAccountingData: boolean;
+        canAccessBudgetData: boolean;
+        canAccessTaxData: boolean;
+      };
+      inventory: {
+        enabled: boolean;
+        canAccessStockData: boolean;
+        canAccessWarehouseData: boolean;
+        canAccessSupplyChainData: boolean;
+      };
+      sales: {
+        enabled: boolean;
+        canAccessCustomerData: boolean;
+        canAccessSalesData: boolean;
+        canAccessCRMData: boolean;
+      };
+      general: {
+        enabled: boolean;
+        canAccessGeneralData: boolean;
+        canAccessAnalyticsData: boolean;
+      };
+    };
+  };
   accounting?: {
     fiscalYearStart: string;
     fiscalYearEnd: string;
@@ -1049,6 +1090,47 @@ export const organizationSettingsSchema = z.object({
     defaultApplicationStatus: z.string().default('pending'),
     customFields: z.record(z.any()).optional(),
     applicationFormSettings: z.record(z.any()).optional(),
+  }).optional(),
+  ai: z.object({
+    isEnabled: z.boolean().default(true),
+    allowPersonalAI: z.boolean().default(true),
+    allowOrganizationAI: z.boolean().default(true),
+    model: z.string().default('gpt-3.5-turbo'),
+    temperature: z.number().default(0.7),
+    maxTokens: z.number().default(1000),
+    moduleSettings: z.object({
+      hr: z.object({
+        enabled: z.boolean().default(true),
+        canAccessEmployeeData: z.boolean().default(true),
+        canAccessPayrollData: z.boolean().default(true),
+        canAccessHiringData: z.boolean().default(true),
+        canAccessPerformanceData: z.boolean().default(true),
+      }),
+      finance: z.object({
+        enabled: z.boolean().default(true),
+        canAccessFinancialData: z.boolean().default(true),
+        canAccessAccountingData: z.boolean().default(true),
+        canAccessBudgetData: z.boolean().default(true),
+        canAccessTaxData: z.boolean().default(true),
+      }),
+      inventory: z.object({
+        enabled: z.boolean().default(true),
+        canAccessStockData: z.boolean().default(true),
+        canAccessWarehouseData: z.boolean().default(true),
+        canAccessSupplyChainData: z.boolean().default(true),
+      }),
+      sales: z.object({
+        enabled: z.boolean().default(true),
+        canAccessCustomerData: z.boolean().default(true),
+        canAccessSalesData: z.boolean().default(true),
+        canAccessCRMData: z.boolean().default(true),
+      }),
+      general: z.object({
+        enabled: z.boolean().default(true),
+        canAccessGeneralData: z.boolean().default(true),
+        canAccessAnalyticsData: z.boolean().default(true),
+      }),
+    }),
   }).optional(),
 });
 

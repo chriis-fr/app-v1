@@ -101,10 +101,10 @@ export default function HRMain() {
   useEffect(() => {
     fetchData();
     
-    // Set up real-time data refresh every 30 seconds
+    // Set up real-time data refresh every 60 seconds (reduced from 30)
     const interval = setInterval(() => {
       fetchData();
-    }, 30000);
+    }, 60000);
     
     return () => clearInterval(interval);
   }, []);
@@ -659,11 +659,11 @@ export default function HRMain() {
                   <h2 className="text-2xl font-bold">Payroll Management</h2>
                   <p className="text-muted-foreground">Employee payroll data and salary information</p>
                 </div>
-                <Button onClick={() => setLocation('/hr/payroll')}>
-                  <DollarSign className="mr-2 h-4 w-4" />
+                    <Button onClick={() => setLocation('/hr/payroll')}>
+                      <DollarSign className="mr-2 h-4 w-4" />
                   Go to Payroll
-                </Button>
-              </div>
+                    </Button>
+                  </div>
 
               {/* Employee Payroll Cards */}
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -672,12 +672,12 @@ export default function HRMain() {
                     <Card key={index} className="animate-pulse">
                       <CardHeader className="pb-2">
                         <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                      </CardHeader>
-                      <CardContent>
+                </CardHeader>
+                <CardContent>
                         <div className="h-6 bg-gray-200 rounded w-1/2 mb-2"></div>
                         <div className="h-4 bg-gray-200 rounded w-2/3"></div>
-                      </CardContent>
-                    </Card>
+                </CardContent>
+              </Card>
                   ))
                 ) : (
                   employees

@@ -57,7 +57,6 @@ export function DashboardLayout({ children }: React.PropsWithChildren) {
       {/* AI Floating Button - appears on all dashboards */}
       <div className="relative">
         <AIFloatingButton 
-          isEnabled={true} // TODO: Get from organization settings
           userRole={user?.role}
           organizationId={user?.organizationId}
         />
