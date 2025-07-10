@@ -429,6 +429,13 @@ model Organization {
   expenseRequests     ExpenseRequest[]
   payments            Payment[]
   budgets             Budget[]
+  procurementPolicies ProcurementPolicy[]
+  rfps                RFP[]
+  contracts           Contract[]
+  grns                GoodsReceivedNote[]
+  vendorPerformances  VendorPerformance[]
+  procurementAudits   ProcurementAudit[]
+  procurementCommittees ProcurementCommittee[]
 
   @@map("organizations")
 }
@@ -536,6 +543,14 @@ model User {
   paymentPayers          Payment[]            @relation("PaymentPayer")
   procurementComments    ProcurementComment[]
   budgetCreators         Budget[]
+  rfps                   RFP[] @relation("RFPCreator")
+  rfpResponseEvaluations RFPResponse[] @relation("RFPResponseEvaluator")
+  contracts              Contract[] @relation("ContractCreator")
+  contractLegalReviews   Contract[] @relation("ContractLegalReviewer")
+  contractApprovals      Contract[] @relation("ContractApprover")
+  grnReceipts            GoodsReceivedNote[] @relation("GRNReceiver")
+  vendorEvaluations      VendorPerformance[] @relation("VendorPerformanceEvaluator")
+  procurementAudits      ProcurementAudit[] @relation("ProcurementAuditor")
 
   @@map("users")
 }
@@ -1036,26 +1051,34 @@ model PayrollConfig {
 
 model ProcurementRequest {
   id              String               @id @default(auto()) @map("_id") @db.ObjectId
+  prNumber        String               @unique // Purchase Requisition Number
   title           String
   description     String
   category        String // e.g., "Office Supplies", "Software", "Equipment"
   estimatedAmount Float
   priority        String // "Low", "Medium", "High", "Urgent"
+  urgency         String // "Normal", "Urgent", "Critical"
   status          String // "Draft", "Submitted", "Under Review", "Approved", "Rejected", "In Progress", "Completed"
   requestorId     String               @db.ObjectId
   requestor       User                 @relation(fields: [requestorId], references: [id])
   department      String
   justification   String
   attachments     String[] // URLs to uploaded files
+  budgetCode      String? // Budget allocation code
+  spendThreshold  String // "Low", "Medium", "High" based on amount
+  approvalLevel   String // "Department", "Finance", "Executive", "Board"
   createdAt       DateTime             @default(now())
   updatedAt       DateTime             @updatedAt
   approvedAt      DateTime?
   approvedBy      String?              @db.ObjectId
   approver        User?                @relation("ProcurementApprover", fields: [approvedBy], references: [id])
+  rejectionReason String?
   organizationId  String               @db.ObjectId
   organization    Organization         @relation(fields: [organizationId], references: [id])
   comments        ProcurementComment[]
   purchaseOrders  PurchaseOrder[]
+  rfps            RFP[]
+  contracts       Contract[]
 
   @@map("procurement_requests")
 }
@@ -1084,6 +1107,8 @@ model PurchaseOrder {
   organization         Organization        @relation(fields: [organizationId], references: [id])
   items                PurchaseOrderItem[]
   payments             Payment[]
+  contracts            Contract[]
+  grns                 GoodsReceivedNote[]
   createdAt            DateTime            @default(now())
   updatedAt            DateTime            @updatedAt
 
@@ -1100,6 +1125,7 @@ model PurchaseOrderItem {
   unitPrice        Float
   totalPrice       Float
   receivedQuantity Int           @default(0)
+  grnItems         GRNItem[]
 
   @@map("purchase_order_items")
 }
@@ -1126,6 +1152,9 @@ model Supplier {
   organizationId String          @db.ObjectId
   organization   Organization    @relation(fields: [organizationId], references: [id])
   purchaseOrders PurchaseOrder[]
+  rfpResponses   RFPResponse[]
+  contracts      Contract[]
+  performances   VendorPerformance[]
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
 
@@ -1219,4 +1248,201 @@ model Budget {
   updatedAt       DateTime     @updatedAt
 
   @@map("budgets")
+}
+
+// ============================================================================
+// ENHANCED PROCUREMENT SYSTEM MODELS
+// ============================================================================
+
+model ProcurementPolicy {
+  id                    String       @id @default(auto()) @map("_id") @db.ObjectId
+  name                  String
+  description           String
+  spendThresholds       Json         // Approval limits by amount
+  approvalWorkflow      Json         // Dynamic approval workflow
+  ethicalStandards      Json         // Anti-bribery, fair competition rules
+  mandatorySteps        String[]     // Required steps in procurement lifecycle
+  isActive              Boolean      @default(true)
+  organizationId        String       @db.ObjectId
+  organization          Organization  @relation(fields: [organizationId], references: [id])
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  @@map("procurement_policies")
+}
+
+model RFP {
+  id                    String               @id @default(auto()) @map("_id") @db.ObjectId
+  rfpNumber             String               @unique
+  title                 String
+  description           String
+  requirements          String
+  evaluationCriteria    Json                 // Technical, price, delivery, compliance criteria
+  submissionDeadline    DateTime
+  status                String               @default("Draft") // "Draft", "Published", "Closed", "Evaluated"
+  procurementRequestId  String               @db.ObjectId
+  procurementRequest    ProcurementRequest   @relation(fields: [procurementRequestId], references: [id])
+  organizationId        String               @db.ObjectId
+  organization          Organization         @relation(fields: [organizationId], references: [id])
+  createdBy             String               @db.ObjectId
+  creator               User                 @relation("RFPCreator", fields: [createdBy], references: [id])
+  responses             RFPResponse[]
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+
+  @@map("rfps")
+}
+
+model RFPResponse {
+  id            String        @id @default(auto()) @map("_id") @db.ObjectId
+  rfpId         String        @db.ObjectId
+  rfp           RFP           @relation(fields: [rfpId], references: [id])
+  supplierId    String        @db.ObjectId
+  supplier      Supplier      @relation(fields: [supplierId], references: [id])
+  proposal      String
+  price         Float
+  deliveryTime  Int           // Days
+  technicalScore Float?
+  priceScore    Float?
+  totalScore    Float?
+  status        String        @default("Submitted") // "Submitted", "Under Review", "Shortlisted", "Selected", "Rejected"
+  submittedAt   DateTime      @default(now())
+  evaluatedAt   DateTime?
+  evaluatedBy   String?       @db.ObjectId
+  evaluator     User?         @relation("RFPResponseEvaluator", fields: [evaluatedBy], references: [id])
+  notes         String?
+
+  @@map("rfp_responses")
+}
+
+model Contract {
+  id                    String               @id @default(auto()) @map("_id") @db.ObjectId
+  contractNumber        String               @unique
+  title                 String
+  description           String
+  supplierId            String               @db.ObjectId
+  supplier              Supplier             @relation(fields: [supplierId], references: [id])
+  procurementRequestId  String?              @db.ObjectId
+  procurementRequest    ProcurementRequest?  @relation(fields: [procurementRequestId], references: [id])
+  purchaseOrderId       String?              @db.ObjectId
+  purchaseOrder         PurchaseOrder?       @relation(fields: [purchaseOrderId], references: [id])
+  contractType          String               // "Service", "Goods", "Mixed"
+  startDate             DateTime
+  endDate               DateTime
+  totalValue            Float
+  currency              String               @default("USD")
+  paymentTerms          String
+  sla                   Json?                // Service Level Agreements
+  penalties             Json?                // Penalty clauses
+  status                String               @default("Draft") // "Draft", "Under Review", "Active", "Completed", "Terminated"
+  legalReviewBy         String?              @db.ObjectId
+  legalReviewer         User?                @relation("ContractLegalReviewer", fields: [legalReviewBy], references: [id])
+  legalReviewAt         DateTime?
+  approvedBy            String?              @db.ObjectId
+  approver              User?                @relation("ContractApprover", fields: [approvedBy], references: [id])
+  approvedAt            DateTime?
+  organizationId        String               @db.ObjectId
+  organization          Organization         @relation(fields: [organizationId], references: [id])
+  createdBy             String               @db.ObjectId
+  creator               User                 @relation("ContractCreator", fields: [createdBy], references: [id])
+  attachments           String[]             // Contract documents
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+
+  @@map("contracts")
+}
+
+model GoodsReceivedNote {
+  id                    String              @id @default(auto()) @map("_id") @db.ObjectId
+  grnNumber             String              @unique
+  purchaseOrderId       String              @db.ObjectId
+  purchaseOrder         PurchaseOrder       @relation(fields: [purchaseOrderId], references: [id])
+  receivedDate          DateTime            @default(now())
+  receivedBy            String              @db.ObjectId
+  receiver              User                @relation("GRNReceiver", fields: [receivedBy], references: [id])
+  status                String              @default("Received") // "Received", "Partially Received", "Rejected"
+  notes                 String?
+  organizationId        String              @db.ObjectId
+  organization          Organization        @relation(fields: [organizationId], references: [id])
+  items                 GRNItem[]
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  @@map("goods_received_notes")
+}
+
+model GRNItem {
+  id                    String              @id @default(auto()) @map("_id") @db.ObjectId
+  grnId                 String              @db.ObjectId
+  grn                   GoodsReceivedNote   @relation(fields: [grnId], references: [id])
+  purchaseOrderItemId   String              @db.ObjectId
+  purchaseOrderItem     PurchaseOrderItem   @relation(fields: [purchaseOrderItemId], references: [id])
+  receivedQuantity      Int
+  acceptedQuantity      Int
+  rejectedQuantity      Int                 @default(0)
+  rejectionReason       String?
+  qualityCheck          String?             // "Pass", "Fail", "Conditional"
+  notes                 String?
+
+  @@map("grn_items")
+}
+
+model VendorPerformance {
+  id                    String        @id @default(auto()) @map("_id") @db.ObjectId
+  supplierId            String        @db.ObjectId
+  supplier              Supplier      @relation(fields: [supplierId], references: [id])
+  evaluationPeriod      String        // "Monthly", "Quarterly", "Yearly"
+  evaluationDate        DateTime      @default(now())
+  qualityScore          Float         // 1-5 rating
+  deliveryScore         Float         // 1-5 rating
+  priceScore            Float         // 1-5 rating
+  communicationScore    Float         // 1-5 rating
+  overallScore          Float
+  strengths             String[]
+  weaknesses            String[]
+  recommendations       String
+  evaluatedBy           String        @db.ObjectId
+  evaluator            User           @relation("VendorPerformanceEvaluator", fields: [evaluatedBy], references: [id])
+  organizationId        String        @db.ObjectId
+  organization          Organization   @relation(fields: [organizationId], references: [id])
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  @@map("vendor_performances")
+}
+
+model ProcurementAudit {
+  id                    String        @id @default(auto()) @map("_id") @db.ObjectId
+  auditNumber           String        @unique
+  auditType             String        // "Compliance", "Performance", "Risk"
+  auditPeriod           String        // "Monthly", "Quarterly", "Yearly"
+  startDate             DateTime
+  endDate               DateTime
+  scope                 String
+  findings              Json
+  recommendations       String[]
+  status                String        @default("In Progress") // "In Progress", "Completed", "Follow-up Required"
+  auditorId             String        @db.ObjectId
+  auditor               User           @relation("ProcurementAuditor", fields: [auditorId], references: [id])
+  organizationId        String        @db.ObjectId
+  organization          Organization   @relation(fields: [organizationId], references: [id])
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  @@map("procurement_audits")
+}
+
+model ProcurementCommittee {
+  id                    String        @id @default(auto()) @map("_id") @db.ObjectId
+  name                  String
+  description           String
+  spendThreshold        Float         // Minimum spend for committee review
+  members               String[]      // User IDs
+  isActive              Boolean       @default(true)
+  organizationId        String        @db.ObjectId
+  organization          Organization   @relation(fields: [organizationId], references: [id])
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  @@map("procurement_committees")
 }

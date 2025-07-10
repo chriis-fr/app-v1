@@ -80,7 +80,6 @@ export const isAuthenticated = async (req: Request, res: Response, next: NextFun
       }
       
       req.user = plainUser;
-      console.log('Auth middleware: req.user =', req.user);
       next();
     } catch (jwtError) {
       console.error('JWT verification failed:', jwtError);

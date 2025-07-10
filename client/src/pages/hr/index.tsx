@@ -20,7 +20,10 @@ import {
   UserPlus,
   Clock,
   CheckSquare,
-  ShoppingCart
+  ShoppingCart,
+  Package,
+  BarChart3,
+  Settings
 } from 'lucide-react';
 import { CredentialVerification } from '@/components/hr/CredentialVerification';
 import { SkillMatching } from '@/components/hr/SkillMatching';
@@ -31,6 +34,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import TaskManager from '@/components/tasks/TaskManager';
 import HRTaskManager from '@/components/hr/HRTaskManager';
 import HRProcurement from '@/components/hr/HRProcurement';
+import ProcurementMain from '@/components/modules/procurement/ProcurementMain';
+import RFPManager from '@/components/modules/procurement/RFPManager';
+import ContractManager from '@/components/modules/procurement/ContractManager';
+import GRNManager from '@/components/modules/procurement/GRNManager';
+import VendorPerformanceManager from '@/components/modules/procurement/VendorPerformanceManager';
+import ProcurementPolicyManager from '@/components/modules/procurement/ProcurementPolicyManager';
+import ProcurementCommitteeManager from '@/components/modules/procurement/ProcurementCommitteeManager';
+import ProcurementAnalytics from '@/components/modules/procurement/ProcurementAnalytics';
+import ProcurementAuditTrail from '@/components/modules/procurement/ProcurementAuditTrail';
+import ProcurementNotifications from '@/components/modules/procurement/ProcurementNotifications';
 
 export default function HRPage() {
   const [, setLocation] = useLocation();
@@ -41,6 +54,7 @@ export default function HRPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [loginAccessFilter, setLoginAccessFilter] = useState<'all' | 'login' | 'no-login'>('all');
   const [activeTab, setActiveTab] = useState('employees');
+  const [procurementSubTab, setProcurementSubTab] = useState('overview');
   const organizationId = user?.organizationId || '';
 
   useEffect(() => {
@@ -376,7 +390,182 @@ export default function HRPage() {
                 <CardTitle>Procurement Management</CardTitle>
               </CardHeader>
               <CardContent>
-                <HRProcurement organizationId={organizationId} />
+                <div className="space-y-6">
+                  {/* Quick Stats */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-gray-600">Total Requests</p>
+                            <p className="text-2xl font-bold text-gray-900">24</p>
+                          </div>
+                          <div className="p-2 bg-blue-100 rounded-lg">
+                            <FileText className="h-6 w-6 text-blue-600" />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-gray-600">Pending Approvals</p>
+                            <p className="text-2xl font-bold text-yellow-600">8</p>
+                          </div>
+                          <div className="p-2 bg-yellow-100 rounded-lg">
+                            <Clock className="h-6 w-6 text-yellow-600" />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-gray-600">Active Contracts</p>
+                            <p className="text-2xl font-bold text-green-600">12</p>
+                          </div>
+                          <div className="p-2 bg-green-100 rounded-lg">
+                            <Shield className="h-6 w-6 text-green-600" />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-gray-600">Total Spend</p>
+                            <p className="text-2xl font-bold text-gray-900">$45.2K</p>
+                          </div>
+                          <div className="p-2 bg-purple-100 rounded-lg">
+                            <CreditCard className="h-6 w-6 text-purple-600" />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Procurement Subtabs */}
+                  <Tabs value={procurementSubTab} onValueChange={setProcurementSubTab} className="w-full">
+                    <TabsList className="grid w-full grid-cols-6 lg:grid-cols-11 mb-6">
+                      <TabsTrigger value="overview" className="flex items-center gap-2 text-xs">
+                        <ShoppingCart className="h-4 w-4" />
+                        <span className="hidden lg:inline">Overview</span>
+                      </TabsTrigger>
+                      <TabsTrigger value="requests" className="flex items-center gap-2 text-xs">
+                        <FileText className="h-4 w-4" />
+                        <span className="hidden lg:inline">Requests</span>
+                      </TabsTrigger>
+                      <TabsTrigger value="rfps" className="flex items-center gap-2 text-xs">
+                        <Briefcase className="h-4 w-4" />
+                        <span className="hidden lg:inline">RFPs</span>
+                      </TabsTrigger>
+                      <TabsTrigger value="contracts" className="flex items-center gap-2 text-xs">
+                        <Shield className="h-4 w-4" />
+                        <span className="hidden lg:inline">Contracts</span>
+                      </TabsTrigger>
+                      <TabsTrigger value="grns" className="flex items-center gap-2 text-xs">
+                        <Package className="h-4 w-4" />
+                        <span className="hidden lg:inline">GRNs</span>
+                      </TabsTrigger>
+                      <TabsTrigger value="vendors" className="flex items-center gap-2 text-xs">
+                        <Users className="h-4 w-4" />
+                        <span className="hidden lg:inline">Vendors</span>
+                      </TabsTrigger>
+                      <TabsTrigger value="analytics" className="flex items-center gap-2 text-xs">
+                        <BarChart3 className="h-4 w-4" />
+                        <span className="hidden lg:inline">Analytics</span>
+                      </TabsTrigger>
+                      <TabsTrigger value="policies" className="flex items-center gap-2 text-xs">
+                        <Settings className="h-4 w-4" />
+                        <span className="hidden lg:inline">Policies</span>
+                      </TabsTrigger>
+                      <TabsTrigger value="committee" className="flex items-center gap-2 text-xs">
+                        <Users className="h-4 w-4" />
+                        <span className="hidden lg:inline">Committee</span>
+                      </TabsTrigger>
+                      <TabsTrigger value="audit" className="flex items-center gap-2 text-xs">
+                        <CheckSquare className="h-4 w-4" />
+                        <span className="hidden lg:inline">Audit</span>
+                      </TabsTrigger>
+                      <TabsTrigger value="notifications" className="flex items-center gap-2 text-xs">
+                        <Calendar className="h-4 w-4" />
+                        <span className="hidden lg:inline">Notifications</span>
+                      </TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="overview">
+                      <div className="border rounded-lg p-4">
+                        <ProcurementMain />
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="requests">
+                      <div className="border rounded-lg p-4">
+                        <HRProcurement organizationId={organizationId} />
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="rfps">
+                      <div className="border rounded-lg p-4">
+                        <RFPManager />
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="contracts">
+                      <div className="border rounded-lg p-4">
+                        <ContractManager />
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="grns">
+                      <div className="border rounded-lg p-4">
+                        <GRNManager />
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="vendors">
+                      <div className="border rounded-lg p-4">
+                        <VendorPerformanceManager />
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="analytics">
+                      <div className="border rounded-lg p-4">
+                        <ProcurementAnalytics />
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="policies">
+                      <div className="border rounded-lg p-4">
+                        <ProcurementPolicyManager />
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="committee">
+                      <div className="border rounded-lg p-4">
+                        <ProcurementCommitteeManager />
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="audit">
+                      <div className="border rounded-lg p-4">
+                        <ProcurementAuditTrail />
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="notifications">
+                      <div className="border rounded-lg p-4">
+                        <ProcurementNotifications />
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

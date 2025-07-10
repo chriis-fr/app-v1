@@ -820,7 +820,7 @@ export default function HRMain() {
                 <CardHeader>
                   <div className="flex justify-between items-center">
                     <CardTitle>Procurement Management</CardTitle>
-                    <Button onClick={() => setLocation('/hr?tab=procurement')}>
+                    <Button onClick={() => setLocation('/dashboard/procurement')}>
                       <ShoppingCart className="mr-2 h-4 w-4" />
                       View Procurement
                     </Button>
