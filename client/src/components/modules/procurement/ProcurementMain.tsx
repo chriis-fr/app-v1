@@ -41,6 +41,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { api } from '@/lib/api';
+import { axiosInstance } from '@/lib/api';
 import ProcurementAnalytics from './ProcurementAnalytics';
 import ProcurementPolicyManager from './ProcurementPolicyManager';
 import ProcurementCommitteeManager from './ProcurementCommitteeManager';
@@ -279,7 +280,13 @@ export default function ProcurementMain() {
 
   const handleCreateRequest = async () => {
     try {
-      const response = await api.post('/procurement/requests', newRequest);
+      // Convert department to departments array for backend compatibility
+      const requestData = {
+        ...newRequest,
+        departments: [newRequest.department], // Send as array for multi-department support
+        estimatedAmount: parseFloat(newRequest.estimatedAmount) || 0
+      };
+      const response = await api.post('/procurement/requests', requestData);
       if (response.ok) {
         setShowCreateRequest(false);
         setNewRequest({
@@ -308,7 +315,13 @@ export default function ProcurementMain() {
 
   const handleCreateExpense = async () => {
     try {
-      const response = await api.post('/procurement/expenses', newExpense);
+      // Convert department to departments array for backend compatibility
+      const expenseData = {
+        ...newExpense,
+        departments: [newExpense.department], // Send as array for multi-department support
+        amount: parseFloat(newExpense.amount) || 0
+      };
+      const response = await api.post('/procurement/expenses', expenseData);
       if (response.ok) {
         setShowCreateExpense(false);
         setNewExpense({
@@ -390,6 +403,30 @@ export default function ProcurementMain() {
       }
     } catch (error) {
       console.error('Error approving expense:', error);
+    }
+  };
+
+  const handleDownloadPDF = async (id: string) => {
+    try {
+      const response = await axiosInstance.get(`/procurement/requests/${id}/pdf`, {
+        responseType: 'blob'
+      });
+      
+      if (response.status === 200) {
+        const blob = response.data;
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `procurement-request-${id}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      } else {
+        console.error('Failed to download PDF');
+      }
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
     }
   };
 
@@ -565,15 +602,15 @@ export default function ProcurementMain() {
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-14">
-            <TabsTrigger value="requests">Requests</TabsTrigger>
-            <TabsTrigger value="rfps">RFPs</TabsTrigger>
-            <TabsTrigger value="contracts">Contracts</TabsTrigger>
-            <TabsTrigger value="orders">Orders</TabsTrigger>
-            <TabsTrigger value="grns">GRNs</TabsTrigger>
-            <TabsTrigger value="suppliers">Suppliers</TabsTrigger>
-            <TabsTrigger value="vendors">Vendors</TabsTrigger>
-            <TabsTrigger value="expenses">Expenses</TabsTrigger>
-            <TabsTrigger value="budgets">Budgets</TabsTrigger>
+            <TabsTrigger value="requests">Requests ({procurementRequests.length})</TabsTrigger>
+            <TabsTrigger value="rfps">RFPs (0)</TabsTrigger>
+            <TabsTrigger value="contracts">Contracts (0)</TabsTrigger>
+            <TabsTrigger value="orders">Orders ({purchaseOrders.length})</TabsTrigger>
+            <TabsTrigger value="grns">GRNs (0)</TabsTrigger>
+            <TabsTrigger value="suppliers">Suppliers ({suppliers.length})</TabsTrigger>
+            <TabsTrigger value="vendors">Vendors (0)</TabsTrigger>
+            <TabsTrigger value="expenses">Expenses ({expenseRequests.length})</TabsTrigger>
+            <TabsTrigger value="budgets">Budgets ({budgets.length})</TabsTrigger>
             {canManagePolicies && <TabsTrigger value="policies">Policies</TabsTrigger>}
             {canManageCommittee && <TabsTrigger value="committee">Committee</TabsTrigger>}
             <TabsTrigger value="notifications">Notifications</TabsTrigger>
@@ -632,6 +669,14 @@ export default function ProcurementMain() {
                         <Button variant="outline" size="sm">
                           <Eye className="w-4 h-4 mr-1" />
                           View
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleDownloadPDF(request.id)}
+                        >
+                          <Download className="w-4 h-4 mr-1" />
+                          PDF
                         </Button>
                         {request.status === 'Submitted' && canApproveRequest && (
                           <>

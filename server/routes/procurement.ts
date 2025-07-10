@@ -2,6 +2,7 @@ import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { isAuthenticated } from '../middleware/auth';
 import { checkPermission } from '../middleware/check-permission';
+import { PDFGenerator } from '../services/pdf-generator';
 
 const prisma = new PrismaClient();
 
@@ -81,7 +82,7 @@ router.get('/requests', isAuthenticated, async (req: any, res) => {
     const requests = await (prisma as any).procurementRequest.findMany({
       where,
       include: {
-        requester: { select: { firstName: true, lastName: true, email: true } },
+        requester: { select: { firstName: true, lastName: true, email: true, department: true } },
         approvedByUser: { select: { firstName: true, lastName: true, email: true } },
         comments: { include: { author: { select: { firstName: true, lastName: true } } } },
         purchaseOrders: true
@@ -122,7 +123,7 @@ router.post('/requests', isAuthenticated, async (req: any, res) => {
       estimatedAmount,
       priority,
       urgency,
-      department,
+      departments, // Changed from department to departments
       justification,
       budgetCode,
       attachments,
@@ -149,47 +150,83 @@ router.post('/requests', isAuthenticated, async (req: any, res) => {
     // Generate PR number
     const prNumber = `PR-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
-    const request = await (prisma as any).procurementRequest.create({
-      data: {
-        title,
-        description,
-        category,
-        estimatedCost: estimatedAmount,
-        priority,
-        urgency: urgency || 'normal',
-        status: 'pending',
-        requesterId: req.user.id,
-        justification,
-        attachments: attachments || [],
-        organizationId: req.user.organizationId,
-        department: department || 'HR',
-        expectedDeliveryDate: expectedDeliveryDate ? new Date(expectedDeliveryDate) : null,
-        preferredSupplier: preferredSupplier || null,
-        specialRequirements: specialRequirements || null,
-        impactOnOperations: impactOnOperations || null,
-        alternativesConsidered: alternativesConsidered || null,
-        riskAssessment: riskAssessment || null
-      },
-      include: {
-        requester: { select: { firstName: true, lastName: true, email: true } }
-      }
+    // Debug logging for req.user
+    console.log('req.user object:', req.user);
+    console.log('req.user.id:', req.user?.id);
+    console.log('req.user._id:', req.user?._id);
+    console.log('req.user.organizationId:', req.user?.organizationId);
+
+    // Get user ID (handle both MongoDB _id and Prisma id)
+    const userId = req.user?.id || req.user?._id;
+    const organizationId = req.user?.organizationId;
+
+    // Validate user data
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+    if (!organizationId) {
+      return res.status(400).json({ error: 'Organization ID is required' });
+    }
+
+    // Validate and convert data
+    const validatedData = {
+      title: title || '',
+      description: description || '',
+      category: category || '',
+      estimatedCost: estimatedAmount ? parseFloat(estimatedAmount) : 0,
+      priority: priority || 'medium',
+      urgency: urgency || 'normal',
+      status: 'pending',
+      requesterId: String(userId), // Use the extracted userId
+      justification: justification || '',
+      attachments: attachments || [],
+      organizationId: String(organizationId), // Use the extracted organizationId
+      departments: Array.isArray(departments) ? departments : departments ? [departments] : ['HR'],
+      expectedDeliveryDate: expectedDeliveryDate ? new Date(expectedDeliveryDate) : null,
+      preferredSupplier: preferredSupplier || null,
+      specialRequirements: specialRequirements || null,
+      impactOnOperations: impactOnOperations || null,
+      alternativesConsidered: alternativesConsidered || null,
+      riskAssessment: riskAssessment || null
+    };
+
+    // Debug logging
+    console.log('Creating procurement request with data:', {
+      title: validatedData.title,
+      category: validatedData.category,
+      estimatedCost: validatedData.estimatedCost,
+      requesterId: validatedData.requesterId,
+      organizationId: validatedData.organizationId,
+      departments: validatedData.departments
     });
 
+    const request = await (prisma as any).procurementRequest.create({
+      data: validatedData
+    });
+
+    // Debug logging for departments
+    console.log('Selected departments:', departments);
+    console.log('Departments array:', Array.isArray(departments) ? departments : departments ? [departments] : ['HR']);
+    
     // Find department members to notify
     const departmentMembers = await (prisma as any).user.findMany({
       where: {
-        organizationId: req.user.organizationId,
-        department: department || 'HR',
-        id: { not: req.user.id } // Exclude the requester
+        organizationId: organizationId,
+        department: { in: Array.isArray(departments) ? departments : departments ? [departments] : ['HR'] },
+        id: { not: userId } // Exclude the requester
       },
       select: {
         id: true,
         firstName: true,
         lastName: true,
         email: true,
-        role: true
+        role: true,
+        department: true
       }
     });
+    
+    console.log('Department members found:', departmentMembers.length);
+    console.log('Department members:', departmentMembers);
 
     // Create notification for department members
     if (departmentMembers.length > 0) {
@@ -199,14 +236,15 @@ router.post('/requests', isAuthenticated, async (req: any, res) => {
             title: 'New Procurement Request',
             message: `${req.user.firstName} ${req.user.lastName} has submitted a new procurement request: ${title}`,
             type: 'procurement_request',
-            recipientId: member.id,
-            organizationId: req.user.organizationId,
-            metadata: {
+            userId: member.id, // Use userId instead of recipientId
+            organizationId: String(organizationId),
+            metadata: JSON.stringify({
               requestId: request.id,
-              department: department || 'HR',
+              departments: Array.isArray(departments) ? departments : departments ? [departments] : ['HR'],
               estimatedAmount: estimatedAmount,
-              category: category
-            }
+              category: category,
+              requester: `${req.user.firstName} ${req.user.lastName}`
+            })
           }
         })
       );
@@ -234,17 +272,17 @@ router.post('/requests', isAuthenticated, async (req: any, res) => {
         (prisma as any).notification.create({
           data: {
             title: 'Procurement Request Requires Approval',
-            message: `New procurement request from ${department || 'HR'} department requires your approval: ${title}`,
+            message: `New procurement request from ${Array.isArray(departments) ? departments.join(', ') : departments || 'HR'} department(s) requires your approval: ${title}`,
             type: 'procurement_approval',
-            recipientId: admin.id,
-            organizationId: req.user.organizationId,
-            metadata: {
+            userId: admin.id, // Use userId instead of recipientId
+            organizationId: String(organizationId),
+            metadata: JSON.stringify({
               requestId: request.id,
-              department: department || 'HR',
+              departments: Array.isArray(departments) ? departments : departments ? [departments] : ['HR'],
               estimatedAmount: estimatedAmount,
               category: category,
               requester: `${req.user.firstName} ${req.user.lastName}`
-            }
+            })
           }
         })
       );
@@ -319,6 +357,84 @@ router.patch('/requests/:id/approve', isAuthenticated, checkPermission('procurem
   } catch (error) {
     console.error('Error approving procurement request:', error);
     res.status(500).json({ error: 'Failed to approve procurement request' });
+  }
+});
+
+// Generate PDF for procurement request
+router.get('/requests/:id/pdf', isAuthenticated, async (req: any, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+
+    const { id } = req.params;
+
+    // Fetch the procurement request with all related data
+    const request = await (prisma as any).procurementRequest.findUnique({
+      where: { id },
+      include: {
+        requester: { select: { firstName: true, lastName: true, email: true, department: true } },
+        approvedByUser: { select: { firstName: true, lastName: true, email: true } },
+        organization: { select: { name: true, address: true, phone: true, email: true, website: true } }
+      }
+    });
+
+    if (!request) {
+      return res.status(404).json({ error: 'Procurement request not found' });
+    }
+
+    // Prepare data for PDF generation
+    const pdfData = {
+      id: request.id,
+      title: request.title,
+      description: request.description,
+      category: request.category,
+      estimatedAmount: request.estimatedCost || 0,
+      priority: request.priority,
+      urgency: request.urgency,
+      department: request.department,
+      justification: request.justification,
+      expectedDeliveryDate: request.expectedDeliveryDate,
+      preferredSupplier: request.preferredSupplier,
+      budgetCode: request.budgetCode,
+      specialRequirements: request.specialRequirements,
+      alternativesConsidered: request.alternativesConsidered,
+      impactOnOperations: request.impactOnOperations,
+      riskAssessment: request.riskAssessment,
+      createdAt: request.createdAt,
+      status: request.status,
+      requestor: {
+        firstName: request.requester.firstName,
+        lastName: request.requester.lastName,
+        email: request.requester.email,
+        department: request.requester.department
+      },
+      approver: request.approvedByUser ? {
+        firstName: request.approvedByUser.firstName,
+        lastName: request.approvedByUser.lastName,
+        email: request.approvedByUser.email
+      } : undefined,
+      organization: {
+        name: request.organization?.name || 'Organization Name',
+        address: request.organization?.address || 'Address',
+        phone: request.organization?.phone || 'Phone',
+        email: request.organization?.email || 'Email',
+        website: request.organization?.website || 'Website'
+      }
+    };
+
+    // Generate PDF
+    const pdfBuffer = PDFGenerator.generateProcurementRequestPDF(pdfData);
+
+    // Set response headers for PDF download
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="procurement-request-${request.id}.pdf"`);
+    res.setHeader('Content-Length', pdfBuffer.length);
+
+    res.send(pdfBuffer);
+  } catch (error) {
+    console.error('Error generating PDF:', error);
+    res.status(500).json({ error: 'Failed to generate PDF' });
   }
 });
 
@@ -908,12 +1024,9 @@ router.post('/expenses', isAuthenticated, async (req: any, res) => {
         status: 'pending',
         priority: 'medium',
         urgency: 'normal',
-        requesterId: req.user.id,
-        organizationId: req.user.organizationId,
+        requesterId: String(req.user.id), // Ensure it's a string
+        organizationId: String(req.user.organizationId), // Ensure it's a string
         attachments: receipts ? [receipts] : []
-      },
-      include: {
-        requester: { select: { firstName: true, lastName: true, email: true } }
       }
     });
 
@@ -942,7 +1055,7 @@ router.post('/expenses', isAuthenticated, async (req: any, res) => {
             message: `${req.user.firstName} ${req.user.lastName} has submitted a new expense request: ${title}`,
             type: 'expense_request',
             recipientId: member.id,
-            organizationId: req.user.organizationId,
+            organizationId: String(req.user.organizationId),
             metadata: {
               expenseId: expense.id,
               department: department,
@@ -979,7 +1092,7 @@ router.post('/expenses', isAuthenticated, async (req: any, res) => {
             message: `New expense request from ${department} department requires your approval: ${title}`,
             type: 'expense_approval',
             recipientId: admin.id,
-            organizationId: req.user.organizationId,
+            organizationId: String(req.user.organizationId),
             metadata: {
               expenseId: expense.id,
               department: department,

@@ -70,7 +70,8 @@ interface ProcurementRequest {
   currency: string;
   urgency: string;
   justification: string;
-  department: string;
+  department?: string; // Keep for backward compatibility
+  departments?: string[]; // New multi-department support
   createdAt: string;
   requester: {
     id: string;
@@ -185,7 +186,7 @@ export default function HRProcurement({ organizationId }: HRProcurementProps) {
           ...formData,
           estimatedCost: parseFloat(formData.estimatedCost) || 0,
           category: formData.category || 'Other',
-          department: formData.department,
+          departments: [formData.department], // Send as array for multi-department support
           requesterId: user?.id,
           organizationId: organizationId
         }),
@@ -579,11 +580,11 @@ export default function HRProcurement({ organizationId }: HRProcurementProps) {
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
                       <div className="flex items-center gap-1">
                         <User className="h-4 w-4" />
-                        <span>{request.requester.firstName} {request.requester.lastName}</span>
+                        <span>{request.requester?.firstName || 'Unknown'} {request.requester?.lastName || 'User'}</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <Building className="h-4 w-4" />
-                        <span>{request.department}</span>
+                        <span>{Array.isArray(request.departments) ? request.departments.join(', ') : request.department || 'Unknown'}</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <Calendar className="h-4 w-4" />
@@ -615,7 +616,7 @@ export default function HRProcurement({ organizationId }: HRProcurementProps) {
                   <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-md">
                     <div className="flex items-center gap-2 text-green-700">
                       <CheckCircle className="h-4 w-4" />
-                      <span className="font-medium">Approved by {request.approvedByUser.firstName} {request.approvedByUser.lastName}</span>
+                      <span className="font-medium">Approved by {request.approvedByUser?.firstName || 'Unknown'} {request.approvedByUser?.lastName || 'User'}</span>
                       <span className="text-sm">
                         on {new Date(request.approvedAt!).toLocaleDateString()}
                       </span>
@@ -663,7 +664,7 @@ export default function HRProcurement({ organizationId }: HRProcurementProps) {
                 </div>
                 <div>
                   <Label className="text-sm font-medium">Department</Label>
-                  <p className="text-sm">{selectedRequest.department}</p>
+                  <p className="text-sm">{Array.isArray(selectedRequest.departments) ? selectedRequest.departments.join(', ') : selectedRequest.department || 'Unknown'}</p>
                 </div>
                 <div>
                   <Label className="text-sm font-medium">Estimated Cost</Label>
@@ -696,7 +697,7 @@ export default function HRProcurement({ organizationId }: HRProcurementProps) {
                       <div key={comment.id} className="p-3 bg-gray-50 rounded-md">
                         <div className="flex justify-between items-start mb-1">
                           <span className="text-sm font-medium">
-                            {comment.author.firstName} {comment.author.lastName}
+                            {comment.author?.firstName || 'Unknown'} {comment.author?.lastName || 'User'}
                           </span>
                           <span className="text-xs text-muted-foreground">
                             {new Date(comment.createdAt).toLocaleDateString()}

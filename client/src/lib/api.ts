@@ -109,4 +109,6 @@ export const api = {
   put: (endpoint: string, data: any) => axiosInstance.put(endpoint, data).then((res) => res.data),
   patch: (endpoint: string, data: any) => axiosInstance.patch(endpoint, data).then((res) => res.data),
   delete: (endpoint: string) => axiosInstance.delete(endpoint).then((res) => res.data),
-}; 
+};
+
+export { axiosInstance }; 

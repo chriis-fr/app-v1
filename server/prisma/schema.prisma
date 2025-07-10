@@ -312,6 +312,13 @@ model ProcurementRequest {
   urgency         String   @default("normal")
   justification   String?
   attachments     Json?
+  departments     String[] // Array of departments for multi-department support
+  expectedDeliveryDate DateTime?
+  preferredSupplier String?
+  specialRequirements String?
+  impactOnOperations String?
+  alternativesConsidered String?
+  riskAssessment String?
   approvedBy      String?  @db.ObjectId
   approvedByUser  User?    @relation("UserProcurementApprovals", fields: [approvedBy], references: [id])
   approvedAt      DateTime?

@@ -533,7 +533,7 @@ model User {
   payrollEntries        PayrollEntry[]      @relation("UserPayrollEntries")
 
   // Procurement Relations
-  procurementRequests    ProcurementRequest[]
+  procurementRequests    ProcurementRequest[] @relation("UserProcurementRequests")
   procurementApprovals   ProcurementRequest[] @relation("ProcurementApprover")
   purchaseOrderCreators  PurchaseOrder[]      @relation("PurchaseOrderCreator")
   purchaseOrderApprovals PurchaseOrder[]      @relation("PurchaseOrderApprover")
@@ -543,14 +543,14 @@ model User {
   paymentPayers          Payment[]            @relation("PaymentPayer")
   procurementComments    ProcurementComment[]
   budgetCreators         Budget[]
-  rfps                   RFP[] @relation("RFPCreator")
-  rfpResponseEvaluations RFPResponse[] @relation("RFPResponseEvaluator")
-  contracts              Contract[] @relation("ContractCreator")
-  contractLegalReviews   Contract[] @relation("ContractLegalReviewer")
-  contractApprovals      Contract[] @relation("ContractApprover")
-  grnReceipts            GoodsReceivedNote[] @relation("GRNReceiver")
-  vendorEvaluations      VendorPerformance[] @relation("VendorPerformanceEvaluator")
-  procurementAudits      ProcurementAudit[] @relation("ProcurementAuditor")
+  rfps                   RFP[]                @relation("RFPCreator")
+  rfpResponseEvaluations RFPResponse[]        @relation("RFPResponseEvaluator")
+  contracts              Contract[]            @relation("ContractCreator")
+  contractLegalReviews   Contract[]           @relation("ContractLegalReviewer")
+  contractApprovals      Contract[]           @relation("ContractApprover")
+  grnReceipts            GoodsReceivedNote[]  @relation("GRNReceiver")
+  vendorEvaluations      VendorPerformance[]  @relation("VendorPerformanceEvaluator")
+  procurementAudits      ProcurementAudit[]   @relation("ProcurementAuditor")
 
   @@map("users")
 }
@@ -1050,35 +1050,38 @@ model PayrollConfig {
 }
 
 model ProcurementRequest {
-  id              String               @id @default(auto()) @map("_id") @db.ObjectId
-  prNumber        String               @unique // Purchase Requisition Number
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  organizationId  String   @db.ObjectId
+  organization    Organization @relation(fields: [organizationId], references: [id])
+  requesterId     String   @db.ObjectId
+  requester       User     @relation("UserProcurementRequests", fields: [requesterId], references: [id])
   title           String
   description     String
-  category        String // e.g., "Office Supplies", "Software", "Equipment"
-  estimatedAmount Float
-  priority        String // "Low", "Medium", "High", "Urgent"
-  urgency         String // "Normal", "Urgent", "Critical"
-  status          String // "Draft", "Submitted", "Under Review", "Approved", "Rejected", "In Progress", "Completed"
-  requestorId     String               @db.ObjectId
-  requestor       User                 @relation(fields: [requestorId], references: [id])
-  department      String
-  justification   String
-  attachments     String[] // URLs to uploaded files
-  budgetCode      String? // Budget allocation code
-  spendThreshold  String // "Low", "Medium", "High" based on amount
-  approvalLevel   String // "Department", "Finance", "Executive", "Board"
-  createdAt       DateTime             @default(now())
-  updatedAt       DateTime             @updatedAt
+  category        String
+  priority        String   @default("medium")
+  status          String   @default("pending")
+  estimatedCost   Float?
+  currency        String   @default("USD")
+  urgency         String   @default("normal")
+  justification   String?
+  attachments     Json?
+  departments     String[] // Array of departments for multi-department support
+  expectedDeliveryDate DateTime?
+  preferredSupplier String?
+  specialRequirements String?
+  impactOnOperations String?
+  alternativesConsidered String?
+  riskAssessment String?
+  approvedBy      String?  @db.ObjectId
+  approvedByUser  User?    @relation("ProcurementApprover", fields: [approvedBy], references: [id])
   approvedAt      DateTime?
-  approvedBy      String?              @db.ObjectId
-  approver        User?                @relation("ProcurementApprover", fields: [approvedBy], references: [id])
   rejectionReason String?
-  organizationId  String               @db.ObjectId
-  organization    Organization         @relation(fields: [organizationId], references: [id])
   comments        ProcurementComment[]
   purchaseOrders  PurchaseOrder[]
   rfps            RFP[]
   contracts       Contract[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   @@map("procurement_requests")
 }

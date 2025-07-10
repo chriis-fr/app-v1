@@ -64,6 +64,7 @@ interface ProcurementComment {
 export default function ProcurementApprovals() {
   const { toast } = useToast();
   const { user } = useAuth();
+  const [allRequests, setAllRequests] = useState<ProcurementRequest[]>([]);
   const [pendingRequests, setPendingRequests] = useState<ProcurementRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedRequest, setSelectedRequest] = useState<ProcurementRequest | null>(null);
@@ -87,8 +88,23 @@ export default function ProcurementApprovals() {
       }
       
       const data = await response.json();
+      console.log('API Response:', data); // Debug logging
+      
+      // Handle the response structure - data.requests is the array
+      const requests = data.requests || data;
+      
+      // Ensure requests is an array
+      if (!Array.isArray(requests)) {
+        console.error('Expected array but got:', typeof requests, requests);
+        setAllRequests([]);
+        setPendingRequests([]);
+        return;
+      }
+      
+      // Set all requests
+      setAllRequests(requests);
       // Filter for pending requests only
-      setPendingRequests(data.filter((req: ProcurementRequest) => req.status === 'pending'));
+      setPendingRequests(requests.filter((req: ProcurementRequest) => req.status === 'pending'));
     } catch (error) {
       console.error('Error fetching pending requests:', error);
       toast({
@@ -200,9 +216,14 @@ export default function ProcurementApprovals() {
             Review and approve pending procurement requests from all departments
           </p>
         </div>
-        <Badge variant="secondary" className="text-sm">
-          {pendingRequests.length} Pending
-        </Badge>
+        <div className="flex gap-2">
+          <Badge variant="outline" className="text-sm">
+            {allRequests.length} Total Requests
+          </Badge>
+          <Badge variant="secondary" className="text-sm">
+            {pendingRequests.length} Pending
+          </Badge>
+        </div>
       </div>
 
       {/* Requests List */}
@@ -231,8 +252,8 @@ export default function ProcurementApprovals() {
                     <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
                       <div className="flex items-center gap-1">
                         <User className="h-4 w-4" />
-                        <span>{request.requester.firstName} {request.requester.lastName}</span>
-                        <Badge variant="outline" className="ml-2">{request.requester.department}</Badge>
+                        <span>{request.requester?.firstName || 'Unknown'} {request.requester?.lastName || 'User'}</span>
+                        <Badge variant="outline" className="ml-2">{request.requester?.department || 'Unknown'}</Badge>
                       </div>
                       <div className="flex items-center gap-1">
                         <Calendar className="h-4 w-4" />
