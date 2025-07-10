@@ -45,7 +45,7 @@ export const sendActivationEmail = async (
   
   const mailOptions = {
     from: `"Chains ERP" <${emailConfig.auth.user}>`,
-    to: "caspianodhis@gmail.com",
+    to: userEmail,
     subject: `Welcome to Chains ERP - Activate Your Account`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
