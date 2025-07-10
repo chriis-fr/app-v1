@@ -220,56 +220,56 @@ type OrganizationsSettingsTheme {
 }
 
 type OrganizationsSettingsAI {
-  isEnabled              Boolean
-  allowPersonalAI        Boolean
-  allowOrganizationAI    Boolean
-  model                  String
-  temperature            Float
-  maxTokens              Int
-  moduleSettings         OrganizationsSettingsAIModuleSettings
+  isEnabled           Boolean
+  allowPersonalAI     Boolean
+  allowOrganizationAI Boolean
+  model               String
+  temperature         Float
+  maxTokens           Int
+  moduleSettings      OrganizationsSettingsAIModuleSettings
 }
 
 type OrganizationsSettingsAIModuleSettings {
-  hr         OrganizationsSettingsAIModuleSettingsHR
-  finance    OrganizationsSettingsAIModuleSettingsFinance
-  inventory  OrganizationsSettingsAIModuleSettingsInventory
-  sales      OrganizationsSettingsAIModuleSettingsSales
-  general    OrganizationsSettingsAIModuleSettingsGeneral
+  hr        OrganizationsSettingsAIModuleSettingsHR
+  finance   OrganizationsSettingsAIModuleSettingsFinance
+  inventory OrganizationsSettingsAIModuleSettingsInventory
+  sales     OrganizationsSettingsAIModuleSettingsSales
+  general   OrganizationsSettingsAIModuleSettingsGeneral
 }
 
 type OrganizationsSettingsAIModuleSettingsHR {
-  enabled           Boolean
-  canAccessEmployeeData Boolean
-  canAccessPayrollData  Boolean
-  canAccessHiringData   Boolean
+  enabled                  Boolean
+  canAccessEmployeeData    Boolean
+  canAccessPayrollData     Boolean
+  canAccessHiringData      Boolean
   canAccessPerformanceData Boolean
 }
 
 type OrganizationsSettingsAIModuleSettingsFinance {
-  enabled           Boolean
-  canAccessFinancialData Boolean
+  enabled                 Boolean
+  canAccessFinancialData  Boolean
   canAccessAccountingData Boolean
   canAccessBudgetData     Boolean
   canAccessTaxData        Boolean
 }
 
 type OrganizationsSettingsAIModuleSettingsInventory {
-  enabled           Boolean
-  canAccessStockData Boolean
-  canAccessWarehouseData Boolean
+  enabled                  Boolean
+  canAccessStockData       Boolean
+  canAccessWarehouseData   Boolean
   canAccessSupplyChainData Boolean
 }
 
 type OrganizationsSettingsAIModuleSettingsSales {
-  enabled           Boolean
+  enabled               Boolean
   canAccessCustomerData Boolean
-  canAccessSalesData Boolean
-  canAccessCRMData  Boolean
+  canAccessSalesData    Boolean
+  canAccessCRMData      Boolean
 }
 
 type OrganizationsSettingsAIModuleSettingsGeneral {
-  enabled           Boolean
-  canAccessGeneralData Boolean
+  enabled                Boolean
+  canAccessGeneralData   Boolean
   canAccessAnalyticsData Boolean
 }
 
@@ -422,6 +422,14 @@ model Organization {
   payrollRuns       PayrollRun[]      @relation("OrgPayrollRuns")
   payrollConfigs    PayrollConfig[]   @relation("OrgPayrollConfigs")
 
+  // Procurement Relations
+  procurementRequests ProcurementRequest[]
+  purchaseOrders      PurchaseOrder[]
+  suppliers           Supplier[]
+  expenseRequests     ExpenseRequest[]
+  payments            Payment[]
+  budgets             Budget[]
+
   @@map("organizations")
 }
 
@@ -456,53 +464,53 @@ model Unit {
 }
 
 model User {
-  id               String         @id @default(auto()) @map("_id") @db.ObjectId
-  username         String         @unique
-  email            String         @unique
-  password         String
-  role             String
-  department       String?
-  firstName        String?
-  lastName         String?
-  phoneNumber      String?
-  organizationId   String         @db.ObjectId
-  organization     Organization?  @relation("OrgUsers", fields: [organizationId], references: [id])
-  vendorId         String?        @db.ObjectId
-  isOwner          Boolean?       @default(false)
-  isActive         Boolean?       @default(false)
-  emailVerified    Boolean?       @default(false)
-  activationToken  String?
-  tokenExpiresAt   DateTime?
-  moduleAccess     ModuleAccess[] @relation("UserModuleAccess")
-  permissions      Json?
-  position         String?
-  status           String?        @default("active")
-  lastLogin        DateTime?
-  employeeId       String?
-  hireDate         DateTime?
-  managerId        String?
-  team             String?
-  location         Json?
-  workSchedule     Json?
-  emergencyContact Json?
-  skills           String[]
-  certifications   String[]
-  education        Json?
-  performance      Json?
-  compensation     Json?
-  benefits         Json?
-  equipment        Json?
-  accessLevels     Json?
-  documents        Json?
-  wallet           Json?
-  legalDetails     Json?
-  address          Json?
-  paymentPreference String? @default("bank") // bank, crypto, hybrid
-  cryptoWallets    Json? // Array of crypto wallet addresses
-  bankAccounts     Json? // Array of bank account details
-  avatarUrl        String?
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  id                String         @id @default(auto()) @map("_id") @db.ObjectId
+  username          String         @unique
+  email             String         @unique
+  password          String
+  role              String
+  department        String?
+  firstName         String?
+  lastName          String?
+  phoneNumber       String?
+  organizationId    String         @db.ObjectId
+  organization      Organization?  @relation("OrgUsers", fields: [organizationId], references: [id])
+  vendorId          String?        @db.ObjectId
+  isOwner           Boolean?       @default(false)
+  isActive          Boolean?       @default(false)
+  emailVerified     Boolean?       @default(false)
+  activationToken   String?
+  tokenExpiresAt    DateTime?
+  moduleAccess      ModuleAccess[] @relation("UserModuleAccess")
+  permissions       Json?
+  position          String?
+  status            String?        @default("active")
+  lastLogin         DateTime?
+  employeeId        String?
+  hireDate          DateTime?
+  managerId         String?
+  team              String?
+  location          Json?
+  workSchedule      Json?
+  emergencyContact  Json?
+  skills            String[]
+  certifications    String[]
+  education         Json?
+  performance       Json?
+  compensation      Json?
+  benefits          Json?
+  equipment         Json?
+  accessLevels      Json?
+  documents         Json?
+  wallet            Json?
+  legalDetails      Json?
+  address           Json?
+  paymentPreference String?        @default("bank") // bank, crypto, hybrid
+  cryptoWallets     Json? // Array of crypto wallet addresses
+  bankAccounts      Json? // Array of bank account details
+  avatarUrl         String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
 
   // Relations
   timeTrackingEntries   TimeTrackingEntry[]
@@ -514,8 +522,20 @@ model User {
   notifications         Notification[]      @relation("UserNotifications")
   jobPostings           JobPosting[]        @relation("UserJobPostings")
   jobApplicationReviews JobApplication[]    @relation("UserJobApplicationReviews")
-  payrollApprovals     PayrollRun[]        @relation("UserPayrollApprovals")
+  payrollApprovals      PayrollRun[]        @relation("UserPayrollApprovals")
   payrollEntries        PayrollEntry[]      @relation("UserPayrollEntries")
+
+  // Procurement Relations
+  procurementRequests    ProcurementRequest[]
+  procurementApprovals   ProcurementRequest[] @relation("ProcurementApprover")
+  purchaseOrderCreators  PurchaseOrder[]      @relation("PurchaseOrderCreator")
+  purchaseOrderApprovals PurchaseOrder[]      @relation("PurchaseOrderApprover")
+  expenseRequests        ExpenseRequest[]     @relation("ExpenseRequestor")
+  expenseApprovals       ExpenseRequest[]     @relation("ExpenseApprover")
+  expensePayments        ExpenseRequest[]     @relation("ExpensePayer")
+  paymentPayers          Payment[]            @relation("PaymentPayer")
+  procurementComments    ProcurementComment[]
+  budgetCreators         Budget[]
 
   @@map("users")
 }
@@ -595,8 +615,6 @@ model category {
 model customers {
   id String @id @default(auto()) @map("_id") @db.ObjectId
 }
-
-
 
 model exitinterviews {
   id             String @id @default(auto()) @map("_id") @db.ObjectId
@@ -947,71 +965,258 @@ model JobApplication {
 }
 
 model PayrollRun {
-  id             String        @id @default(auto()) @map("_id") @db.ObjectId
-  organizationId String        @db.ObjectId
-  organization   Organization  @relation("OrgPayrollRuns", fields: [organizationId], references: [id])
+  id             String         @id @default(auto()) @map("_id") @db.ObjectId
+  organizationId String         @db.ObjectId
+  organization   Organization   @relation("OrgPayrollRuns", fields: [organizationId], references: [id])
   periodStart    DateTime
   periodEnd      DateTime
   totalAmount    Float
   currency       String
   employeeCount  Int
-  status         String        @default("draft") // draft, pending_approval, approved, processing, completed, failed
-  approvedBy     String?       @db.ObjectId
-  approvedByUser User?         @relation("UserPayrollApprovals", fields: [approvedBy], references: [id])
+  status         String         @default("draft") // draft, pending_approval, approved, processing, completed, failed
+  approvedBy     String?        @db.ObjectId
+  approvedByUser User?          @relation("UserPayrollApprovals", fields: [approvedBy], references: [id])
   approvedAt     DateTime?
   processedAt    DateTime?
   entries        PayrollEntry[]
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 
   @@map("payroll_runs")
 }
 
 model PayrollEntry {
-  id               String      @id @default(auto()) @map("_id") @db.ObjectId
-  payrollRunId     String      @db.ObjectId
-  payrollRun       PayrollRun  @relation(fields: [payrollRunId], references: [id])
-  employeeId       String      @db.ObjectId
-  employee         User        @relation("UserPayrollEntries", fields: [employeeId], references: [id])
-  baseSalary       Float
-  overtimeHours    Float?
-  overtimeRate     Float?
-  bonuses          Float?
-  taxDeduction     Float
+  id                String     @id @default(auto()) @map("_id") @db.ObjectId
+  payrollRunId      String     @db.ObjectId
+  payrollRun        PayrollRun @relation(fields: [payrollRunId], references: [id])
+  employeeId        String     @db.ObjectId
+  employee          User       @relation("UserPayrollEntries", fields: [employeeId], references: [id])
+  baseSalary        Float
+  overtimeHours     Float?
+  overtimeRate      Float?
+  bonuses           Float?
+  taxDeduction      Float
   benefitsDeduction Float
-  otherDeductions  Float
-  netPay           Float
-  paymentMethod    String      // bank, crypto, hybrid
-  bankAccount      Json?
-  cryptoWallet     Json?
-  status           String      @default("pending") // pending, approved, processing, completed, failed
-  processedAt      DateTime?
-  transactionHash  String?
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
+  otherDeductions   Float
+  netPay            Float
+  paymentMethod     String // bank, crypto, hybrid
+  bankAccount       Json?
+  cryptoWallet      Json?
+  status            String     @default("pending") // pending, approved, processing, completed, failed
+  processedAt       DateTime?
+  transactionHash   String?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
 
   @@map("payroll_entries")
 }
 
 model PayrollConfig {
-  id                String       @id @default(auto()) @map("_id") @db.ObjectId
-  organizationId    String       @db.ObjectId
-  organization      Organization @relation("OrgPayrollConfigs", fields: [organizationId], references: [id])
-  paymentMethod     String       @default("traditional") // traditional, crypto, hybrid
-  currency          String       @default("USD")
-  cryptoCurrency    String?
-  paymentSchedule   String       @default("monthly") // weekly, biweekly, monthly
-  paymentDay        Int          @default(1)
-  autoProcess       Boolean      @default(false)
-  requireApproval   Boolean      @default(true)
-  taxDeductions     Boolean      @default(true)
-  benefitsDeductions Boolean     @default(true)
-  overtimeEnabled   Boolean      @default(true)
-  bonusEnabled      Boolean      @default(true)
-  taxRates          Json?        // Tax rates by location/income level
-  benefitRates      Json?        // Benefit deduction rates
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
+  id                 String       @id @default(auto()) @map("_id") @db.ObjectId
+  organizationId     String       @db.ObjectId
+  organization       Organization @relation("OrgPayrollConfigs", fields: [organizationId], references: [id])
+  paymentMethod      String       @default("traditional") // traditional, crypto, hybrid
+  currency           String       @default("USD")
+  cryptoCurrency     String?
+  paymentSchedule    String       @default("monthly") // weekly, biweekly, monthly
+  paymentDay         Int          @default(1)
+  autoProcess        Boolean      @default(false)
+  requireApproval    Boolean      @default(true)
+  taxDeductions      Boolean      @default(true)
+  benefitsDeductions Boolean      @default(true)
+  overtimeEnabled    Boolean      @default(true)
+  bonusEnabled       Boolean      @default(true)
+  taxRates           Json? // Tax rates by location/income level
+  benefitRates       Json? // Benefit deduction rates
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
 
   @@map("payroll_configs")
+}
+
+model ProcurementRequest {
+  id              String               @id @default(auto()) @map("_id") @db.ObjectId
+  title           String
+  description     String
+  category        String // e.g., "Office Supplies", "Software", "Equipment"
+  estimatedAmount Float
+  priority        String // "Low", "Medium", "High", "Urgent"
+  status          String // "Draft", "Submitted", "Under Review", "Approved", "Rejected", "In Progress", "Completed"
+  requestorId     String               @db.ObjectId
+  requestor       User                 @relation(fields: [requestorId], references: [id])
+  department      String
+  justification   String
+  attachments     String[] // URLs to uploaded files
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  approvedAt      DateTime?
+  approvedBy      String?              @db.ObjectId
+  approver        User?                @relation("ProcurementApprover", fields: [approvedBy], references: [id])
+  organizationId  String               @db.ObjectId
+  organization    Organization         @relation(fields: [organizationId], references: [id])
+  comments        ProcurementComment[]
+  purchaseOrders  PurchaseOrder[]
+
+  @@map("procurement_requests")
+}
+
+model PurchaseOrder {
+  id                   String              @id @default(auto()) @map("_id") @db.ObjectId
+  poNumber             String              @unique
+  procurementRequestId String?             @db.ObjectId
+  procurementRequest   ProcurementRequest? @relation(fields: [procurementRequestId], references: [id])
+  supplierId           String              @db.ObjectId
+  supplier             Supplier            @relation(fields: [supplierId], references: [id])
+  totalAmount          Float
+  currency             String              @default("USD")
+  status               String // "Draft", "Sent", "Confirmed", "In Progress", "Delivered", "Completed", "Cancelled"
+  orderDate            DateTime            @default(now())
+  expectedDelivery     DateTime?
+  actualDelivery       DateTime?
+  terms                String
+  notes                String?
+  createdBy            String              @db.ObjectId
+  creator              User                @relation("PurchaseOrderCreator", fields: [createdBy], references: [id])
+  approvedBy           String?             @db.ObjectId
+  approver             User?               @relation("PurchaseOrderApprover", fields: [approvedBy], references: [id])
+  approvedAt           DateTime?
+  organizationId       String              @db.ObjectId
+  organization         Organization        @relation(fields: [organizationId], references: [id])
+  items                PurchaseOrderItem[]
+  payments             Payment[]
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderItem {
+  id               String        @id @default(auto()) @map("_id") @db.ObjectId
+  purchaseOrderId  String        @db.ObjectId
+  purchaseOrder    PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  productName      String
+  description      String?
+  quantity         Int
+  unitPrice        Float
+  totalPrice       Float
+  receivedQuantity Int           @default(0)
+
+  @@map("purchase_order_items")
+}
+
+model Supplier {
+  id             String          @id @default(auto()) @map("_id") @db.ObjectId
+  name           String
+  contactPerson  String?
+  email          String
+  phone          String?
+  address        String?
+  city           String?
+  state          String?
+  country        String?
+  postalCode     String?
+  taxId          String?
+  website        String?
+  category       String? // e.g., "Office Supplies", "IT Equipment", "Services"
+  rating         Float? // 1-5 rating
+  status         String          @default("Active") // "Active", "Inactive", "Blacklisted"
+  paymentTerms   String? // e.g., "Net 30", "Net 60"
+  creditLimit    Float?
+  notes          String?
+  organizationId String          @db.ObjectId
+  organization   Organization    @relation(fields: [organizationId], references: [id])
+  purchaseOrders PurchaseOrder[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@map("suppliers")
+}
+
+model ExpenseRequest {
+  id             String               @id @default(auto()) @map("_id") @db.ObjectId
+  title          String
+  description    String
+  amount         Float
+  currency       String               @default("USD")
+  category       String // e.g., "Travel", "Meals", "Office Supplies", "Training"
+  status         String // "Draft", "Submitted", "Under Review", "Approved", "Rejected", "Paid"
+  requestorId    String               @db.ObjectId
+  requestor      User                 @relation("ExpenseRequestor", fields: [requestorId], references: [id])
+  department     String
+  justification  String
+  receipts       String[] // URLs to uploaded receipts
+  approvedBy     String?              @db.ObjectId
+  approver       User?                @relation("ExpenseApprover", fields: [approvedBy], references: [id])
+  approvedAt     DateTime?
+  paidAt         DateTime?
+  paidBy         String?              @db.ObjectId
+  payer          User?                @relation("ExpensePayer", fields: [paidBy], references: [id])
+  organizationId String               @db.ObjectId
+  organization   Organization         @relation(fields: [organizationId], references: [id])
+  comments       ProcurementComment[]
+  payments       Payment[]
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  @@map("expense_requests")
+}
+
+model ProcurementComment {
+  id                   String              @id @default(auto()) @map("_id") @db.ObjectId
+  content              String
+  authorId             String              @db.ObjectId
+  author               User                @relation(fields: [authorId], references: [id])
+  procurementRequestId String?             @db.ObjectId
+  procurementRequest   ProcurementRequest? @relation(fields: [procurementRequestId], references: [id])
+  expenseRequestId     String?             @db.ObjectId
+  expenseRequest       ExpenseRequest?     @relation(fields: [expenseRequestId], references: [id])
+  createdAt            DateTime            @default(now())
+
+  @@map("procurement_comments")
+}
+
+model Payment {
+  id               String          @id @default(auto()) @map("_id") @db.ObjectId
+  amount           Float
+  currency         String          @default("USD")
+  paymentMethod    String // "Bank Transfer", "Check", "Credit Card", "Cash"
+  reference        String? // Payment reference number
+  purchaseOrderId  String?         @db.ObjectId
+  purchaseOrder    PurchaseOrder?  @relation(fields: [purchaseOrderId], references: [id])
+  expenseRequestId String?         @db.ObjectId
+  expenseRequest   ExpenseRequest? @relation(fields: [expenseRequestId], references: [id])
+  status           String          @default("Pending") // "Pending", "Completed", "Failed", "Cancelled"
+  paidBy           String?         @db.ObjectId
+  payer            User?           @relation("PaymentPayer", fields: [paidBy], references: [id])
+  paidAt           DateTime?
+  organizationId   String          @db.ObjectId
+  organization     Organization    @relation(fields: [organizationId], references: [id])
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@map("payments")
+}
+
+model Budget {
+  id              String       @id @default(auto()) @map("_id") @db.ObjectId
+  name            String
+  description     String?
+  amount          Float
+  currency        String       @default("USD")
+  period          String // "Monthly", "Quarterly", "Yearly"
+  startDate       DateTime
+  endDate         DateTime
+  department      String?
+  category        String?
+  spentAmount     Float        @default(0)
+  remainingAmount Float
+  status          String       @default("Active") // "Active", "Inactive", "Exceeded"
+  organizationId  String       @db.ObjectId
+  organization    Organization @relation(fields: [organizationId], references: [id])
+  createdBy       String       @db.ObjectId
+  creator         User         @relation(fields: [createdBy], references: [id])
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@map("budgets")
 }

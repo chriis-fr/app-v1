@@ -43,6 +43,7 @@ import AccountingPage from '@/pages/accounting';
 import AccountingModulePage from '@/pages/accounting/module';
 import FinancePage from '@/pages/finance';
 import FinanceModulePage from '@/pages/finance/module';
+import ProcurementMain from '@/components/modules/procurement/ProcurementMain';
 import SupportPage from '@/pages/support-page';
 import HRPage from '@/pages/hr';
 import HRInfoPage from '@/pages/modules/hr-info';
@@ -181,6 +182,7 @@ function App() {
               <ProtectedRoute path="/dashboard/accounting/:module" component={AccountingModulePage} />
               <ProtectedRoute path="/dashboard/finance" component={FinancePage} />
               <ProtectedRoute path="/dashboard/finance/:module" component={FinanceModulePage} />
+              <ProtectedRoute path="/dashboard/procurement" component={ProcurementMain} />
               <ProtectedRoute path="/analytics" component={AnalyticsPage} />
               <Route component={NotFound} />
             </Switch>

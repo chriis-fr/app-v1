@@ -18,6 +18,7 @@ import bcrypt from 'bcryptjs';
 import hrRouter from './src/routes/hr';
   import aiRouter from './routes/ai';
   import organizationRouter from './routes/organization';
+  import procurementRouter from './routes/procurement';
 import jwt from 'jsonwebtoken';
 import { getCountryConfig } from '@/config/countries';
 import { businessTypeConfig } from './config/business-types';
@@ -185,6 +186,9 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
 
   // Mount AI routes
   app.use('/api/ai', aiRouter);
+
+  // Mount Procurement routes
+  app.use('/api/procurement', procurementRouter);
 
   // User profile routes
   app.put('/api/user/profile', async (req: Request, res: Response) => {

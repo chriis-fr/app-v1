@@ -27,6 +27,13 @@ model Organization {
   jobPostings   JobPosting[]      @relation("OrgJobPostings")
   jobApplications JobApplication[] @relation("OrgJobApplications")
   notifications Notification[]    @relation("OrgNotifications")
+  procurementRequests ProcurementRequest[] @relation("OrgProcurementRequests")
+  purchaseOrders PurchaseOrder[] @relation("OrgPurchaseOrders")
+  suppliers     Supplier[] @relation("OrgSuppliers")
+  expenseRequests ExpenseRequest[] @relation("OrgExpenseRequests")
+  payments      Payment[] @relation("OrgPayments")
+  budgets       Budget[] @relation("OrgBudgets")
+  procurementComments ProcurementComment[] @relation("OrgProcurementComments")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -92,6 +99,15 @@ model User {
   meetingAttendees MeetingAttendee[] @relation("UserMeetingAttendees")
   timeTrackingEntries TimeTrackingEntry[] @relation("UserTimeTracking")
   notifications Notification[] @relation("UserNotifications")
+  procurementRequests ProcurementRequest[] @relation("UserProcurementRequests")
+  procurementApprovals ProcurementRequest[] @relation("UserProcurementApprovals")
+  purchaseOrders PurchaseOrder[] @relation("UserPurchaseOrders")
+  purchaseOrderApprovals PurchaseOrder[] @relation("UserPurchaseOrderApprovals")
+  expenseRequests ExpenseRequest[] @relation("UserExpenseRequests")
+  expenseApprovals ExpenseRequest[] @relation("UserExpenseApprovals")
+  payments      Payment[] @relation("UserPayments")
+  budgets       Budget[] @relation("UserBudgets")
+  procurementComments ProcurementComment[] @relation("UserProcurementComments")
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
@@ -262,4 +278,178 @@ model Notification {
   updatedAt      DateTime     @updatedAt
 
   @@map("notifications")
+}
+
+// Procurement Models
+model ProcurementRequest {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  organizationId  String   @db.ObjectId
+  organization    Organization @relation("OrgProcurementRequests", fields: [organizationId], references: [id])
+  requesterId     String   @db.ObjectId
+  requester       User     @relation("UserProcurementRequests", fields: [requesterId], references: [id])
+  title           String
+  description     String
+  category        String
+  priority        String   @default("medium")
+  status          String   @default("pending")
+  estimatedCost   Float?
+  currency        String   @default("USD")
+  urgency         String   @default("normal")
+  justification   String?
+  attachments     Json?
+  approvedBy      String?  @db.ObjectId
+  approvedByUser  User?    @relation("UserProcurementApprovals", fields: [approvedBy], references: [id])
+  approvedAt      DateTime?
+  rejectionReason String?
+  comments        ProcurementComment[]
+  purchaseOrders  PurchaseOrder[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("procurement_requests")
+}
+
+model PurchaseOrder {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  organizationId  String   @db.ObjectId
+  organization    Organization @relation("OrgPurchaseOrders", fields: [organizationId], references: [id])
+  procurementRequestId String? @db.ObjectId
+  procurementRequest ProcurementRequest? @relation(fields: [procurementRequestId], references: [id])
+  supplierId      String   @db.ObjectId
+  supplier        Supplier @relation(fields: [supplierId], references: [id])
+  createdById     String   @db.ObjectId
+  createdBy       User     @relation("UserPurchaseOrders", fields: [createdById], references: [id])
+  poNumber        String   @unique
+  status          String   @default("draft")
+  totalAmount     Float
+  currency        String   @default("USD")
+  items           Json
+  terms           String?
+  deliveryDate    DateTime?
+  paymentTerms    String?
+  approvedBy      String?  @db.ObjectId
+  approvedByUser  User?    @relation("UserPurchaseOrderApprovals", fields: [approvedBy], references: [id])
+  approvedAt      DateTime?
+  comments        ProcurementComment[]
+  payments        Payment[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("purchase_orders")
+}
+
+model Supplier {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  organizationId  String   @db.ObjectId
+  organization    Organization @relation("OrgSuppliers", fields: [organizationId], references: [id])
+  name            String
+  contactPerson   String?
+  email           String?
+  phone           String?
+  address         Json?
+  taxId           String?
+  category        String?
+  rating          Float?
+  status          String   @default("active")
+  paymentTerms    String?
+  notes           String?
+  purchaseOrders  PurchaseOrder[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("suppliers")
+}
+
+model ExpenseRequest {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  organizationId  String   @db.ObjectId
+  organization    Organization @relation("OrgExpenseRequests", fields: [organizationId], references: [id])
+  requesterId     String   @db.ObjectId
+  requester       User     @relation("UserExpenseRequests", fields: [requesterId], references: [id])
+  title           String
+  description     String
+  amount          Float
+  currency        String   @default("USD")
+  category        String
+  priority        String   @default("medium")
+  status          String   @default("pending")
+  urgency         String   @default("normal")
+  justification   String?
+  attachments     Json?
+  approvedBy      String?  @db.ObjectId
+  approvedByUser  User?    @relation("UserExpenseApprovals", fields: [approvedBy], references: [id])
+  approvedAt      DateTime?
+  rejectionReason String?
+  comments        ProcurementComment[]
+  payments        Payment[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("expense_requests")
+}
+
+model Payment {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  organizationId  String   @db.ObjectId
+  organization    Organization @relation("OrgPayments", fields: [organizationId], references: [id])
+  expenseRequestId String? @db.ObjectId
+  expenseRequest  ExpenseRequest? @relation(fields: [expenseRequestId], references: [id])
+  purchaseOrderId String?  @db.ObjectId
+  purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
+  processedById   String   @db.ObjectId
+  processedBy     User     @relation("UserPayments", fields: [processedById], references: [id])
+  amount          Float
+  currency        String   @default("USD")
+  paymentMethod   String
+  status          String   @default("pending")
+  transactionId   String?
+  notes           String?
+  processedAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("payments")
+}
+
+model Budget {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  organizationId  String   @db.ObjectId
+  organization    Organization @relation("OrgBudgets", fields: [organizationId], references: [id])
+  createdById     String   @db.ObjectId
+  createdBy       User     @relation("UserBudgets", fields: [createdById], references: [id])
+  name            String
+  description     String?
+  amount          Float
+  currency        String   @default("USD")
+  period          String   // monthly, quarterly, yearly
+  startDate       DateTime
+  endDate         DateTime
+  category        String?
+  status          String   @default("active")
+  spentAmount     Float    @default(0)
+  remainingAmount Float?
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("budgets")
+}
+
+model ProcurementComment {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  organizationId  String   @db.ObjectId
+  organization    Organization @relation("OrgProcurementComments", fields: [organizationId], references: [id])
+  authorId        String   @db.ObjectId
+  author          User     @relation("UserProcurementComments", fields: [authorId], references: [id])
+  procurementRequestId String? @db.ObjectId
+  procurementRequest ProcurementRequest? @relation(fields: [procurementRequestId], references: [id])
+  purchaseOrderId String?  @db.ObjectId
+  purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
+  expenseRequestId String? @db.ObjectId
+  expenseRequest  ExpenseRequest? @relation(fields: [expenseRequestId], references: [id])
+  content         String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("procurement_comments")
 }

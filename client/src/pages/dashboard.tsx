@@ -11,11 +11,13 @@ import { AIAnalytics } from '@/components/dashboard/AIAnalytics';
 import { AssetsAtWork } from '@/components/dashboard/AssetsAtWork';
 import { OngoingOperations } from '@/components/dashboard/OngoingOperations';
 import { Web3Features } from '@/components/dashboard/Web3Features';
+import ProcurementApprovals from '@/components/dashboard/ProcurementApprovals';
 import POSMain from '@/components/modules/pos/POSMain';
 import HRMain from '@/components/modules/hr/HRMain';
 import AccountingMain from '@/components/modules/accounting/AccountingMain';
 import BlockchainMain from '@/components/modules/blockchain/BlockchainMain';
 import CRMMain from '@/components/modules/crm/CRMMain';
+import ProcurementMain from '@/components/modules/procurement/ProcurementMain';
 import { BarChart3, Users, DollarSign, Package, AlertTriangle, CheckCircle, TrendingUp, TrendingDown, UserPlus, Calendar, Briefcase, Building2, ShoppingCart, FileText, CreditCard } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
@@ -27,6 +29,7 @@ const moduleComponentMap: Record<string, React.ComponentType<any>> = {
   pos: POSMain,
   blockchain: BlockchainMain,
   crm: CRMMain,
+  procurement: ProcurementMain,
 };
 
 export default function Dashboard() {
@@ -96,6 +99,8 @@ export default function Dashboard() {
       return <BlockchainMain />;
     case 'crm':
       return <CRMMain />;
+    case 'procurement':
+      return <ProcurementMain />;
     default:
         break;
     }
@@ -318,6 +323,23 @@ export default function Dashboard() {
                 <Web3Features />
               </div>
             )}
+
+        {/* Procurement Approvals for Finance and Executive Users */}
+        {(user?.role === 'finance' || user?.role === 'executive' || user?.role === 'admin' || user?.role === 'owner') && (
+          <div className="transform transition-all duration-300 hover:scale-[1.01]">
+            <Card className="border-2 border-amber-200 bg-gradient-to-br from-amber-50 to-amber-100">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-amber-800">
+                  <AlertTriangle className="h-5 w-5" />
+                  Procurement Approvals
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ProcurementApprovals />
+              </CardContent>
+            </Card>
+          </div>
+        )}
         {/* ...other company-wide analytics sections... */}
           </div>
         </DashboardLayout>

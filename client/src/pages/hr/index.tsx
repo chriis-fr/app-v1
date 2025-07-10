@@ -19,7 +19,8 @@ import {
   Search,
   UserPlus,
   Clock,
-  CheckSquare
+  CheckSquare,
+  ShoppingCart
 } from 'lucide-react';
 import { CredentialVerification } from '@/components/hr/CredentialVerification';
 import { SkillMatching } from '@/components/hr/SkillMatching';
@@ -29,6 +30,7 @@ import { Payroll } from '@/components/hr/Payroll';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import TaskManager from '@/components/tasks/TaskManager';
 import HRTaskManager from '@/components/hr/HRTaskManager';
+import HRProcurement from '@/components/hr/HRProcurement';
 
 export default function HRPage() {
   const [, setLocation] = useLocation();
@@ -50,7 +52,7 @@ export default function HRPage() {
     // Check for tab parameter in URL
     const urlParams = new URLSearchParams(window.location.search);
     const tabParam = urlParams.get('tab');
-    if (tabParam && ['employees', 'skills', 'credentials', 'payroll', 'timeoff', 'performance', 'attendance', 'documents', 'leave', 'tasks'].includes(tabParam)) {
+    if (tabParam && ['employees', 'skills', 'credentials', 'payroll', 'timeoff', 'performance', 'attendance', 'documents', 'leave', 'tasks', 'procurement'].includes(tabParam)) {
       setActiveTab(tabParam);
     }
     
@@ -221,6 +223,10 @@ export default function HRPage() {
               <CheckSquare className="mr-2 h-4 w-4" />
               Tasks
             </TabsTrigger>
+            <TabsTrigger value="procurement">
+              <ShoppingCart className="mr-2 h-4 w-4" />
+              Procurement
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="employees">
@@ -360,6 +366,17 @@ export default function HRPage() {
               </CardHeader>
               <CardContent>
                 <HRTaskManager organizationId={organizationId} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="procurement">
+            <Card>
+              <CardHeader>
+                <CardTitle>Procurement Management</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <HRProcurement organizationId={organizationId} />
               </CardContent>
             </Card>
           </TabsContent>

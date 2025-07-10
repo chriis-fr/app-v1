@@ -70,7 +70,7 @@ export default function Sidebar() {
     operations: [
       { id: 'manufacturing', name: 'Manufacturing', icon: Factory, route: '/dashboard/manufacturing/info' },
       { id: 'warehouse', name: 'Warehouse', icon: Package, route: '/dashboard/warehouse/info' },
-      { id: 'procurement', name: 'Procurement', icon: ShoppingCart, route: '/dashboard/procurement/info' },
+      { id: 'procurement', name: 'Procurement', icon: ShoppingCart, route: '/dashboard/procurement' },
       { id: 'logistics', name: 'Logistics', icon: Truck, route: '/dashboard/logistics/info' }
     ],
     business: [

@@ -68,13 +68,12 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
         }));
         setNotifications(transformedData);
       } else {
-        // Fallback to mock data if API fails
-        console.log('API failed, using mock data');
-        setNotifications(generateMockNotifications());
+        console.error('Failed to fetch notifications:', response.status);
+        setNotifications([]);
       }
     } catch (error) {
       console.error('Error fetching notifications:', error);
-      setNotifications(generateMockNotifications());
+      setNotifications([]);
     } finally {
       setLoading(false);
     }

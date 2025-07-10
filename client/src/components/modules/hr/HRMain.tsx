@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { 
   UserPlus, DollarSign, Clock, Loader2, BarChart, TrendingUp, Plus, Search, User2, Users, Building2,
   Calendar, FileText, Settings, Briefcase, CreditCard, Package, Building, Activity, Target,
-  CalendarDays, Receipt, Users2, Clock4, CheckCircle, XCircle, AlertCircle
+  CalendarDays, Receipt, Users2, Clock4, CheckCircle, XCircle, AlertCircle, ShoppingCart
 } from 'lucide-react';
 import { HRReports } from '@/components/hr/HRReports';
 import { useToast } from '@/components/ui/use-toast';
@@ -17,6 +17,7 @@ import { useLocation } from 'wouter';
 import { CredentialVerification } from '@/components/hr/CredentialVerification';
 import { SkillMatching } from '@/components/hr/SkillMatching';
 import { Payroll } from '@/components/hr/Payroll';
+import HRProcurement from '@/components/hr/HRProcurement';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -308,6 +309,10 @@ export default function HRMain() {
               <TabsTrigger value="expenses" className="flex items-center gap-2">
                 <Receipt className="h-4 w-4" />
                 Expenses
+              </TabsTrigger>
+              <TabsTrigger value="procurement" className="flex items-center gap-2">
+                <ShoppingCart className="h-4 w-4" />
+                Procurement
               </TabsTrigger>
               <TabsTrigger value="meeting-room" className="flex items-center gap-2">
                 <Building className="h-4 w-4" />
@@ -805,6 +810,24 @@ export default function HRMain() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-muted-foreground">Employee expense claims, approvals, reimbursements, and expense reports will be implemented here.</p>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Procurement Management Tab */}
+            <TabsContent value="procurement" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <div className="flex justify-between items-center">
+                    <CardTitle>Procurement Management</CardTitle>
+                    <Button onClick={() => setLocation('/hr?tab=procurement')}>
+                      <ShoppingCart className="mr-2 h-4 w-4" />
+                      View Procurement
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <HRProcurement organizationId={user?.organizationId || ''} />
                 </CardContent>
               </Card>
             </TabsContent>
