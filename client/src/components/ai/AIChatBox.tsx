@@ -19,9 +19,10 @@ interface AIChatBoxProps {
   onClose: () => void;
   userRole?: string;
   organizationId?: string;
+  initialMessage?: string;
 }
 
-export function AIChatBox({ isOpen, onClose, userRole, organizationId }: AIChatBoxProps) {
+export function AIChatBox({ isOpen, onClose, userRole, organizationId, initialMessage }: AIChatBoxProps) {
   const { user } = useAuth();
   
   // Get context-aware welcome message
@@ -52,14 +53,28 @@ export function AIChatBox({ isOpen, onClose, userRole, organizationId }: AIChatB
     }
   };
 
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      text: getWelcomeMessage(),
-      sender: 'ai',
-      timestamp: new Date(),
+  const [messages, setMessages] = useState<Message[]>(() => {
+    const initialMessages: Message[] = [
+      {
+        id: '1',
+        text: getWelcomeMessage(),
+        sender: 'ai',
+        timestamp: new Date(),
+      }
+    ];
+
+    // Add initial message if provided
+    if (initialMessage) {
+      initialMessages.push({
+        id: '2',
+        text: initialMessage,
+        sender: 'user',
+        timestamp: new Date(),
+      });
     }
-  ]);
+
+    return initialMessages;
+  });
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);

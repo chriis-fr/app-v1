@@ -23,6 +23,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { AIDepartmentInsights } from '@/components/ai/AIDepartmentInsights';
 
 interface PayrollData {
   employeeId: string;
@@ -526,6 +527,9 @@ export default function HRMain() {
                   </CardContent>
                 </Card>
               </div>
+
+              {/* AI Insights */}
+              <AIDepartmentInsights />
             </TabsContent>
 
             {/* Hiring Tab */}

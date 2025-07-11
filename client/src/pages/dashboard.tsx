@@ -6,6 +6,7 @@ import { useRoleAccess } from '@/hooks/use-role-access';
 import { useLocation } from 'wouter';
 import { useEffect, useState } from 'react';
 import { AIInsights } from '@/components/dashboard/AIInsights';
+import { AIDepartmentInsights } from '@/components/dashboard/AIDepartmentInsights';
 import { BusinessHealth } from '@/components/dashboard/BusinessHealth';
 import { AIAnalytics } from '@/components/dashboard/AIAnalytics';
 import { AssetsAtWork } from '@/components/dashboard/AssetsAtWork';
@@ -323,6 +324,16 @@ export default function Dashboard() {
                 <Web3Features />
               </div>
             )}
+
+        {/* AI Department Insights - only show if AI is enabled */}
+        {user?.organization?.settings?.ai?.isEnabled && (
+          <div className="transform transition-all duration-300 hover:scale-[1.01]">
+            <AIDepartmentInsights 
+              department={user?.department}
+              showAllDepartments={user?.role === 'owner' || user?.role === 'admin'}
+            />
+          </div>
+        )}
 
         {/* Procurement Approvals for Finance and Executive Users */}
         {(user?.role === 'finance' || user?.role === 'executive' || user?.role === 'admin' || user?.role === 'owner') && (

@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Sparkles, X, MessageCircle, Brain, Users, Building2, Calculator, Package, CreditCard } from 'lucide-react';
 import { AIChatBox } from './AIChatBox';
 import { useAuth } from '@/hooks/use-auth';
+import { useAIChat } from '@/contexts/AIChatContext';
 
 interface AIFloatingButtonProps {
   userRole?: string;
@@ -10,9 +11,9 @@ interface AIFloatingButtonProps {
 }
 
 export function AIFloatingButton({ userRole, organizationId }: AIFloatingButtonProps) {
-  const [isChatOpen, setIsChatOpen] = useState(false);
   const [aiStatus, setAiStatus] = useState<boolean | null>(null);
   const { user } = useAuth();
+  const { isChatOpen, openChat, closeChat } = useAIChat();
 
   // Check AI status on mount
   useEffect(() => {
@@ -92,7 +93,7 @@ export function AIFloatingButton({ userRole, organizationId }: AIFloatingButtonP
       {/* Floating AI Button */}
       <div className="fixed bottom-6 right-6 z-[9999] pointer-events-auto">
         <Button
-          onClick={() => setIsChatOpen(!isChatOpen)}
+          onClick={() => isChatOpen ? closeChat() : openChat()}
           className={`h-14 w-14 rounded-full shadow-lg transition-all duration-300 border-2 ${borderColor} ${
             isChatOpen 
               ? 'bg-red-500 hover:bg-red-600 border-red-300' 
@@ -112,7 +113,7 @@ export function AIFloatingButton({ userRole, organizationId }: AIFloatingButtonP
       {isChatOpen && (
         <AIChatBox
           isOpen={isChatOpen}
-          onClose={() => setIsChatOpen(false)}
+          onClose={closeChat}
           userRole={userRole}
           organizationId={organizationId}
         />

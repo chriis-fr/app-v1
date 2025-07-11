@@ -42,6 +42,91 @@ export interface EmployeeData {
   employmentStatus: string;
 }
 
+export interface NotificationData {
+  id: string;
+  title: string;
+  message: string;
+  type: 'info' | 'warning' | 'error' | 'success';
+  priority: 'low' | 'medium' | 'high';
+  department?: string;
+  userId?: string;
+  isRead: boolean;
+  createdAt: Date;
+  expiresAt?: Date;
+}
+
+export interface MeetingData {
+  id: string;
+  title: string;
+  description: string;
+  startTime: Date;
+  endTime: Date;
+  organizerId: string;
+  organizerName: string;
+  attendees: string[];
+  department?: string;
+  status: 'scheduled' | 'in-progress' | 'completed' | 'cancelled';
+  location?: string;
+  isVirtual: boolean;
+  meetingUrl?: string;
+}
+
+export interface ProcurementData {
+  id: string;
+  title: string;
+  description: string;
+  requesterId: string;
+  requesterName: string;
+  department: string;
+  status: 'pending' | 'approved' | 'rejected' | 'in-progress' | 'completed';
+  priority: 'low' | 'medium' | 'high';
+  budget: number;
+  requestedAmount: number;
+  approvedAmount?: number;
+  vendor?: string;
+  category: string;
+  createdAt: Date;
+  updatedAt: Date;
+  dueDate?: Date;
+}
+
+export interface DepartmentSummary {
+  department: string;
+  employeeCount: number;
+  activeEmployees: number;
+  recentHires: number;
+  turnoverRate: number;
+  averageSalary?: number;
+  pendingProcurements: number;
+  upcomingMeetings: number;
+  unreadNotifications: number;
+  topPositions: string[];
+  recentActivity: {
+    type: 'hire' | 'termination' | 'procurement' | 'meeting' | 'notification';
+    description: string;
+    timestamp: Date;
+  }[];
+}
+
+export interface ComprehensiveOrganizationData extends OrganizationData {
+  notifications: NotificationData[];
+  meetings: MeetingData[];
+  procurements: ProcurementData[];
+  departmentSummaries: DepartmentSummary[];
+  recentActivity: {
+    type: string;
+    description: string;
+    timestamp: Date;
+    department?: string;
+  }[];
+  alerts: {
+    type: 'procurement' | 'meeting' | 'notification' | 'employee' | 'financial';
+    message: string;
+    priority: 'low' | 'medium' | 'high';
+    department?: string;
+  }[];
+}
+
 export class OrganizationDataService {
   /**
    * Get comprehensive organization data for AI insights
@@ -185,6 +270,356 @@ export class OrganizationDataService {
   }
 
   /**
+   * Get comprehensive organization data including notifications, meetings, and procurements
+   */
+  static async getComprehensiveOrganizationData(organizationId: string): Promise<ComprehensiveOrganizationData> {
+    try {
+      // Get basic organization data
+      const baseData = await this.getOrganizationData(organizationId);
+
+      // Get notifications (from Prisma or your notification system)
+      const notifications = await this.getNotifications(organizationId);
+
+      // Get meetings (from your meeting system)
+      const meetings = await this.getMeetings(organizationId);
+
+      // Get procurements (from your procurement system)
+      const procurements = await this.getProcurements(organizationId);
+
+      // Generate department summaries
+      const departmentSummaries = await this.generateDepartmentSummaries(
+        organizationId,
+        baseData,
+        notifications,
+        meetings,
+        procurements
+      );
+
+      // Generate recent activity
+      const recentActivity = await this.generateRecentActivity(
+        organizationId,
+        notifications,
+        meetings,
+        procurements
+      );
+
+      // Generate alerts
+      const alerts = await this.generateAlerts(
+        baseData,
+        notifications,
+        meetings,
+        procurements
+      );
+
+      return {
+        ...baseData,
+        notifications,
+        meetings,
+        procurements,
+        departmentSummaries,
+        recentActivity,
+        alerts
+      };
+    } catch (error) {
+      console.error('Error fetching comprehensive organization data:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get notifications for the organization
+   */
+  private static async getNotifications(organizationId: string): Promise<NotificationData[]> {
+    try {
+      // Fetch real notifications from the database
+      const notifications = await prisma.notification.findMany({
+        where: {
+          organizationId: organizationId
+        },
+        include: {
+          user: {
+            select: {
+              firstName: true,
+              lastName: true,
+              department: true
+            }
+          }
+        },
+        orderBy: {
+          createdAt: 'desc'
+        },
+        take: 50 // Limit to recent notifications
+      });
+
+      return notifications.map(notification => ({
+        id: notification.id,
+        title: notification.title,
+        message: notification.message,
+        type: notification.type as 'info' | 'warning' | 'error' | 'success',
+        priority: notification.priority as 'low' | 'medium' | 'high',
+        department: notification.user?.department === null ? undefined : notification.user?.department,
+        userId: notification.userId,
+        isRead: notification.isRead,
+        createdAt: notification.createdAt,
+        expiresAt: undefined // Not stored in current schema
+      }));
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get meetings for the organization
+   */
+  private static async getMeetings(organizationId: string): Promise<MeetingData[]> {
+    try {
+      // Fetch real meetings from the database
+      const meetings = await prisma.meeting.findMany({
+        where: {
+          organizationId: organizationId
+        },
+        include: {
+          organizer: {
+            select: {
+              firstName: true,
+              lastName: true,
+              department: true
+            }
+          },
+          attendees: {
+            include: {
+              user: {
+                select: {
+                  firstName: true,
+                  lastName: true,
+                  department: true
+                }
+              }
+            }
+          }
+        },
+        orderBy: {
+          startTime: 'asc'
+        },
+        take: 50 // Limit to recent meetings
+      });
+
+      return meetings.map(meeting => ({
+        id: meeting.id,
+        title: meeting.title,
+        description: meeting.description || '',
+        startTime: meeting.startTime,
+        endTime: meeting.endTime,
+        organizerId: meeting.organizerId,
+        organizerName: `${meeting.organizer.firstName || ''} ${meeting.organizer.lastName || ''}`.trim(),
+        attendees: meeting.attendees.map(attendee => attendee.userId),
+        department: meeting.organizer.department === null ? undefined : meeting.organizer.department,
+        status: meeting.status as 'scheduled' | 'in-progress' | 'completed' | 'cancelled',
+        location: meeting.location || undefined,
+        isVirtual: meeting.isVirtual,
+        meetingUrl: meeting.meetingUrl || undefined
+      }));
+    } catch (error) {
+      console.error('Error fetching meetings:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get procurements for the organization
+   */
+  private static async getProcurements(organizationId: string): Promise<ProcurementData[]> {
+    try {
+      // Fetch real procurement requests from the database
+      const procurements = await prisma.procurementRequest.findMany({
+        where: {
+          organizationId: organizationId
+        },
+        include: {
+          requester: {
+            select: {
+              firstName: true,
+              lastName: true,
+              department: true
+            }
+          }
+        },
+        orderBy: {
+          createdAt: 'desc'
+        },
+        take: 50 // Limit to recent procurements
+      });
+
+      return procurements.map(procurement => ({
+        id: procurement.id,
+        title: procurement.title,
+        description: procurement.description,
+        requesterId: procurement.requesterId,
+        requesterName: `${procurement.requester.firstName || ''} ${procurement.requester.lastName || ''}`.trim(),
+        department: procurement.requester.department || procurement.departments[0] || 'Unknown',
+        status: procurement.status as 'pending' | 'approved' | 'rejected' | 'in-progress' | 'completed',
+        priority: procurement.priority as 'low' | 'medium' | 'high',
+        budget: procurement.estimatedCost || 0,
+        requestedAmount: procurement.estimatedCost || 0,
+        approvedAmount: undefined, // Not stored in current schema
+        vendor: procurement.preferredSupplier || undefined,
+        category: procurement.category,
+        createdAt: procurement.createdAt,
+        updatedAt: procurement.updatedAt,
+        dueDate: procurement.expectedDeliveryDate || undefined
+      }));
+    } catch (error) {
+      console.error('Error fetching procurements:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Generate department summaries
+   */
+  private static async generateDepartmentSummaries(
+    organizationId: string,
+    baseData: OrganizationData,
+    notifications: NotificationData[],
+    meetings: MeetingData[],
+    procurements: ProcurementData[]
+  ): Promise<DepartmentSummary[]> {
+    const summaries: DepartmentSummary[] = [];
+
+    for (const dept of baseData.departments) {
+      const deptStats = baseData.departmentStats[dept];
+      const deptNotifications = notifications.filter(n => n.department === dept);
+      const deptMeetings = meetings.filter(m => m.department === dept);
+      const deptProcurements = procurements.filter(p => p.department === dept);
+
+      const summary: DepartmentSummary = {
+        department: dept,
+        employeeCount: deptStats.count,
+        activeEmployees: deptStats.count, // Assuming all are active for now
+        recentHires: 0, // Would need to calculate from employee data
+        turnoverRate: 0, // Would need to calculate from employee data
+        averageSalary: undefined, // Would need to calculate from employee data
+        pendingProcurements: deptProcurements.filter(p => p.status === 'pending').length,
+        upcomingMeetings: deptMeetings.filter(m => 
+          m.status === 'scheduled' && m.startTime > new Date()
+        ).length,
+        unreadNotifications: deptNotifications.filter(n => !n.isRead).length,
+        topPositions: deptStats.positions.slice(0, 5),
+        recentActivity: []
+      };
+
+      summaries.push(summary);
+    }
+
+    return summaries;
+  }
+
+  /**
+   * Generate recent activity
+   */
+  private static async generateRecentActivity(
+    organizationId: string,
+    notifications: NotificationData[],
+    meetings: MeetingData[],
+    procurements: ProcurementData[]
+  ): Promise<ComprehensiveOrganizationData['recentActivity']> {
+    const activities: ComprehensiveOrganizationData['recentActivity'] = [];
+
+    // Add notification activities
+    notifications.forEach(notification => {
+      activities.push({
+        type: 'notification',
+        description: notification.title,
+        timestamp: notification.createdAt,
+        department: notification.department
+      });
+    });
+
+    // Add meeting activities
+    meetings.forEach(meeting => {
+      activities.push({
+        type: 'meeting',
+        description: `${meeting.title} - ${meeting.organizerName}`,
+        timestamp: meeting.startTime,
+        department: meeting.department
+      });
+    });
+
+    // Add procurement activities
+    procurements.forEach(procurement => {
+      activities.push({
+        type: 'procurement',
+        description: `${procurement.title} - ${procurement.requesterName}`,
+        timestamp: procurement.createdAt,
+        department: procurement.department
+      });
+    });
+
+    // Sort by timestamp (most recent first)
+    return activities.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+  }
+
+  /**
+   * Generate alerts based on data analysis
+   */
+  private static async generateAlerts(
+    baseData: OrganizationData,
+    notifications: NotificationData[],
+    meetings: MeetingData[],
+    procurements: ProcurementData[]
+  ): Promise<ComprehensiveOrganizationData['alerts']> {
+    const alerts: ComprehensiveOrganizationData['alerts'] = [];
+
+    // High priority unread notifications
+    const highPriorityUnread = notifications.filter(n => 
+      !n.isRead && n.priority === 'high'
+    );
+    if (highPriorityUnread.length > 0) {
+      alerts.push({
+        type: 'notification',
+        message: `${highPriorityUnread.length} high priority notifications require attention`,
+        priority: 'high'
+      });
+    }
+
+    // Pending procurements
+    const pendingProcurements = procurements.filter(p => p.status === 'pending');
+    if (pendingProcurements.length > 0) {
+      alerts.push({
+        type: 'procurement',
+        message: `${pendingProcurements.length} procurement requests pending approval`,
+        priority: pendingProcurements.some(p => p.priority === 'high') ? 'high' : 'medium'
+      });
+    }
+
+    // Upcoming meetings
+    const upcomingMeetings = meetings.filter(m => 
+      m.status === 'scheduled' && 
+      m.startTime > new Date() && 
+      m.startTime < new Date(Date.now() + 24 * 60 * 60 * 1000) // Next 24 hours
+    );
+    if (upcomingMeetings.length > 0) {
+      alerts.push({
+        type: 'meeting',
+        message: `${upcomingMeetings.length} meetings scheduled for today`,
+        priority: 'medium'
+      });
+    }
+
+    // Employee turnover alert
+    if (baseData.turnoverRate > 10) {
+      alerts.push({
+        type: 'employee',
+        message: `High turnover rate of ${baseData.turnoverRate.toFixed(1)}% detected`,
+        priority: 'high'
+      });
+    }
+
+    return alerts;
+  }
+
+  /**
    * Get employee data for specific analysis
    */
   static async getEmployeeData(organizationId: string, filters?: {
@@ -248,27 +683,32 @@ export class OrganizationDataService {
       const totalEmployees = employees.length;
       const activeEmployees = employees.filter(emp => emp.employmentStatus === 'active').length;
       
-      const positions = Array.from(new Set(employees.map((emp: any) => emp.position || emp.designation).filter(Boolean)));
-      
-      const employeesWithSalary = employees.filter(emp => emp.salary?.amount);
-      const averageSalary = employeesWithSalary.length > 0
-        ? employeesWithSalary.reduce((sum, emp) => sum + (emp.salary?.amount || 0), 0) / employeesWithSalary.length
-        : undefined;
-
-      // Recent hires (last 30 days)
+      // Calculate recent hires (last 30 days)
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       const recentHires = employees.filter(emp => 
         emp.employmentDate && new Date(emp.employmentDate) > thirtyDaysAgo
       ).length;
 
-      // Turnover rate
+      // Calculate turnover rate
       const ninetyDaysAgo = new Date();
       ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
       const terminatedEmployees = employees.filter(emp => 
-        emp.employmentStatus === 'terminated' && emp.employmentDate && new Date(emp.employmentDate) > ninetyDaysAgo
+        emp.employmentStatus === 'terminated' && 
+        emp.employmentDate && 
+        new Date(emp.employmentDate) > ninetyDaysAgo
       ).length;
       const turnoverRate = totalEmployees > 0 ? (terminatedEmployees / totalEmployees) * 100 : 0;
+
+      // Calculate average salary
+      const employeesWithSalary = employees.filter(emp => emp.salary?.amount);
+      const averageSalary = employeesWithSalary.length > 0 
+        ? employeesWithSalary.reduce((sum, emp) => sum + (emp.salary.amount || 0), 0) / employeesWithSalary.length
+        : undefined;
+
+      // Get unique positions
+      const allPositions = employees.map(emp => emp.position || emp.designation).filter(Boolean);
+      const positions = allPositions.filter((position, index) => allPositions.indexOf(position) === index);
 
       return {
         totalEmployees,
@@ -294,62 +734,37 @@ export class OrganizationDataService {
     departmentBudgets?: { [department: string]: number };
   }> {
     try {
+      // Get all employees with salary data
       const employees = await Employee.find({
-        organizationId: new mongoose.Types.ObjectId(organizationId),
-        employmentStatus: 'active'
+        organizationId: new mongoose.Types.ObjectId(organizationId)
       }).lean();
 
-      const salaries = employees
-        .map(emp => emp.salary?.amount)
-        .filter(salary => salary && salary > 0);
+      const employeesWithSalary = employees.filter(emp => emp.salary?.amount);
+      const totalPayroll = employeesWithSalary.reduce((sum, emp) => sum + (emp.salary.amount || 0), 0);
+      const averageSalary = employeesWithSalary.length > 0 
+        ? totalPayroll / employeesWithSalary.length
+        : 0;
 
-      const totalPayroll = salaries.reduce((sum, salary) => sum + (salary || 0), 0);
-      const averageSalary = salaries.length > 0 ? totalPayroll / salaries.length : 0;
-
-      // Salary distribution
+      // Calculate salary distribution
       const salaryDistribution: { [range: string]: number } = {
-        '0-25000': 0,
-        '25001-50000': 0,
-        '50001-75000': 0,
-        '75001-100000': 0,
-        '100001+': 0
+        '0-50k': 0,
+        '50k-100k': 0,
+        '100k-150k': 0,
+        '150k+': 0
       };
 
-      salaries.forEach(salary => {
-        if (salary <= 25000) salaryDistribution['0-25000']++;
-        else if (salary <= 50000) salaryDistribution['25001-50000']++;
-        else if (salary <= 75000) salaryDistribution['50001-75000']++;
-        else if (salary <= 100000) salaryDistribution['75001-100000']++;
-        else salaryDistribution['100001+']++;
-      });
-
-      // Department budgets (estimated based on average salary)
-      const departmentBudgets: { [department: string]: number } = {};
-      const departmentEmployees: { [department: string]: number } = {};
-
-      employees.forEach(emp => {
-        const dept = emp.department || 'Unknown';
-        departmentEmployees[dept] = (departmentEmployees[dept] || 0) + 1;
-      });
-
-      Object.keys(departmentEmployees).forEach(dept => {
-        const deptEmployees = employees.filter(emp => emp.department === dept);
-        const deptSalaries = deptEmployees
-          .map(emp => emp.salary?.amount)
-          .filter(salary => salary && salary > 0);
-        
-        const deptAverageSalary = deptSalaries.length > 0
-          ? deptSalaries.reduce((sum, salary) => sum + (salary || 0), 0) / deptSalaries.length
-          : averageSalary;
-        
-        departmentBudgets[dept] = deptEmployees.length * deptAverageSalary;
+      employeesWithSalary.forEach(emp => {
+        const salary = emp.salary.amount;
+        if (salary < 50000) salaryDistribution['0-50k']++;
+        else if (salary < 100000) salaryDistribution['50k-100k']++;
+        else if (salary < 150000) salaryDistribution['100k-150k']++;
+        else salaryDistribution['150k+']++;
       });
 
       return {
         totalPayroll,
         averageSalary,
-        salaryDistribution,
-        departmentBudgets
+        salaryDistribution
       };
     } catch (error) {
       console.error('Error fetching financial data:', error);

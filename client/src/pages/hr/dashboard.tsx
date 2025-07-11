@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/hooks/use-auth';
+import { AIDepartmentInsights } from '@/components/ai/AIDepartmentInsights';
 import { 
   Users, 
   UserCheck, 
@@ -431,6 +432,9 @@ export default function HRDashboard() {
                 </CardContent>
               </Card>
             </div>
+
+            {/* AI Insights */}
+            <AIDepartmentInsights />
 
             {/* Leave Balance */}
             <Card>

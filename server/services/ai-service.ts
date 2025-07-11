@@ -8,7 +8,7 @@ import {
   getInventoryAnalysisPrompt,
   type PromptContext 
 } from './ai-prompts';
-import { OrganizationDataService, type OrganizationData } from './organization-data.service';
+import { OrganizationDataService, type OrganizationData, type ComprehensiveOrganizationData } from './organization-data.service';
 
 interface ChatRequest {
   message: string;
@@ -127,17 +127,21 @@ class AIService {
         { role: 'system', content: systemPrompt }
       ];
 
-      // Get real organization data
-      let organizationData: OrganizationData | null = null;
+      // Get comprehensive organization data including notifications, meetings, procurements
+      let organizationData: ComprehensiveOrganizationData | null = null;
       try {
         if (request.organization_id) {
-          organizationData = await OrganizationDataService.getOrganizationData(request.organization_id);
-          console.log('📊 Organization Data Retrieved:', {
+          organizationData = await OrganizationDataService.getComprehensiveOrganizationData(request.organization_id);
+          console.log('📊 Comprehensive Organization Data Retrieved:', {
             name: organizationData.name,
             employeeCount: organizationData.employeeCount,
             departments: organizationData.departments,
             recentHires: organizationData.recentHires,
-            turnoverRate: organizationData.turnoverRate
+            turnoverRate: organizationData.turnoverRate,
+            notifications: organizationData.notifications.length,
+            meetings: organizationData.meetings.length,
+            procurements: organizationData.procurements.length,
+            alerts: organizationData.alerts.length
           });
         }
       } catch (error) {
@@ -145,9 +149,9 @@ class AIService {
         // Continue without organization data if there's an error
       }
 
-      // Add organization data context if available
+      // Add comprehensive organization data context if available
       if (organizationData) {
-        const dataContext = `\n\nORGANIZATION DATA CONTEXT:
+        const dataContext = `\n\nCOMPREHENSIVE ORGANIZATION DATA CONTEXT:
 Organization: ${organizationData.name}
 Total Employees: ${organizationData.employeeCount}
 Active Employees: ${organizationData.activeEmployees}
@@ -162,7 +166,34 @@ ${Object.entries(organizationData.departmentStats).map(([dept, stats]) =>
   `${dept}: ${stats.count} employees (${stats.positions.join(', ')})`
 ).join('\n')}
 
-IMPORTANT: Use this real data when answering questions about the organization. Do not make up or guess any numbers.`;
+NOTIFICATIONS (${organizationData.notifications.length}):
+${organizationData.notifications.slice(0, 5).map(n => 
+  `- ${n.title} (${n.priority} priority, ${n.isRead ? 'read' : 'unread'}, ${n.department || 'general'})`
+).join('\n')}
+
+UPCOMING MEETINGS (${organizationData.meetings.filter(m => m.status === 'scheduled' && m.startTime > new Date()).length}):
+${organizationData.meetings.filter(m => m.status === 'scheduled' && m.startTime > new Date()).slice(0, 5).map(m => 
+  `- ${m.title} (${m.organizerName}, ${new Date(m.startTime).toLocaleString()}, ${m.department || 'general'})`
+).join('\n')}
+
+PENDING PROCUREMENTS (${organizationData.procurements.filter(p => p.status === 'pending').length}):
+${organizationData.procurements.filter(p => p.status === 'pending').slice(0, 5).map(p => 
+  `- ${p.title} ($${p.requestedAmount}, ${p.priority} priority, ${p.department})`
+).join('\n')}
+
+ALERTS:
+${organizationData.alerts.slice(0, 5).map(a => 
+  `- ${a.message} (${a.priority} priority, ${a.department || 'general'})`
+).join('\n')}
+
+RECENT ACTIVITY:
+${organizationData.recentActivity.slice(0, 5).map(a => 
+  `- ${a.description} (${new Date(a.timestamp).toLocaleString()}, ${a.department || 'general'})`
+).join('\n')}
+
+IMPORTANT: Use this real data when answering questions about the organization. You have access to notifications, meetings, procurements, and recent activity. Consider this context when providing advice and insights.
+
+CRITICAL: Do NOT generate fake meetings, notifications, or procurements. Only reference the actual data provided above. If asked about meetings, notifications, or procurements that are not in this data, say "I don't have any [meetings/notifications/procurements] data available at the moment."`;
 
         messages[0].content += dataContext;
       }

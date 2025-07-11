@@ -1,4 +1,6 @@
 export { AIFloatingButton } from './AIFloatingButton';
 export { AIChatBox } from './AIChatBox';
 export { AISettings } from './AISettings';
-export { AccountingAI } from './accounting-ai'; 
+export { AccountingAI } from './accounting-ai';
+export { AIComprehensiveSummary } from './AIComprehensiveSummary';
+export { AIDepartmentInsights } from './AIDepartmentInsights'; 
