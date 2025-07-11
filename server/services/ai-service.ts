@@ -8,6 +8,7 @@ import {
   getInventoryAnalysisPrompt,
   type PromptContext 
 } from './ai-prompts';
+import { OrganizationDataService, type OrganizationData } from './organization-data.service';
 
 interface ChatRequest {
   message: string;
@@ -126,6 +127,46 @@ class AIService {
         { role: 'system', content: systemPrompt }
       ];
 
+      // Get real organization data
+      let organizationData: OrganizationData | null = null;
+      try {
+        if (request.organization_id) {
+          organizationData = await OrganizationDataService.getOrganizationData(request.organization_id);
+          console.log('📊 Organization Data Retrieved:', {
+            name: organizationData.name,
+            employeeCount: organizationData.employeeCount,
+            departments: organizationData.departments,
+            recentHires: organizationData.recentHires,
+            turnoverRate: organizationData.turnoverRate
+          });
+        }
+      } catch (error) {
+        console.error('⚠️ Error fetching organization data:', error);
+        // Continue without organization data if there's an error
+      }
+
+      // Add organization data context if available
+      if (organizationData) {
+        const dataContext = `\n\nORGANIZATION DATA CONTEXT:
+Organization: ${organizationData.name}
+Total Employees: ${organizationData.employeeCount}
+Active Employees: ${organizationData.activeEmployees}
+Departments: ${organizationData.departments.join(', ')}
+Recent Hires (30 days): ${organizationData.recentHires}
+Turnover Rate: ${organizationData.turnoverRate.toFixed(1)}%
+${organizationData.averageSalary ? `Average Salary: $${organizationData.averageSalary.toLocaleString()}` : ''}
+${organizationData.totalPayroll ? `Total Payroll: $${organizationData.totalPayroll.toLocaleString()}` : ''}
+
+Department Breakdown:
+${Object.entries(organizationData.departmentStats).map(([dept, stats]) => 
+  `${dept}: ${stats.count} employees (${stats.positions.join(', ')})`
+).join('\n')}
+
+IMPORTANT: Use this real data when answering questions about the organization. Do not make up or guess any numbers.`;
+
+        messages[0].content += dataContext;
+      }
+
       // Add conversation history if provided
       if (request.conversation_history) {
         for (const msg of request.conversation_history.slice(-5)) {
@@ -186,6 +227,27 @@ Remember this context for the entire conversation and always address the user by
         department: request.context?.department
       };
 
+      // Get real organization data
+      let organizationData: OrganizationData | null = null;
+      let financialData: any = null;
+      
+      try {
+        if (request.organization_id) {
+          organizationData = await OrganizationDataService.getOrganizationData(request.organization_id);
+          financialData = await OrganizationDataService.getFinancialData(request.organization_id);
+          
+          console.log('📊 Business Data Retrieved:', {
+            organizationName: organizationData.name,
+            employeeCount: organizationData.employeeCount,
+            departments: organizationData.departments,
+            totalPayroll: financialData?.totalPayroll,
+            averageSalary: financialData?.averageSalary
+          });
+        }
+      } catch (error) {
+        console.error('⚠️ Error fetching business data:', error);
+      }
+
       const systemPrompt = `You are a Business Intelligence AI specializing in business analysis. Analyze the provided data and provide:
 - Key business insights and trends
 - Strategic recommendations for improvement
@@ -195,7 +257,36 @@ Remember this context for the entire conversation and always address the user by
 
 Provide actionable, data-driven insights.`;
 
-      const analysisPrompt = getBusinessAnalysisPrompt(promptContext, request);
+      let analysisPrompt = getBusinessAnalysisPrompt(promptContext, request);
+
+      // Add real data to the analysis prompt
+      if (organizationData) {
+        const businessDataContext = `\n\nREAL ORGANIZATION DATA:
+Organization: ${organizationData.name}
+Industry: ${organizationData.industry}
+Type: ${organizationData.type}
+Total Employees: ${organizationData.employeeCount}
+Active Employees: ${organizationData.activeEmployees}
+Departments: ${organizationData.departments.join(', ')}
+Recent Hires (30 days): ${organizationData.recentHires}
+Turnover Rate: ${organizationData.turnoverRate.toFixed(1)}%
+${organizationData.averageSalary ? `Average Salary: $${organizationData.averageSalary.toLocaleString()}` : ''}
+${organizationData.totalPayroll ? `Total Payroll: $${organizationData.totalPayroll.toLocaleString()}` : ''}
+
+Department Breakdown:
+${Object.entries(organizationData.departmentStats).map(([dept, stats]) => 
+  `${dept}: ${stats.count} employees (${stats.positions.join(', ')})`
+).join('\n')}
+
+${financialData ? `Financial Data:
+Total Payroll: $${financialData.totalPayroll.toLocaleString()}
+Average Salary: $${financialData.averageSalary.toLocaleString()}
+Salary Distribution: ${Object.entries(financialData.salaryDistribution).map(([range, count]) => `${range}: ${count} employees`).join(', ')}` : ''}
+
+IMPORTANT: Use this real data when providing business insights. Do not make up or guess any numbers.`;
+
+        analysisPrompt += businessDataContext;
+      }
 
       const messages = [
         { role: 'system', content: systemPrompt },
@@ -235,6 +326,28 @@ Provide actionable, data-driven insights.`;
         department: request.context?.department
       };
 
+      // Get real organization and employee data
+      let organizationData: OrganizationData | null = null;
+      let employeeData: any[] = [];
+      
+      try {
+        if (request.organization_id) {
+          organizationData = await OrganizationDataService.getOrganizationData(request.organization_id);
+          employeeData = await OrganizationDataService.getEmployeeData(request.organization_id);
+          
+          console.log('📊 HR Data Retrieved:', {
+            organizationName: organizationData.name,
+            employeeCount: organizationData.employeeCount,
+            activeEmployees: organizationData.activeEmployees,
+            recentHires: organizationData.recentHires,
+            turnoverRate: organizationData.turnoverRate,
+            employeeDataCount: employeeData.length
+          });
+        }
+      } catch (error) {
+        console.error('⚠️ Error fetching HR data:', error);
+      }
+
       const systemPrompt = `You are an HR AI assistant specializing in HR analysis. Analyze the provided data and provide:
 - Employee performance insights
 - HR strategy recommendations
@@ -244,7 +357,32 @@ Provide actionable, data-driven insights.`;
 
 Provide actionable HR insights and recommendations.`;
 
-      const analysisPrompt = getHRAnalysisPrompt(promptContext, request);
+      let analysisPrompt = getHRAnalysisPrompt(promptContext, request);
+
+      // Add real data to the analysis prompt
+      if (organizationData) {
+        const hrDataContext = `\n\nREAL ORGANIZATION DATA:
+Organization: ${organizationData.name}
+Total Employees: ${organizationData.employeeCount}
+Active Employees: ${organizationData.activeEmployees}
+Recent Hires (30 days): ${organizationData.recentHires}
+Turnover Rate: ${organizationData.turnoverRate.toFixed(1)}%
+${organizationData.averageSalary ? `Average Salary: $${organizationData.averageSalary.toLocaleString()}` : ''}
+
+Department Breakdown:
+${Object.entries(organizationData.departmentStats).map(([dept, stats]) => 
+  `${dept}: ${stats.count} employees (${stats.positions.join(', ')})`
+).join('\n')}
+
+Employee Sample Data (${employeeData.length} employees):
+${employeeData.slice(0, 10).map(emp => 
+  `- ${emp.firstName} ${emp.lastName} (${emp.department}, ${emp.position}, ${emp.status})`
+).join('\n')}
+
+IMPORTANT: Use this real data when providing HR insights. Do not make up or guess any numbers.`;
+
+        analysisPrompt += hrDataContext;
+      }
 
       const messages = [
         { role: 'system', content: systemPrompt },

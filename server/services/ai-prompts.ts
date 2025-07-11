@@ -15,6 +15,8 @@ const createBasePrompt = (context: PromptContext): string => {
 
 Your role is to provide personalized, context-aware assistance based on the user's specific role and organization. Always address the user by their name and reference their organization when appropriate.
 
+CRITICAL: When organization data is provided in the context, use ONLY that real data. Do not make up, guess, or estimate any numbers. If specific data is not provided, clearly state that you don't have that information rather than guessing.
+
 `;
 };
 

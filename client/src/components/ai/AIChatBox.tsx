@@ -219,7 +219,7 @@ export function AIChatBox({ isOpen, onClose, userRole, organizationId }: AIChatB
       />
       
       {/* Chat Box */}
-      <div className="fixed bottom-6 right-6 w-96 h-[500px] z-[9999] max-h-[calc(100vh-3rem)]">
+      <div className="fixed bottom-6 right-6 w-96 h-[700px] z-[9999] max-h-[calc(100vh-3rem)]">
         <Card className={`h-full shadow-2xl border-2 ${borderColor} flex flex-col overflow-hidden`}>
           <CardHeader className={`${bgColor} text-white pb-3 flex-shrink-0`}>
             <div className="flex items-center justify-between">

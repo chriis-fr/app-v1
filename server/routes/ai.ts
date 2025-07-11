@@ -216,4 +216,25 @@ router.get('/health', (req: Request, res: Response) => {
   });
 });
 
+// Test organization data endpoint
+router.get('/test-org-data', isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const { OrganizationDataService } = await import('../services/organization-data.service');
+    
+    const orgData = await OrganizationDataService.getOrganizationData(user.organizationId);
+    
+    res.json({
+      success: true,
+      data: orgData
+    });
+  } catch (error) {
+    console.error('Test org data error:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 export default router; 
