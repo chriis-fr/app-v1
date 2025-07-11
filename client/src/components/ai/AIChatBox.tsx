@@ -115,7 +115,10 @@ export function AIChatBox({ isOpen, onClose, userRole, organizationId }: AIChatB
             userRole,
             organizationId,
             department: user?.department,
+            userName: user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.firstName || user?.email || 'User',
+            organizationName: user?.organization?.name || 'Your Organization',
           },
+          conversation_history: messages.slice(-10), // Send last 10 messages for context
         }),
       });
 

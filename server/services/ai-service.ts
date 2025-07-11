@@ -1,287 +1,566 @@
-import { Organization, User } from '../mongodb/models';
-import type { Types } from 'mongoose';
-import { PrismaClient } from '@prisma/client';
+import axios from 'axios';
+import { 
+  getSystemPrompt, 
+  getBusinessAnalysisPrompt, 
+  getHRAnalysisPrompt,
+  getFinancialAnalysisPrompt,
+  getSalesAnalysisPrompt,
+  getInventoryAnalysisPrompt,
+  type PromptContext 
+} from './ai-prompts';
 
-const prisma = new PrismaClient();
-
-interface AISettings {
-  isEnabled: boolean;
-  allowPersonalAI: boolean;
-  allowOrganizationAI: boolean;
-  model?: string;
-  temperature?: number;
-  maxTokens?: number;
+interface ChatRequest {
+  message: string;
+  context?: any;
+  conversation_history?: any[];
+  user_role?: string;
+  organization_id?: string;
+  department?: string;
 }
 
-interface ChatMessage {
-  id: string;
+interface ChatResponse {
   text: string;
-  sender: 'user' | 'ai';
-  timestamp: Date;
-  metadata?: any;
-}
-
-interface ChatSession {
-  id: string;
-  userId: string;
-  organizationId: string;
-  messages: ChatMessage[];
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-interface AIResponse {
-  text: string;
-  confidence: number;
+  context?: any;
   suggestions?: string[];
-  metadata?: any;
+  confidence?: number;
+  timestamp: Date;
 }
 
-export class AIService {
-  private chatSessions: Map<string, ChatSession> = new Map();
+interface BusinessInsightRequest {
+  organization_id: string;
+  data_type: string;
+  time_period?: string;
+  specific_metrics?: string[];
+  context?: any;
+}
 
-  /**
-   * Get AI settings for an organization
-   */
-  async getAISettings(organizationId: string): Promise<AISettings> {
-    try {
-      const organization = await Organization.findById(organizationId);
-      
-      // Default settings
-      const defaultSettings: AISettings = {
-        isEnabled: true,
-        allowPersonalAI: true,
-        allowOrganizationAI: true,
-        model: 'gpt-3.5-turbo',
-        temperature: 0.7,
-        maxTokens: 1000,
-      };
+interface BusinessInsightResponse {
+  insights: string[];
+  recommendations: string[];
+  metrics?: any;
+  risk_alerts?: string[];
+  opportunities?: string[];
+  confidence_score: number;
+  timestamp: Date;
+}
 
-      // Get settings from organization if available
-      if (organization?.settings?.ai) {
-        return {
-          ...defaultSettings,
-          ...organization.settings.ai,
-        };
-      }
+interface HRInsightRequest {
+  organization_id: string;
+  insight_type: string;
+  employee_data?: any;
+  time_period?: string;
+  context?: any;
+}
 
-      return defaultSettings;
-    } catch (error) {
-      console.error('Error getting AI settings:', error);
-      throw new Error('Failed to get AI settings');
+interface HRInsightResponse {
+  insights: string[];
+  recommendations: string[];
+  employee_suggestions?: any[];
+  training_needs?: string[];
+  retention_risks?: string[];
+  hiring_recommendations?: string[];
+  confidence_score: number;
+  timestamp: Date;
+}
+
+class AIService {
+  private groqApiKey: string;
+  private groqApiUrl = 'https://api.groq.com/openai/v1/chat/completions';
+  private modelName = 'llama3-8b-8192';
+
+  constructor() {
+    this.groqApiKey = process.env.GROQ_API_KEY || '';
+    if (!this.groqApiKey) {
+      console.warn('⚠️  GROQ_API_KEY not found. AI features will not work.');
     }
   }
 
-  /**
-   * Update AI settings for an organization
-   */
-  async updateAISettings(organizationId: string, settings: Partial<AISettings>): Promise<void> {
-    try {
-      const organization = await Organization.findById(organizationId);
-      if (!organization) {
-        throw new Error('Organization not found');
-      }
-
-      // Update organization settings
-      const currentSettings = organization.settings || {};
-      const updatedSettings = {
-        ...currentSettings,
-        ai: {
-          ...currentSettings.ai,
-          ...settings,
-        },
-      };
-
-      await Organization.findByIdAndUpdate(organizationId, {
-        settings: updatedSettings,
-      });
-    } catch (error) {
-      console.error('Error updating AI settings:', error);
-      throw new Error('Failed to update AI settings');
-    }
-  }
-
-  /**
-   * Check if AI is enabled for an organization
-   */
-  async checkAIStatus(organizationId: string): Promise<{ isEnabled: boolean }> {
-    try {
-      const organization = await prisma.organization.findUnique({
-        where: { id: organizationId },
-        select: { settings: true }
-      });
-
-      if (!organization) {
-        return { isEnabled: false };
-      }
-
-      const settings = organization.settings as any;
-      const isEnabled = settings?.ai?.isEnabled ?? false;
-
-      return { isEnabled };
-    } catch (error) {
-      console.error('Error checking AI status:', error);
-      return { isEnabled: false };
-    }
-  }
-
-  /**
-   * Process a chat message and generate AI response
-   */
-  async processChatMessage(
-    userId: string,
-    organizationId: string,
-    message: string,
-    userRole?: string,
-    context?: any
-  ): Promise<AIResponse> {
-    try {
-      // Check if AI is enabled
-      const isEnabled = await this.checkAIStatus(organizationId).then(result => result.isEnabled);
-      if (!isEnabled) {
-        throw new Error('AI is disabled for this organization');
-      }
-
-      // Get user and organization context
-      const [user, organization] = await Promise.all([
-        User.findById(userId),
-        Organization.findById(organizationId),
-      ]);
-
-      if (!user || !organization) {
-        throw new Error('User or organization not found');
-      }
-
-      // TODO: Implement actual AI processing here
-      // For now, return a placeholder response
-      const response = await this.generatePlaceholderResponse(message, userRole, context);
-
-      return response;
-    } catch (error) {
-      console.error('Error processing chat message:', error);
-      throw new Error('Failed to process chat message');
-    }
-  }
-
-  /**
-   * Generate a placeholder response (replace with actual AI integration)
-   */
-  private async generatePlaceholderResponse(
-    message: string,
-    userRole?: string,
-    context?: any
-  ): Promise<AIResponse> {
-    // Simulate AI processing delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    const department = context?.department?.toLowerCase();
-    let response: string;
-
-    // Return contextual response based on role and department
-    if (userRole === 'owner') {
-      response = `As an organization owner, I can help you with strategic decisions, financial analysis, and business insights. Your message: "${message}" - I'm here to assist with high-level business management and organizational strategy.`;
-    } else {
-      // Department-specific responses
-      switch (department) {
-        case 'hr':
-          response = `As your HR AI assistant, I can help you with employee management, payroll questions, hiring processes, performance reviews, and HR policies. Regarding "${message}" - I'm here to support your HR operations and ensure compliance.`;
-          break;
-        case 'finance':
-        case 'accounting':
-          response = `As your Finance AI assistant, I can help you with accounting tasks, financial reporting, budgeting, and financial analysis. Regarding "${message}" - I'm here to support your financial operations and ensure accuracy.`;
-          break;
-        case 'inventory':
-        case 'warehouse':
-          response = `As your Inventory AI assistant, I can help you with stock management, warehouse operations, supply chain optimization, and inventory tracking. Regarding "${message}" - I'm here to support your inventory operations.`;
-          break;
-        case 'sales':
-        case 'crm':
-          response = `As your Sales AI assistant, I can help you with customer management, sales strategies, lead generation, and sales analytics. Regarding "${message}" - I'm here to support your sales operations and customer relationships.`;
-          break;
-        default:
-          response = `I understand your message: "${message}". I'm here to help with your daily tasks and questions. This is a placeholder response until we integrate with an actual AI model.`;
-      }
-    }
-
-    return {
-      text: response,
-      confidence: 0.8,
-      suggestions: [
-        'Ask about organization data',
-        'Get help with tasks',
-        'Request insights',
-      ],
-      metadata: {
-        model: 'placeholder',
-        processingTime: 1000,
-        userRole,
-        department,
-      },
+  private getSystemPrompt(context?: any): string {
+    const promptContext: PromptContext = {
+      userName: context?.user_name || context?.userName,
+      organizationName: context?.organization_name || context?.organizationName,
+      userRole: context?.user_role || context?.userRole,
+      department: context?.department
     };
+    
+    return getSystemPrompt(promptContext);
   }
 
-  /**
-   * Get chat history for a user
-   */
-  async getChatHistory(userId: string, organizationId: string): Promise<ChatMessage[]> {
+  private async callGroqAPI(messages: any[]): Promise<string> {
+    if (!this.groqApiKey) {
+      throw new Error('Groq API key not configured');
+    }
+
     try {
-      const sessionId = `${userId}-${organizationId}`;
-      const session = this.chatSessions.get(sessionId);
+      const response = await axios.post(this.groqApiUrl, {
+        model: this.modelName,
+        messages,
+        temperature: 0.7,
+        max_tokens: 4096,
+        top_p: 1,
+        stream: false
+      }, {
+        headers: {
+          'Authorization': `Bearer ${this.groqApiKey}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      return response.data.choices[0].message.content;
+    } catch (error) {
+      console.error('Groq API Error:', error);
+      throw new Error('Failed to get AI response');
+    }
+  }
+
+  async chat(request: ChatRequest): Promise<ChatResponse> {
+    try {
+      const systemPrompt = this.getSystemPrompt(request.context);
       
-      if (!session) {
-        return [];
+      // Debug logging
+      console.log('🧠 AI Service Debug:');
+      console.log('  System Prompt:', systemPrompt);
+      console.log('  Request Context:', request.context);
+      
+      const messages = [
+        { role: 'system', content: systemPrompt }
+      ];
+
+      // Add conversation history if provided
+      if (request.conversation_history) {
+        for (const msg of request.conversation_history.slice(-5)) {
+          if (msg.sender === 'user') {
+            messages.push({ role: 'user', content: msg.text });
+          } else {
+            messages.push({ role: 'assistant', content: msg.text });
+          }
+        }
       }
 
-      return session.messages;
+      // Add detailed context information
+      if (request.context) {
+        const contextInfo = `Current Session Context:
+- Organization: ${request.context.organization_name || 'Chains ERP'}
+- User: ${request.context.user_name || 'Unknown User'}
+- User Role: ${request.context.user_role || 'User'}
+- Department: ${request.context.department || 'General'}
+- User ID: ${request.context.user_id || 'Unknown'}
+
+Remember this context for the entire conversation and always address the user by their name when appropriate.`;
+        messages.push({ role: 'system', content: contextInfo });
+      }
+
+      // Add current user message
+      messages.push({ role: 'user', content: request.message });
+
+      const aiResponse = await this.callGroqAPI(messages);
+      
+      // Generate suggestions based on the conversation
+      const suggestions = this.generateSuggestions(request.message, aiResponse, request.context);
+
+      return {
+        text: aiResponse,
+        context: request.context,
+        suggestions,
+        confidence: 0.85,
+        timestamp: new Date()
+      };
     } catch (error) {
-      console.error('Error getting chat history:', error);
-      return [];
+      console.error('Chat Error:', error);
+      return {
+        text: 'I apologize, but I\'m having trouble processing your request right now. Please try again in a moment.',
+        context: request.context,
+        suggestions: ['Try rephrasing your question', 'Check your internet connection'],
+        confidence: 0.0,
+        timestamp: new Date()
+      };
     }
   }
 
-  /**
-   * Save chat message to history
-   */
-  async saveChatMessage(
-    userId: string,
-    organizationId: string,
-    message: ChatMessage
-  ): Promise<void> {
+  async businessInsights(request: BusinessInsightRequest): Promise<BusinessInsightResponse> {
     try {
-      const sessionId = `${userId}-${organizationId}`;
-      let session = this.chatSessions.get(sessionId);
+      const promptContext: PromptContext = {
+        userName: request.context?.user_name || request.context?.userName,
+        organizationName: request.context?.organization_name || request.context?.organizationName,
+        userRole: request.context?.user_role || request.context?.userRole,
+        department: request.context?.department
+      };
 
-      if (!session) {
-        session = {
-          id: sessionId,
-          userId,
-          organizationId,
-          messages: [],
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
-      }
+      const systemPrompt = `You are a Business Intelligence AI specializing in business analysis. Analyze the provided data and provide:
+- Key business insights and trends
+- Strategic recommendations for improvement
+- Performance metrics interpretation
+- Risk assessment and alerts
+- Opportunities for growth
 
-      session.messages.push(message);
-      session.updatedAt = new Date();
-      this.chatSessions.set(sessionId, session);
+Provide actionable, data-driven insights.`;
 
-      // TODO: Save to database for persistence
+      const analysisPrompt = getBusinessAnalysisPrompt(promptContext, request);
+
+      const messages = [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: analysisPrompt }
+      ];
+
+      const aiResponse = await this.callGroqAPI(messages);
+      
+      // Parse the response into structured format
+      const { insights, recommendations, risk_alerts, opportunities } = this.parseBusinessResponse(aiResponse);
+
+      return {
+        insights,
+        recommendations,
+        risk_alerts,
+        opportunities,
+        confidence_score: 0.88,
+        timestamp: new Date()
+      };
     } catch (error) {
-      console.error('Error saving chat message:', error);
+      console.error('Business Insights Error:', error);
+      return {
+        insights: ['Unable to generate business insights at this time'],
+        recommendations: ['Please try again later'],
+        confidence_score: 0.0,
+        timestamp: new Date()
+      };
     }
   }
 
-  /**
-   * Clear chat history for a user
-   */
-  async clearChatHistory(userId: string, organizationId: string): Promise<void> {
+  async hrInsights(request: HRInsightRequest): Promise<HRInsightResponse> {
     try {
-      const sessionId = `${userId}-${organizationId}`;
-      this.chatSessions.delete(sessionId);
+      const promptContext: PromptContext = {
+        userName: request.context?.user_name || request.context?.userName,
+        organizationName: request.context?.organization_name || request.context?.organizationName,
+        userRole: request.context?.user_role || request.context?.userRole,
+        department: request.context?.department
+      };
+
+      const systemPrompt = `You are an HR AI assistant specializing in HR analysis. Analyze the provided data and provide:
+- Employee performance insights
+- HR strategy recommendations
+- Training and development needs
+- Retention and engagement strategies
+- Hiring and recruitment insights
+
+Provide actionable HR insights and recommendations.`;
+
+      const analysisPrompt = getHRAnalysisPrompt(promptContext, request);
+
+      const messages = [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: analysisPrompt }
+      ];
+
+      const aiResponse = await this.callGroqAPI(messages);
+      
+      // Parse the response into structured format
+      const { insights, recommendations, employee_suggestions, training_needs, retention_risks, hiring_recommendations } = this.parseHRResponse(aiResponse);
+
+      return {
+        insights,
+        recommendations,
+        employee_suggestions,
+        training_needs,
+        retention_risks,
+        hiring_recommendations,
+        confidence_score: 0.87,
+        timestamp: new Date()
+      };
     } catch (error) {
-      console.error('Error clearing chat history:', error);
+      console.error('HR Insights Error:', error);
+      return {
+        insights: ['Unable to generate HR insights at this time'],
+        recommendations: ['Please try again later'],
+        confidence_score: 0.0,
+        timestamp: new Date()
+      };
     }
+  }
+
+  // Department-specific analysis methods
+  async financialInsights(request: BusinessInsightRequest): Promise<BusinessInsightResponse> {
+    try {
+      const promptContext: PromptContext = {
+        userName: request.context?.user_name || request.context?.userName,
+        organizationName: request.context?.organization_name || request.context?.organizationName,
+        userRole: request.context?.user_role || request.context?.userRole,
+        department: request.context?.department
+      };
+
+      const systemPrompt = `You are a Financial AI assistant specializing in financial analysis. Analyze the provided data and provide:
+- Financial performance insights
+- Cost optimization recommendations
+- Financial risk assessment
+- Investment and growth strategies
+- Compliance and regulatory guidance
+
+Provide actionable financial insights and recommendations.`;
+
+      const analysisPrompt = getFinancialAnalysisPrompt(promptContext, request);
+
+      const messages = [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: analysisPrompt }
+      ];
+
+      const aiResponse = await this.callGroqAPI(messages);
+      
+      // Parse the response into structured format
+      const { insights, recommendations, risk_alerts, opportunities } = this.parseBusinessResponse(aiResponse);
+
+      return {
+        insights,
+        recommendations,
+        risk_alerts,
+        opportunities,
+        confidence_score: 0.89,
+        timestamp: new Date()
+      };
+    } catch (error) {
+      console.error('Financial Insights Error:', error);
+      return {
+        insights: ['Unable to generate financial insights at this time'],
+        recommendations: ['Please try again later'],
+        confidence_score: 0.0,
+        timestamp: new Date()
+      };
+    }
+  }
+
+  async salesInsights(request: BusinessInsightRequest): Promise<BusinessInsightResponse> {
+    try {
+      const promptContext: PromptContext = {
+        userName: request.context?.user_name || request.context?.userName,
+        organizationName: request.context?.organization_name || request.context?.organizationName,
+        userRole: request.context?.user_role || request.context?.userRole,
+        department: request.context?.department
+      };
+
+      const systemPrompt = `You are a Sales AI assistant specializing in sales analysis. Analyze the provided data and provide:
+- Sales performance insights
+- Customer analysis and segmentation
+- Market and competitive analysis
+- Sales strategy recommendations
+- Revenue optimization strategies
+
+Provide actionable sales insights and recommendations.`;
+
+      const analysisPrompt = getSalesAnalysisPrompt(promptContext, request);
+
+      const messages = [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: analysisPrompt }
+      ];
+
+      const aiResponse = await this.callGroqAPI(messages);
+      
+      // Parse the response into structured format
+      const { insights, recommendations, risk_alerts, opportunities } = this.parseBusinessResponse(aiResponse);
+
+      return {
+        insights,
+        recommendations,
+        risk_alerts,
+        opportunities,
+        confidence_score: 0.88,
+        timestamp: new Date()
+      };
+    } catch (error) {
+      console.error('Sales Insights Error:', error);
+      return {
+        insights: ['Unable to generate sales insights at this time'],
+        recommendations: ['Please try again later'],
+        confidence_score: 0.0,
+        timestamp: new Date()
+      };
+    }
+  }
+
+  async inventoryInsights(request: BusinessInsightRequest): Promise<BusinessInsightResponse> {
+    try {
+      const promptContext: PromptContext = {
+        userName: request.context?.user_name || request.context?.userName,
+        organizationName: request.context?.organization_name || request.context?.organizationName,
+        userRole: request.context?.user_role || request.context?.userRole,
+        department: request.context?.department
+      };
+
+      const systemPrompt = `You are an Inventory AI assistant specializing in inventory analysis. Analyze the provided data and provide:
+- Inventory performance insights
+- Supply chain optimization recommendations
+- Demand forecasting analysis
+- Warehouse operations insights
+- Cost and quality management strategies
+
+Provide actionable inventory insights and recommendations.`;
+
+      const analysisPrompt = getInventoryAnalysisPrompt(promptContext, request);
+
+      const messages = [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: analysisPrompt }
+      ];
+
+      const aiResponse = await this.callGroqAPI(messages);
+      
+      // Parse the response into structured format
+      const { insights, recommendations, risk_alerts, opportunities } = this.parseBusinessResponse(aiResponse);
+
+      return {
+        insights,
+        recommendations,
+        risk_alerts,
+        opportunities,
+        confidence_score: 0.87,
+        timestamp: new Date()
+      };
+    } catch (error) {
+      console.error('Inventory Insights Error:', error);
+      return {
+        insights: ['Unable to generate inventory insights at this time'],
+        recommendations: ['Please try again later'],
+        confidence_score: 0.0,
+        timestamp: new Date()
+      };
+    }
+  }
+
+  private generateSuggestions(userMessage: string, aiResponse: string, context?: any): string[] {
+    const suggestions = [];
+    
+    // Basic suggestions based on common patterns
+    if (userMessage.toLowerCase().includes('performance')) {
+      suggestions.push('View detailed performance metrics', 'Generate performance reports', 'Set up performance alerts');
+    }
+    
+    if (userMessage.toLowerCase().includes('employee') || userMessage.toLowerCase().includes('hr')) {
+      suggestions.push('Review employee data', 'Generate HR reports', 'Check hiring pipeline');
+    }
+    
+    if (userMessage.toLowerCase().includes('financial') || userMessage.toLowerCase().includes('budget')) {
+      suggestions.push('View financial dashboard', 'Generate budget reports', 'Analyze cost trends');
+    }
+    
+    if (userMessage.toLowerCase().includes('inventory') || userMessage.toLowerCase().includes('stock')) {
+      suggestions.push('Check inventory levels', 'View stock alerts', 'Generate inventory reports');
+    }
+    
+    // Default suggestions
+    if (suggestions.length === 0) {
+      suggestions.push('Ask for more specific insights', 'Request a detailed report', 'Get recommendations for improvement');
+    }
+    
+    return suggestions.slice(0, 3);
+  }
+
+  private parseBusinessResponse(response: string): { insights: string[], recommendations: string[], risk_alerts: string[], opportunities: string[] } {
+    const insights: string[] = [];
+    const recommendations: string[] = [];
+    const risk_alerts: string[] = [];
+    const opportunities: string[] = [];
+    
+    // Simple parsing logic
+    const lines = response.split('\n');
+    let currentSection = '';
+    
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+      if (!trimmedLine) continue;
+      
+      if (trimmedLine.toLowerCase().includes('insight') || trimmedLine.toLowerCase().includes('trend')) {
+        currentSection = 'insights';
+      } else if (trimmedLine.toLowerCase().includes('recommendation') || trimmedLine.toLowerCase().includes('suggestion')) {
+        currentSection = 'recommendations';
+      } else if (trimmedLine.toLowerCase().includes('risk') || trimmedLine.toLowerCase().includes('alert')) {
+        currentSection = 'risks';
+      } else if (trimmedLine.toLowerCase().includes('opportunity') || trimmedLine.toLowerCase().includes('improvement')) {
+        currentSection = 'opportunities';
+      } else if (trimmedLine.startsWith('-') || trimmedLine.startsWith('•') || trimmedLine.startsWith('*')) {
+        const content = trimmedLine.substring(1).trim();
+        switch (currentSection) {
+          case 'insights':
+            insights.push(content);
+            break;
+          case 'recommendations':
+            recommendations.push(content);
+            break;
+          case 'risks':
+            risk_alerts.push(content);
+            break;
+          case 'opportunities':
+            opportunities.push(content);
+            break;
+        }
+      }
+    }
+    
+    // If no structured sections found, treat the whole response as insights
+    if (insights.length === 0 && recommendations.length === 0) {
+      insights.push(response.length > 500 ? response.substring(0, 500) + '...' : response);
+    }
+    
+    return { insights, recommendations, risk_alerts, opportunities };
+  }
+
+  private parseHRResponse(response: string): { insights: string[], recommendations: string[], employee_suggestions: any[], training_needs: string[], retention_risks: string[], hiring_recommendations: string[] } {
+    const insights: string[] = [];
+    const recommendations: string[] = [];
+    const employee_suggestions: any[] = [];
+    const training_needs: string[] = [];
+    const retention_risks: string[] = [];
+    const hiring_recommendations: string[] = [];
+    
+    // Simple parsing logic
+    const lines = response.split('\n');
+    let currentSection = '';
+    
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+      if (!trimmedLine) continue;
+      
+      if (trimmedLine.toLowerCase().includes('insight') || trimmedLine.toLowerCase().includes('trend')) {
+        currentSection = 'insights';
+      } else if (trimmedLine.toLowerCase().includes('recommendation') || trimmedLine.toLowerCase().includes('suggestion')) {
+        currentSection = 'recommendations';
+      } else if (trimmedLine.toLowerCase().includes('employee') || trimmedLine.toLowerCase().includes('individual')) {
+        currentSection = 'employee_suggestions';
+      } else if (trimmedLine.toLowerCase().includes('training') || trimmedLine.toLowerCase().includes('development')) {
+        currentSection = 'training_needs';
+      } else if (trimmedLine.toLowerCase().includes('retention') || trimmedLine.toLowerCase().includes('risk')) {
+        currentSection = 'retention_risks';
+      } else if (trimmedLine.toLowerCase().includes('hiring') || trimmedLine.toLowerCase().includes('recruitment')) {
+        currentSection = 'hiring_recommendations';
+      } else if (trimmedLine.startsWith('-') || trimmedLine.startsWith('•') || trimmedLine.startsWith('*')) {
+        const content = trimmedLine.substring(1).trim();
+        switch (currentSection) {
+          case 'insights':
+            insights.push(content);
+            break;
+          case 'recommendations':
+            recommendations.push(content);
+            break;
+          case 'employee_suggestions':
+            employee_suggestions.push({ suggestion: content, type: 'general' });
+            break;
+          case 'training_needs':
+            training_needs.push(content);
+            break;
+          case 'retention_risks':
+            retention_risks.push(content);
+            break;
+          case 'hiring_recommendations':
+            hiring_recommendations.push(content);
+            break;
+        }
+      }
+    }
+    
+    // If no structured sections found, treat the whole response as insights
+    if (insights.length === 0 && recommendations.length === 0) {
+      insights.push(response.length > 500 ? response.substring(0, 500) + '...' : response);
+    }
+    
+    return { insights, recommendations, employee_suggestions, training_needs, retention_risks, hiring_recommendations };
   }
 }
 
