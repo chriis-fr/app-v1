@@ -196,11 +196,34 @@ export default function Sidebar() {
 
   return (
     <div className="w-64 bg-white h-screen left-20 border-r overflow-y-auto flex flex-col">
-      <div className="flex items-center gap-2 px-5 py-3 border-b">
+      <div className="flex items-center justify-between px-5 py-3 border-b">
         <div>
           <div className="text-xl text-gray-500">Chains ERP&trade;</div>
-          <div className="font-semibold">{user?.organization?.name.toUpperCase() || 'Enterprise Suite'}</div>
+          <div className="font-semibold">{user?.organization?.name?.toUpperCase() || 'Enterprise Suite'}</div>
         </div>
+        {/* Organization Logo/Initials for non-executives */}
+        {user && !['owner', 'executive'].includes(user.role) && (
+          <div className="flex-shrink-0">
+            {user.organization?.settings?.branding?.logo ? (
+              <img
+                src={user.organization.settings.branding.logo}
+                alt="Org Logo"
+                className="h-12 w-12 rounded-full object-cover border border-gray-200 bg-white"
+              />
+            ) : (
+              <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-xl border border-gray-200">
+                {user.organization?.name
+                  ? user.organization.name
+                      .split(' ')
+                      .map((w) => w[0])
+                      .join('')
+                      .slice(0, 2)
+                      .toUpperCase()
+                  : 'O'}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto p-5 space-y-6">
