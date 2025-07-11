@@ -725,6 +725,30 @@ export default function EditUserPage() {
     }
   };
 
+  const handleBlockchainSave = async () => {
+    if (!user) return;
+    setIsSaving(true);
+    try {
+      const updateData = {
+        performance: user.performance,
+        credentials: user.credentials,
+      };
+      const response = await fetch(`/api/mongodb/users/${userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updateData),
+      });
+      if (!response.ok) throw new Error('Failed to update blockchain data');
+      const updatedUser = await response.json();
+      setUser({ ...user, ...updatedUser });
+      toast({ title: 'Success', description: 'Blockchain & AI data updated.' });
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to update blockchain data', variant: 'destructive' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   // Only owner and admin can access this page
   if (!currentUser || (currentUser.role !== 'owner' && currentUser.role !== 'admin')) {
     setLocation('/dashboard');
@@ -1730,6 +1754,83 @@ export default function EditUserPage() {
             <div className="p-6 space-y-4">
               <h2 className="text-lg font-semibold flex items-center">
                 <Shield className="mr-2 h-5 w-5" />
+                Status, Verification & Executive Info
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="status">Status</Label>
+                  <Select
+                    value={status}
+                    onValueChange={(value: 'active' | 'inactive') => setStatus(value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lastLogin">Last Login</Label>
+                  <Input
+                    id="lastLogin"
+                    type="datetime-local"
+                    value={user.lastLogin || ''}
+                    onChange={(e) => setUser({ ...user, lastLogin: e.target.value })}
+                    readOnly
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="isOwner">Is Owner</Label>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="isOwner"
+                      checked={user.isOwner || false}
+                      onCheckedChange={(checked) => setUser({ ...user, isOwner: checked as boolean })}
+                    />
+                    <Label htmlFor="isOwner" className="text-sm">User is organization owner</Label>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="createdAt">Created At</Label>
+                  <Input
+                    id="createdAt"
+                    type="datetime-local"
+                    value={user.createdAt ? new Date(user.createdAt).toISOString().slice(0, 16) : ''}
+                    readOnly
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="updatedAt">Updated At</Label>
+                  <Input
+                    id="updatedAt"
+                    type="datetime-local"
+                    value={user.updatedAt ? new Date(user.updatedAt).toISOString().slice(0, 16) : ''}
+                    readOnly
+                  />
+                </div>
+              </div>
+              <div className="flex justify-between pt-4">
+                <Button type="button" onClick={() => setStep(step - 1)}>
+                  Back
+                </Button>
+                <Button type="button" onClick={handleStatusSave} disabled={isSaving}>
+                  {isSaving ? 'Saving...' : 'Save'}
+                </Button>
+                <Button type="button" onClick={() => setStep(step + 1)}>
+                  Next
+                </Button>
+              </div>
+            </div>
+          </Card>
+        )}
+        {step === 7 && (
+          <Card>
+            <div className="p-6 space-y-4">
+              <h2 className="text-lg font-semibold flex items-center">
+                <Shield className="mr-2 h-5 w-5" />
                 Module Access
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1739,14 +1840,14 @@ export default function EditUserPage() {
                     <div key={module} className="border rounded-lg p-4 space-y-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
-                    <Checkbox
+                          <Checkbox
                             id={`module-access-${module}`}
                             checked={!!modulePermission}
                             onCheckedChange={() => handleModuleToggle(module)}
                           />
                           <Label htmlFor={`module-access-${module}`} className="font-medium">
                             {moduleDisplayInfo[module]?.name || module.charAt(0).toUpperCase() + module.slice(1)}
-                    </Label>
+                          </Label>
                         </div>
                       </div>
                       {modulePermission && (
@@ -1786,7 +1887,7 @@ export default function EditUserPage() {
                           </div>
                         </div>
                       )}
-                  </div>
+                    </div>
                   );
                 })}
               </div>
@@ -1804,7 +1905,7 @@ export default function EditUserPage() {
             </div>
           </Card>
         )}
-        {step === 7 && (
+        {step === 8 && (
           <Card>
             <div className="p-6 space-y-4">
               <h2 className="text-lg font-semibold flex items-center">
@@ -1957,17 +2058,17 @@ export default function EditUserPage() {
                   </Button>
                 </div>
               </div>
-            </div>
-            <div className="flex justify-between pt-4">
-              <Button type="button" onClick={() => setStep(step - 1)}>
-                Back
-              </Button>
-              <Button type="button" onClick={() => setStep(step + 1)}>
-                Next
-              </Button>
+              <div className="flex justify-between pt-4">
+                <Button type="button" onClick={() => setStep(step - 1)}>
+                  Back
+                </Button>
+                <Button type="button" onClick={() => setStep(step + 1)}>
+                  Next
+                </Button>
               </div>
-            </Card>
-          )}
+            </div>
+          </Card>
+        )}
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="flex justify-end mt-8">
             <Button type="submit" disabled={isSaving}>
