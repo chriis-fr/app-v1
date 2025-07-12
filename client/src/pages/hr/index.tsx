@@ -71,6 +71,11 @@ export default function HRPage() {
     }
     
     fetchEmployees();
+    
+    // Refresh attendance data every 30 seconds
+    // const attendanceInterval = setInterval(fetchAttendanceData, 30000);
+    
+    // return () => clearInterval(attendanceInterval);
   }, [user]);
 
   const fetchEmployees = async () => {

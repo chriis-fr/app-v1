@@ -685,3 +685,56 @@ model VendorContract {
 
   @@map("vendor_contracts")
 }
+
+model Attendance {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  employeeId    String   // Can be user ID or manual employee ID
+  employeeName  String   // Name for workers without login access
+  date          DateTime @db.Date
+  status        String   // "present", "absent", "late", "half-day"
+  checkInTime   DateTime?
+  checkOutTime  DateTime?
+  totalHours    Float?   // Calculated work hours
+  notes         String?  // Optional work notes
+  markedBy      String?  // Who marked the attendance (user ID or "manual")
+  organizationId String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([employeeId, date, organizationId])
+  @@index([organizationId, date])
+  @@index([employeeId])
+}
+
+model AttendanceLog {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  employeeId    String
+  employeeName  String
+  logType       String   // "check-in", "check-out"
+  timestamp     DateTime @default(now())
+  location      String?  // Optional location tracking
+  device        String?  // Device used for check-in
+  notes         String?
+  organizationId String
+  markedBy      String?  // Who created this log
+
+  @@index([organizationId, employeeId, timestamp])
+  @@index([timestamp])
+}
+
+model WorkNote {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  employeeId    String
+  employeeName  String
+  date          DateTime @db.Date
+  workDescription String
+  hoursWorked   Float?
+  project       String?
+  tasks         String?
+  organizationId String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([employeeId, date, organizationId])
+  @@index([organizationId, date])
+}

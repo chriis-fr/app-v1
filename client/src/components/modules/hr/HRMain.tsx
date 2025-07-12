@@ -25,6 +25,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { AIDepartmentInsights } from '@/components/ai/AIDepartmentInsights';
 
+
 interface PayrollData {
   employeeId: string;
   amount: number;
@@ -103,10 +104,10 @@ export default function HRMain() {
   useEffect(() => {
     fetchData();
     
-    // Set up real-time data refresh every 60 seconds (reduced from 30)
+    // Set up real-time data refresh every 30 seconds for attendance
     const interval = setInterval(() => {
       fetchData();
-    }, 60000);
+    }, 30000);
     
     return () => clearInterval(interval);
   }, []);
@@ -143,7 +144,7 @@ export default function HRMain() {
       ] = await Promise.all([
         fetch('/api/hr/employees', { credentials: 'include' }),
         fetch('/api/hr/payroll', { credentials: 'include' }),
-        fetch('/api/hr/attendance', { credentials: 'include' }),
+        fetch('/api/attendance/live', { credentials: 'include' }),
         fetch('/api/hr/leave-requests', { credentials: 'include' }),
         fetch('/api/hr/holidays', { credentials: 'include' }),
         fetch('/api/hr/birthdays', { credentials: 'include' }),
@@ -174,8 +175,16 @@ export default function HRMain() {
       }
 
       if (attendanceResponse.ok) {
-      const attendanceData = await attendanceResponse.json();
-      setAttendance(attendanceData);
+        const attendanceData = await attendanceResponse.json();
+        console.log('Attendance data from live API:', attendanceData);
+        // Transform the attendance data to match our interface
+        const transformedAttendance = attendanceData.attendance?.map((a: any) => ({
+          employeeId: a.employeeId,
+          checkInTime: a.checkInTime ? new Date(a.checkInTime) : new Date(),
+          checkOutTime: a.checkOutTime ? new Date(a.checkOutTime) : undefined,
+          status: a.status || 'absent'
+        })) || [];
+        setAttendance(transformedAttendance);
       }
 
       if (leaveRequestsResponse.ok) {
@@ -337,55 +346,168 @@ export default function HRMain() {
             <TabsContent value="dashboard" className="space-y-6">
               {/* Summary Cards */}
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Card>
+                <Card className="border-2 border-green-200 bg-gradient-to-br from-green-50 to-green-100 hover:shadow-lg transition-all duration-300">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Present Employees</CardTitle>
-                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <CardTitle className="text-sm font-medium text-green-800">Present Employees</CardTitle>
+                    <div className="bg-green-600 text-white rounded-full p-2">
+                      <CheckCircle className="h-4 w-4" />
+                    </div>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{presentEmployees}</div>
-                    <p className="text-xs text-muted-foreground">
+                    <div className="text-3xl font-bold text-green-700">{presentEmployees}</div>
+                    <p className="text-xs text-green-600 font-medium">
                       out of {employees.length} total
                     </p>
+                    <div className="mt-2">
+                      <div className="flex items-center gap-1">
+                        <div className="flex-1 bg-green-200 rounded-full h-2">
+                          <div 
+                            className="bg-green-600 h-2 rounded-full transition-all duration-300" 
+                            style={{ width: `${employees.length > 0 ? (presentEmployees / employees.length) * 100 : 0}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-xs text-green-600 font-medium">
+                          {employees.length > 0 ? Math.round((presentEmployees / employees.length) * 100) : 0}%
+                        </span>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
-                <Card>
+                <Card className="border-2 border-red-200 bg-gradient-to-br from-red-50 to-red-100 hover:shadow-lg transition-all duration-300">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Absent Employees</CardTitle>
-                    <XCircle className="h-4 w-4 text-red-600" />
+                    <CardTitle className="text-sm font-medium text-red-800">Absent Employees</CardTitle>
+                    <div className="bg-red-600 text-white rounded-full p-2">
+                      <XCircle className="h-4 w-4" />
+                    </div>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{absentEmployees}</div>
-                    <p className="text-xs text-muted-foreground">
+                    <div className="text-3xl font-bold text-red-700">{absentEmployees}</div>
+                    <p className="text-xs text-red-600 font-medium">
                       out of {employees.length} total
                     </p>
+                    <div className="mt-2">
+                      <div className="flex items-center gap-1">
+                        <div className="flex-1 bg-red-200 rounded-full h-2">
+                          <div 
+                            className="bg-red-600 h-2 rounded-full transition-all duration-300" 
+                            style={{ width: `${employees.length > 0 ? (absentEmployees / employees.length) * 100 : 0}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-xs text-red-600 font-medium">
+                          {employees.length > 0 ? Math.round((absentEmployees / employees.length) * 100) : 0}%
+                        </span>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
-                <Card>
+                <Card className="border-2 border-yellow-200 bg-gradient-to-br from-yellow-50 to-yellow-100 hover:shadow-lg transition-all duration-300">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Break In</CardTitle>
-                    <Clock className="h-4 w-4 text-yellow-600" />
+                    <CardTitle className="text-sm font-medium text-yellow-800">Break In</CardTitle>
+                    <div className="bg-yellow-600 text-white rounded-full p-2">
+                      <Clock className="h-4 w-4" />
+                    </div>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{breakInEmployees}</div>
-                    <p className="text-xs text-muted-foreground">
+                    <div className="text-3xl font-bold text-yellow-700">{breakInEmployees}</div>
+                    <p className="text-xs text-yellow-600 font-medium">
                       currently on break
                     </p>
+                    <div className="mt-2">
+                      <div className="flex items-center gap-1">
+                        <div className="flex-1 bg-yellow-200 rounded-full h-2">
+                          <div 
+                            className="bg-yellow-600 h-2 rounded-full transition-all duration-300" 
+                            style={{ width: `${employees.length > 0 ? (breakInEmployees / employees.length) * 100 : 0}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-xs text-yellow-600 font-medium">
+                          {employees.length > 0 ? Math.round((breakInEmployees / employees.length) * 100) : 0}%
+                        </span>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
-                <Card>
+                <Card className="border-2 border-gray-200 bg-gradient-to-br from-gray-50 to-gray-100 hover:shadow-lg transition-all duration-300">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Logged Out</CardTitle>
-                    <AlertCircle className="h-4 w-4 text-gray-600" />
+                    <CardTitle className="text-sm font-medium text-gray-800">Logged Out</CardTitle>
+                    <div className="bg-gray-600 text-white rounded-full p-2">
+                      <AlertCircle className="h-4 w-4" />
+                    </div>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{logoutEmployees}</div>
-                    <p className="text-xs text-muted-foreground">
+                    <div className="text-3xl font-bold text-gray-700">{logoutEmployees}</div>
+                    <p className="text-xs text-gray-600 font-medium">
                       currently logged out
                     </p>
+                    <div className="mt-2">
+                      <div className="flex items-center gap-1">
+                        <div className="flex-1 bg-gray-200 rounded-full h-2">
+                          <div 
+                            className="bg-gray-600 h-2 rounded-full transition-all duration-300" 
+                            style={{ width: `${employees.length > 0 ? (logoutEmployees / employees.length) * 100 : 0}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-xs text-gray-600 font-medium">
+                          {employees.length > 0 ? Math.round((logoutEmployees / employees.length) * 100) : 0}%
+                        </span>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               </div>
+
+              {/* Quick Attendance Actions */}
+              <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-blue-900 flex items-center gap-2">
+                      <Clock className="h-5 w-5" />
+                      Quick Attendance Actions
+                    </CardTitle>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={fetchData}
+                      disabled={loading}
+                      className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                    >
+                      {loading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Clock className="h-4 w-4" />
+                      )}
+                      Refresh
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex gap-4">
+                    <Button 
+                      onClick={() => setLocation('/attendance')} 
+                      className="flex-1 bg-green-600 hover:bg-green-700"
+                    >
+                      <CheckCircle className="mr-2 h-4 w-4" />
+                      Mark Attendance
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setLocation('/attendance/manual')} 
+                      className="flex-1"
+                    >
+                      <UserPlus className="mr-2 h-4 w-4" />
+                      Manual Entry
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setLocation('/attendance/remote')} 
+                      className="flex-1"
+                    >
+                      <Package className="mr-2 h-4 w-4" />
+                      Remote Attendance
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
 
               {/* Leave Balance Cards */}
               <div className="grid gap-4 md:grid-cols-5">
@@ -527,6 +649,8 @@ export default function HRMain() {
                   </CardContent>
                 </Card>
               </div>
+
+            
 
               {/* AI Insights */}
               <AIDepartmentInsights />

@@ -60,6 +60,8 @@ import LeaveManagementPage from '@/pages/hr/leave-management';
 import PayrollPage from '@/pages/hr/payroll';
 import NotificationsPage from '@/pages/notifications';
 import PublicJobApplication from '@/pages/jobs/[publicId]';
+import AttendancePage from './pages/attendance';
+import ManualAttendancePage from './pages/attendance/manual';
 
 // New timezone-aware features
 import TimeTrackingPage from '@/pages/app/time-tracking';
@@ -186,6 +188,8 @@ function App() {
                 <ProtectedRoute path="/dashboard/finance/:module" component={FinanceModulePage} />
                 <ProtectedRoute path="/dashboard/procurement" component={ProcurementMain} />
                 <ProtectedRoute path="/analytics" component={AnalyticsPage} />
+                <Route path="/attendance" component={AttendancePage} />
+                <Route path="/attendance/manual" component={ManualAttendancePage} />
                 <Route component={NotFound} />
               </Switch>
               <Toaster />

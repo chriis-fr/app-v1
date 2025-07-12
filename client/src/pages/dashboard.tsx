@@ -83,6 +83,14 @@ export default function Dashboard() {
     enabled: orgModules.includes('pos'),
   });
 
+  // Fetch attendance data for HR module
+  const { data: attendanceData } = useQuery({
+    queryKey: ['attendance-live'],
+    queryFn: () => api.get('/attendance/live'),
+    enabled: orgModules.includes('hr'),
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
+
   if (!canAccessDashboard()) {
     return null;
   }
@@ -297,6 +305,169 @@ export default function Dashboard() {
                 </Card>
               )}
             </div>
+
+            {/* Enhanced Attendance Cards - Only show if HR module is enabled */}
+            {orgModules.includes('hr') && attendanceData && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-2xl font-bold text-gray-900">Live Attendance Overview</h3>
+                  <div className="text-sm text-gray-500">
+                    Last updated: {new Date().toLocaleTimeString()}
+                  </div>
+                </div>
+                
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                  <Card className="border-2 border-green-200 bg-gradient-to-br from-green-50 to-green-100 hover:shadow-lg transition-all duration-300">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium text-green-800">Present Employees</CardTitle>
+                      <div className="bg-green-600 text-white rounded-full p-2">
+                        <CheckCircle className="h-4 w-4" />
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-3xl font-bold text-green-700">{attendanceData.present || 0}</div>
+                      <p className="text-xs text-green-600 font-medium">
+                        out of {attendanceData.totalEmployees || employees?.length || 0} total
+                      </p>
+                      <div className="mt-2">
+                        <div className="flex items-center gap-1">
+                          <div className="flex-1 bg-green-200 rounded-full h-2">
+                            <div 
+                              className="bg-green-600 h-2 rounded-full transition-all duration-300" 
+                              style={{ width: `${(attendanceData.totalEmployees || employees?.length || 0) > 0 ? ((attendanceData.present || 0) / (attendanceData.totalEmployees || employees?.length || 0)) * 100 : 0}%` }}
+                            ></div>
+                          </div>
+                          <span className="text-xs text-green-600 font-medium">
+                            {(attendanceData.totalEmployees || employees?.length || 0) > 0 ? Math.round(((attendanceData.present || 0) / (attendanceData.totalEmployees || employees?.length || 0)) * 100) : 0}%
+                          </span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-2 border-red-200 bg-gradient-to-br from-red-50 to-red-100 hover:shadow-lg transition-all duration-300">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium text-red-800">Absent Employees</CardTitle>
+                      <div className="bg-red-600 text-white rounded-full p-2">
+                        <AlertTriangle className="h-4 w-4" />
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-3xl font-bold text-red-700">{attendanceData.absent || 0}</div>
+                      <p className="text-xs text-red-600 font-medium">
+                        out of {attendanceData.totalEmployees || employees?.length || 0} total
+                      </p>
+                      <div className="mt-2">
+                        <div className="flex items-center gap-1">
+                          <div className="flex-1 bg-red-200 rounded-full h-2">
+                            <div 
+                              className="bg-red-600 h-2 rounded-full transition-all duration-300" 
+                              style={{ width: `${(attendanceData.totalEmployees || employees?.length || 0) > 0 ? ((attendanceData.absent || 0) / (attendanceData.totalEmployees || employees?.length || 0)) * 100 : 0}%` }}
+                            ></div>
+                          </div>
+                          <span className="text-xs text-red-600 font-medium">
+                            {(attendanceData.totalEmployees || employees?.length || 0) > 0 ? Math.round(((attendanceData.absent || 0) / (attendanceData.totalEmployees || employees?.length || 0)) * 100) : 0}%
+                          </span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-2 border-yellow-200 bg-gradient-to-br from-yellow-50 to-yellow-100 hover:shadow-lg transition-all duration-300">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium text-yellow-800">Late Employees</CardTitle>
+                      <div className="bg-yellow-600 text-white rounded-full p-2">
+                        <Calendar className="h-4 w-4" />
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-3xl font-bold text-yellow-700">{attendanceData.late || 0}</div>
+                      <p className="text-xs text-yellow-600 font-medium">
+                        currently late
+                      </p>
+                      <div className="mt-2">
+                        <div className="flex items-center gap-1">
+                          <div className="flex-1 bg-yellow-200 rounded-full h-2">
+                            <div 
+                              className="bg-yellow-600 h-2 rounded-full transition-all duration-300" 
+                              style={{ width: `${(attendanceData.totalEmployees || employees?.length || 0) > 0 ? ((attendanceData.late || 0) / (attendanceData.totalEmployees || employees?.length || 0)) * 100 : 0}%` }}
+                            ></div>
+                          </div>
+                          <span className="text-xs text-yellow-600 font-medium">
+                            {(attendanceData.totalEmployees || employees?.length || 0) > 0 ? Math.round(((attendanceData.late || 0) / (attendanceData.totalEmployees || employees?.length || 0)) * 100) : 0}%
+                          </span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100 hover:shadow-lg transition-all duration-300">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium text-blue-800">Attendance Rate</CardTitle>
+                      <div className="bg-blue-600 text-white rounded-full p-2">
+                        <BarChart3 className="h-4 w-4" />
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-3xl font-bold text-blue-700">
+                        {(attendanceData.totalEmployees || employees?.length || 0) > 0 ? Math.round(((attendanceData.present || 0) / (attendanceData.totalEmployees || employees?.length || 0)) * 100) : 0}%
+                      </div>
+                      <p className="text-xs text-blue-600 font-medium">
+                        overall attendance
+                      </p>
+                      <div className="mt-2">
+                        <div className="flex items-center gap-1">
+                          <div className="flex-1 bg-blue-200 rounded-full h-2">
+                            <div 
+                              className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                              style={{ width: `${(attendanceData.totalEmployees || employees?.length || 0) > 0 ? ((attendanceData.present || 0) / (attendanceData.totalEmployees || employees?.length || 0)) * 100 : 0}%` }}
+                            ></div>
+                          </div>
+                          <span className="text-xs text-blue-600 font-medium">
+                            {attendanceData.present || 0} present
+                          </span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Quick Actions */}
+                <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100">
+                  <CardHeader>
+                    <CardTitle className="text-blue-900 flex items-center gap-2">
+                      <Calendar className="h-5 w-5" />
+                      Quick Attendance Actions
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex gap-4">
+                      <button 
+                        onClick={() => setLocation('/attendance')} 
+                        className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors"
+                      >
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                        Mark Attendance
+                      </button>
+                      <button 
+                        onClick={() => setLocation('/attendance/manual')} 
+                        className="flex-1 border border-gray-300 hover:bg-gray-50 px-4 py-2 rounded-lg transition-colors"
+                      >
+                        <UserPlus className="mr-2 h-4 w-4" />
+                        Manual Entry
+                      </button>
+                      <button 
+                        onClick={() => setLocation('/attendance/remote')} 
+                        className="flex-1 border border-gray-300 hover:bg-gray-50 px-4 py-2 rounded-lg transition-colors"
+                      >
+                        <Package className="mr-2 h-4 w-4" />
+                        Remote Attendance
+                      </button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
 
         {/* High-level analytics and company stats only. No module dashboards. */}
         {['pos','hr','accounting','blockchain'].some(m => orgModules.includes(m)) && (

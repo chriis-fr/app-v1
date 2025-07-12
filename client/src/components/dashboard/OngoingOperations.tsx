@@ -1,9 +1,20 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Activity, Clock, Users, FileText, ArrowRightLeft, AlertCircle } from 'lucide-react';
+import { Activity, Clock, Users, FileText, ArrowRightLeft, AlertCircle, CheckCircle, XCircle, Calendar } from 'lucide-react';
 import { staticData } from '@/data/static';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@/lib/api';
+import { useAuth } from '@/hooks/use-auth';
 
 export function OngoingOperations() {
   const { blockchain, hr, accounting } = staticData;
+  const { user } = useAuth();
+
+  // Fetch live attendance data
+  const { data: attendanceData } = useQuery({
+    queryKey: ['attendance-live-operations'],
+    queryFn: () => api.get('/attendance/live'),
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
 
   // Combine recent activities from different modules
   const recentActivities = [
@@ -31,6 +42,21 @@ export function OngoingOperations() {
   ].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
    .slice(0, 5);
 
+  // Add attendance activities if data is available
+  const attendanceActivities = attendanceData ? [
+    {
+      type: 'attendance',
+      title: 'Live Attendance Update',
+      description: `${attendanceData.present || 0} present, ${attendanceData.absent || 0} absent, ${attendanceData.late || 0} late`,
+      timestamp: new Date(),
+      status: 'Live'
+    }
+  ] : [];
+
+  const allActivities = [...attendanceActivities, ...recentActivities]
+    .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+    .slice(0, 5);
+
   return (
     <div className="space-y-6">
       <h3 className="text-xl font-semibold">Ongoing Operations</h3>
@@ -46,12 +72,13 @@ export function OngoingOperations() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {recentActivities.map((activity, index) => (
+              {allActivities.map((activity, index) => (
                 <div key={index} className="flex items-start gap-3">
                   <div className="mt-1">
                     {activity.type === 'transaction' && <ArrowRightLeft className="h-4 w-4 text-blue-500" />}
                     {activity.type === 'employee' && <Users className="h-4 w-4 text-green-500" />}
                     {activity.type === 'invoice' && <FileText className="h-4 w-4 text-purple-500" />}
+                    {activity.type === 'attendance' && <Calendar className="h-4 w-4 text-red-500" />}
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
@@ -63,8 +90,8 @@ export function OngoingOperations() {
                     <p className="text-sm text-muted-foreground">{activity.description}</p>
                     <div className="mt-1">
                       <span className={`text-xs px-2 py-1 rounded-full ${
-                        activity.status === 'Completed' || activity.status === 'Paid' ? 'bg-green-100 text-green-700' :
-                        activity.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
+                        activity.status === 'Completed' || activity.status === 'Paid' || activity.status === 'Live' ? 'bg-green-100 text-green-700' :
+                        activity.status === 'Pending' || activity.status === 'Absent' || activity.status === 'Late' ? 'bg-yellow-100 text-yellow-700' :
                         'bg-blue-100 text-blue-700'
                       }`}>
                         {activity.status}
@@ -127,6 +154,61 @@ export function OngoingOperations() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Attendance Status */}
+        {attendanceData && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="h-5 w-5" />
+                Live Attendance Status
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="p-4 bg-green-50 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                      <p className="text-sm font-medium text-green-800">Present</p>
+                    </div>
+                    <p className="text-2xl font-bold text-green-700">{attendanceData.present || 0}</p>
+                  </div>
+                  <div className="p-4 bg-red-50 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <XCircle className="h-4 w-4 text-red-600" />
+                      <p className="text-sm font-medium text-red-800">Absent</p>
+                    </div>
+                    <p className="text-2xl font-bold text-red-700">{attendanceData.absent || 0}</p>
+                  </div>
+                  <div className="p-4 bg-yellow-50 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-yellow-600" />
+                      <p className="text-sm font-medium text-yellow-800">Late</p>
+                    </div>
+                    <p className="text-2xl font-bold text-yellow-700">{attendanceData.late || 0}</p>
+                  </div>
+                </div>
+
+                {/* Attendance Rate */}
+                <div className="p-4 bg-blue-50 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-blue-800">Attendance Rate</p>
+                      <p className="text-2xl font-bold text-blue-700">
+                        {(attendanceData.totalEmployees || 0) > 0 ? Math.round(((attendanceData.present || 0) / (attendanceData.totalEmployees || 0)) * 100) : 0}%
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm text-blue-600">Total Employees</p>
+                      <p className="text-lg font-semibold text-blue-700">{attendanceData.totalEmployees || 0}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Alerts and Notifications */}

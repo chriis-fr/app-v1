@@ -58,7 +58,11 @@ export default function Sidebar() {
         id: 'hr',
         name: 'HR Management',
         icon: Users,
-        route: '/hr'
+        route: '/hr',
+        subItems: [
+          { id: 'attendance', name: 'Attendance', icon: Clock, route: '/attendance' },
+          { id: 'hr-dashboard', name: 'HR Dashboard', icon: BarChart, route: '/hr' }
+        ]
       },
       { id: 'inventory', name: 'Inventory', icon: Package, route: '/dashboard/inventory/info' }
     ],

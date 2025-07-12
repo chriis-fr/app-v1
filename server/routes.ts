@@ -16,9 +16,10 @@ import type { User as PrismaUser, Prisma } from '../node_modules/.prisma/client'
 import type { User as SharedUser } from '@shared/schema';
 import bcrypt from 'bcryptjs';
 import hrRouter from './src/routes/hr';
-  import aiRouter from './routes/ai';
-  import organizationRouter from './routes/organization';
-  import procurementRouter from './routes/procurement';
+import aiRouter from './routes/ai';
+import organizationRouter from './routes/organization';
+import procurementRouter from './routes/procurement';
+import attendanceRouter from './routes/attendance';
 import jwt from 'jsonwebtoken';
 import { getCountryConfig } from '@/config/countries';
 import { businessTypeConfig } from './config/business-types';
@@ -189,6 +190,9 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
 
   // Mount Procurement routes
   app.use('/api/procurement', procurementRouter);
+
+  // Mount Attendance routes
+  app.use('/api/attendance', attendanceRouter);
 
   // User profile routes
   app.put('/api/user/profile', async (req: Request, res: Response) => {
@@ -1052,8 +1056,8 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
     try {
       console.log('Testing Employee model...');
       
-      // Import Employee model
-      const { Employee } = require('./mongodb/models/hr');
+      // Import Employee model using dynamic import
+      const { Employee } = await import('./mongodb/models/hr');
       console.log('Employee model imported successfully');
       
       // Test basic operations
@@ -1111,7 +1115,7 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
       // Import Employee model with error handling
       let Employee;
       try {
-        const hrModels = require('./mongodb/models/hr');
+        const hrModels = await import('./mongodb/models/hr');
         Employee = hrModels.Employee;
         console.log('Employee model imported successfully');
       } catch (importError: any) {
