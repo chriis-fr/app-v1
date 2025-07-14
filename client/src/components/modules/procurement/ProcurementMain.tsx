@@ -40,8 +40,6 @@ import {
   CheckSquare
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
-import { api } from '@/lib/api';
-import { axiosInstance } from '@/lib/api';
 import ProcurementAnalytics from './ProcurementAnalytics';
 import ProcurementPolicyManager from './ProcurementPolicyManager';
 import ProcurementCommitteeManager from './ProcurementCommitteeManager';
@@ -57,7 +55,8 @@ interface ProcurementRequest {
   title: string;
   description: string;
   category: string;
-  estimatedAmount: number;
+  estimatedAmount?: number;
+  estimatedCost?: number;
   priority: string;
   status: string;
   department: string;
@@ -194,11 +193,11 @@ export default function ProcurementMain() {
   const [complianceStatus, setComplianceStatus] = useState<any>(null);
 
   // Role-based access control
-  const canCreateRequest = user?.role === 'admin' || user?.role === 'manager' || user?.isOwner;
-  const canApproveRequest = user?.role === 'admin' || user?.isOwner;
+  const canCreateRequest = user?.role === 'admin' || user?.role === 'manager' || user?.role === 'hr_admin' || user?.isOwner;
+  const canApproveRequest = user?.role === 'admin' || user?.role === 'executive' || user?.role === 'accounting' || user?.isOwner;
   const canManagePolicies = user?.role === 'admin' || user?.isOwner;
   const canManageCommittee = user?.role === 'admin' || user?.isOwner;
-  const canViewAnalytics = user?.role === 'admin' || user?.role === 'manager' || user?.isOwner;
+  const canViewAnalytics = user?.role === 'admin' || user?.role === 'manager' || user?.role === 'executive' || user?.isOwner;
 
   // Form states
   const [newRequest, setNewRequest] = useState({
@@ -259,18 +258,51 @@ export default function ProcurementMain() {
     try {
       setLoading(true);
       const [requestsRes, ordersRes, suppliersRes, expensesRes, budgetsRes] = await Promise.all([
-        api.get('/procurement/requests'),
-        api.get('/procurement/purchase-orders'),
-        api.get('/procurement/suppliers'),
-        api.get('/procurement/expenses'),
-        api.get('/procurement/budgets')
+        fetch('/api/procurement/requests', { credentials: 'include' }),
+        fetch('/api/procurement/purchase-orders', { credentials: 'include' }),
+        fetch('/api/procurement/suppliers', { credentials: 'include' }),
+        fetch('/api/procurement/expenses', { credentials: 'include' }),
+        fetch('/api/procurement/budgets', { credentials: 'include' })
       ]);
 
-      if (requestsRes.ok) setProcurementRequests(await requestsRes.json());
-      if (ordersRes.ok) setPurchaseOrders(await ordersRes.json());
-      if (suppliersRes.ok) setSuppliers(await suppliersRes.json());
-      if (expensesRes.ok) setExpenseRequests(await expensesRes.json());
-      if (budgetsRes.ok) setBudgets(await budgetsRes.json());
+      console.log('Procurement API Responses:', {
+        requests: requestsRes.status,
+        orders: ordersRes.status,
+        suppliers: suppliersRes.status,
+        expenses: expensesRes.status,
+        budgets: budgetsRes.status
+      });
+
+      if (requestsRes.ok) {
+        const requestsData = await requestsRes.json();
+        console.log('Procurement Main - Raw requests data:', requestsData);
+        const processedRequests = requestsData.requests || requestsData;
+        console.log('Procurement Main - Processed requests:', processedRequests);
+        console.log('Procurement Main - Requests count:', processedRequests.length);
+        setProcurementRequests(processedRequests);
+      } else {
+        console.error('Procurement Main - Requests response not ok:', requestsRes.status);
+      }
+      if (ordersRes.ok) {
+        const ordersData = await ordersRes.json();
+        console.log('Purchase Orders Data:', ordersData);
+        setPurchaseOrders(ordersData.purchaseOrders || ordersData);
+      }
+      if (suppliersRes.ok) {
+        const suppliersData = await suppliersRes.json();
+        console.log('Suppliers Data:', suppliersData);
+        setSuppliers(suppliersData);
+      }
+      if (expensesRes.ok) {
+        const expensesData = await expensesRes.json();
+        console.log('Expenses Data:', expensesData);
+        setExpenseRequests(expensesData.expenses || expensesData);
+      }
+      if (budgetsRes.ok) {
+        const budgetsData = await budgetsRes.json();
+        console.log('Budgets Data:', budgetsData);
+        setBudgets(budgetsData);
+      }
     } catch (error) {
       console.error('Error fetching procurement data:', error);
     } finally {
@@ -286,7 +318,14 @@ export default function ProcurementMain() {
         departments: [newRequest.department], // Send as array for multi-department support
         estimatedAmount: parseFloat(newRequest.estimatedAmount) || 0
       };
-      const response = await api.post('/procurement/requests', requestData);
+      const response = await fetch('/api/procurement/requests', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(requestData)
+      });
       if (response.ok) {
         setShowCreateRequest(false);
         setNewRequest({
@@ -321,7 +360,14 @@ export default function ProcurementMain() {
         departments: [newExpense.department], // Send as array for multi-department support
         amount: parseFloat(newExpense.amount) || 0
       };
-      const response = await api.post('/procurement/expenses', expenseData);
+      const response = await fetch('/api/procurement/expenses', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(expenseData)
+      });
       if (response.ok) {
         setShowCreateExpense(false);
         setNewExpense({
@@ -344,7 +390,14 @@ export default function ProcurementMain() {
 
   const handleCreateSupplier = async () => {
     try {
-      const response = await api.post('/procurement/suppliers', newSupplier);
+      const response = await fetch('/api/procurement/suppliers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(newSupplier)
+      });
       if (response.ok) {
         setShowCreateSupplier(false);
         setNewSupplier({
@@ -364,7 +417,14 @@ export default function ProcurementMain() {
 
   const handleCreateBudget = async () => {
     try {
-      const response = await api.post('/procurement/budgets', newBudget);
+      const response = await fetch('/api/procurement/budgets', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(newBudget)
+      });
       if (response.ok) {
         setShowCreateBudget(false);
         setNewBudget({
@@ -386,7 +446,14 @@ export default function ProcurementMain() {
 
   const handleApproveRequest = async (id: string, status: string) => {
     try {
-      const response = await api.post(`/procurement/requests/${id}/approve`, { status });
+      const response = await fetch(`/api/procurement/requests/${id}/approve`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ status })
+      });
       if (response.ok) {
         fetchData();
       }
@@ -397,7 +464,14 @@ export default function ProcurementMain() {
 
   const handleApproveExpense = async (id: string, status: string) => {
     try {
-      const response = await api.post(`/procurement/expenses/${id}/approve`, { status });
+      const response = await fetch(`/api/procurement/expenses/${id}/approve`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ status })
+      });
       if (response.ok) {
         fetchData();
       }
@@ -408,12 +482,12 @@ export default function ProcurementMain() {
 
   const handleDownloadPDF = async (id: string) => {
     try {
-      const response = await axiosInstance.get(`/procurement/requests/${id}/pdf`, {
-        responseType: 'blob'
+      const response = await fetch(`/api/procurement/requests/${id}/pdf`, {
+        credentials: 'include'
       });
       
-      if (response.status === 200) {
-        const blob = response.data;
+      if (response.ok) {
+        const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
@@ -522,20 +596,29 @@ export default function ProcurementMain() {
 
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold">Procurement</h1>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              Procurement Management
+            </h1>
             <p className="text-muted-foreground">
-              Manage purchase requests, suppliers, and expense approvals
+              Manage purchase requests, suppliers, and expense approvals with comprehensive tracking
             </p>
           </div>
           <div className="flex gap-2">
             {canCreateRequest && (
-              <Button onClick={() => setShowCreateRequest(true)}>
+              <Button 
+                onClick={() => setShowCreateRequest(true)}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+              >
                 <Plus className="w-4 h-4 mr-2" />
                 New Request
               </Button>
             )}
             {canCreateRequest && (
-              <Button variant="outline" onClick={() => setShowCreateExpense(true)}>
+              <Button 
+                variant="outline" 
+                onClick={() => setShowCreateExpense(true)}
+                className="border-blue-300 text-blue-600 hover:bg-blue-50"
+              >
                 <Receipt className="w-4 h-4 mr-2" />
                 New Expense
               </Button>
@@ -543,98 +626,197 @@ export default function ProcurementMain() {
           </div>
         </div>
 
-        {/* Summary Cards */}
+        {/* Enhanced Summary Cards */}
         <div className="grid gap-4 md:grid-cols-4">
-          <Card>
+          <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100 hover:shadow-lg transition-all duration-300">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Requests</CardTitle>
-              <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-blue-800">Total Requests</CardTitle>
+              <div className="bg-blue-600 text-white rounded-full p-2">
+                <ShoppingCart className="h-4 w-4" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{procurementRequests.length}</div>
-              <p className="text-xs text-muted-foreground">
-                {procurementRequests.filter(r => r.status === 'Pending').length} pending
+              <div className="text-2xl font-bold text-blue-700">{procurementRequests.length}</div>
+              <p className="text-xs text-blue-600 font-medium">
+                ${procurementRequests.reduce((sum, r) => sum + (r.estimatedCost || r.estimatedAmount || 0), 0).toLocaleString()} total value
               </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-2 border-green-200 bg-gradient-to-br from-green-50 to-green-100 hover:shadow-lg transition-all duration-300">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Purchase Orders</CardTitle>
-              <FileText className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-green-800">Purchase Orders</CardTitle>
+              <div className="bg-green-600 text-white rounded-full p-2">
+                <FileText className="h-4 w-4" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{purchaseOrders.length}</div>
-              <p className="text-xs text-muted-foreground">
-                ${purchaseOrders.reduce((sum, po) => sum + po.totalAmount, 0).toLocaleString()}
+              <div className="text-2xl font-bold text-green-700">{purchaseOrders.length}</div>
+              <p className="text-xs text-green-600 font-medium">
+                ${purchaseOrders.reduce((sum, po) => sum + (po.totalAmount || 0), 0).toLocaleString()} total value
               </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-purple-100 hover:shadow-lg transition-all duration-300">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Suppliers</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-purple-800">Suppliers</CardTitle>
+              <div className="bg-purple-600 text-white rounded-full p-2">
+                <Users className="h-4 w-4" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{suppliers.length}</div>
-              <p className="text-xs text-muted-foreground">
+              <div className="text-2xl font-bold text-purple-700">{suppliers.length}</div>
+              <p className="text-xs text-purple-600 font-medium">
                 {suppliers.filter(s => s.status === 'Active').length} active
               </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-2 border-orange-200 bg-gradient-to-br from-orange-50 to-orange-100 hover:shadow-lg transition-all duration-300">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-orange-800">Total Expenses</CardTitle>
+              <div className="bg-orange-600 text-white rounded-full p-2">
+                <DollarSign className="h-4 w-4" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                ${expenseRequests.reduce((sum, exp) => sum + exp.amount, 0).toLocaleString()}
+              <div className="text-2xl font-bold text-orange-700">
+                ${expenseRequests.reduce((sum, exp) => sum + (exp.amount || 0), 0).toLocaleString()}
               </div>
-              <p className="text-xs text-muted-foreground">
-                {expenseRequests.filter(e => e.status === 'Approved').length} approved
+              <p className="text-xs text-orange-600 font-medium">
+                {expenseRequests.filter(e => e.status === 'approved').length} approved
               </p>
             </CardContent>
           </Card>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-14">
-            <TabsTrigger value="requests">Requests ({procurementRequests.length})</TabsTrigger>
-            <TabsTrigger value="rfps">RFPs (0)</TabsTrigger>
-            <TabsTrigger value="contracts">Contracts (0)</TabsTrigger>
-            <TabsTrigger value="orders">Orders ({purchaseOrders.length})</TabsTrigger>
-            <TabsTrigger value="grns">GRNs (0)</TabsTrigger>
-            <TabsTrigger value="suppliers">Suppliers ({suppliers.length})</TabsTrigger>
-            <TabsTrigger value="vendors">Vendors (0)</TabsTrigger>
-            <TabsTrigger value="expenses">Expenses ({expenseRequests.length})</TabsTrigger>
-            <TabsTrigger value="budgets">Budgets ({budgets.length})</TabsTrigger>
-            {canManagePolicies && <TabsTrigger value="policies">Policies</TabsTrigger>}
-            {canManageCommittee && <TabsTrigger value="committee">Committee</TabsTrigger>}
-            <TabsTrigger value="notifications">Notifications</TabsTrigger>
-            <TabsTrigger value="audit">Audit</TabsTrigger>
-            {canViewAnalytics && <TabsTrigger value="analytics">Analytics</TabsTrigger>}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="flex flex-wrap gap-1 bg-gradient-to-r from-gray-50 to-gray-100 p-1 rounded-lg border border-gray-200">
+            <TabsTrigger value="requests" className="data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs">
+              Requests ({procurementRequests.length})
+            </TabsTrigger>
+            <TabsTrigger value="rfps" className="data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs">
+              RFPs (0)
+            </TabsTrigger>
+            <TabsTrigger value="contracts" className="data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs">
+              Contracts (0)
+            </TabsTrigger>
+            <TabsTrigger value="orders" className="data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs">
+              Orders ({purchaseOrders.length})
+            </TabsTrigger>
+            <TabsTrigger value="grns" className="data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs">
+              GRNs (0)
+            </TabsTrigger>
+            <TabsTrigger value="suppliers" className="data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs">
+              Suppliers ({suppliers.length})
+            </TabsTrigger>
+            <TabsTrigger value="vendors" className="data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs">
+              Vendors (0)
+            </TabsTrigger>
+            <TabsTrigger value="expenses" className="data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs">
+              Expenses ({expenseRequests.length})
+            </TabsTrigger>
+            <TabsTrigger value="budgets" className="data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs">
+              Budgets ({budgets.length})
+            </TabsTrigger>
+            {canManagePolicies && (
+              <TabsTrigger value="policies" className="data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs">
+                Policies
+              </TabsTrigger>
+            )}
+            {canManageCommittee && (
+              <TabsTrigger value="committee" className="data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs">
+                Committee
+              </TabsTrigger>
+            )}
+            <TabsTrigger value="notifications" className="data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs">
+              Notifications
+            </TabsTrigger>
+            <TabsTrigger value="audit" className="data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs">
+              Audit
+            </TabsTrigger>
+            {canViewAnalytics && (
+              <TabsTrigger value="analytics" className="data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs">
+                Analytics
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="requests" className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold">Procurement Requests</h2>
-              <Button onClick={() => setShowCreateRequest(true)}>
+            <div className="flex justify-between items-center p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">Procurement Requests</h2>
+                <p className="text-sm text-gray-600">
+                  {user?.role === 'accounting' ? 'Review and approve procurement requests for fund disbursement' : 'Manage and track all procurement requests'}
+                </p>
+              </div>
+              <Button 
+                onClick={() => setShowCreateRequest(true)}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+              >
                 <Plus className="w-4 h-4 mr-2" />
                 New Request
               </Button>
             </div>
 
+            {/* Accounting Summary for Accounting Users */}
+            {user?.role === 'accounting' && (
+              <Card className="border-2 border-green-200 bg-gradient-to-br from-green-50 to-green-100">
+                <CardHeader>
+                  <CardTitle className="text-green-800 flex items-center gap-2">
+                    <DollarSign className="h-5 w-5" />
+                    Fund Disbursement Summary
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-4 md:grid-cols-4">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-yellow-600">
+                        ${procurementRequests
+                          .filter(r => r.status === 'pending')
+                          .reduce((sum, r) => sum + (r.estimatedCost || r.estimatedAmount || 0), 0)
+                          .toLocaleString()}
+                      </div>
+                      <div className="text-sm text-yellow-700 font-medium">Pending Amount</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-green-600">
+                        ${procurementRequests
+                          .filter(r => r.status === 'approved')
+                          .reduce((sum, r) => sum + (r.estimatedCost || r.estimatedAmount || 0), 0)
+                          .toLocaleString()}
+                      </div>
+                      <div className="text-sm text-green-700 font-medium">Approved Amount</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-red-600">
+                        ${procurementRequests
+                          .filter(r => r.status === 'rejected')
+                          .reduce((sum, r) => sum + (r.estimatedCost || r.estimatedAmount || 0), 0)
+                          .toLocaleString()}
+                      </div>
+                      <div className="text-sm text-red-700 font-medium">Rejected Amount</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-blue-600">
+                        {procurementRequests.length}
+                      </div>
+                      <div className="text-sm text-blue-700 font-medium">Total Requests</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             <div className="grid gap-4">
               {procurementRequests.map((request) => (
-                <Card key={request.id}>
-                  <CardHeader>
+                <Card key={request.id} className="hover:shadow-lg transition-all duration-300 border-2 border-gray-100">
+                  <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-100">
                     <div className="flex justify-between items-start">
                       <div>
-                        <CardTitle className="text-lg">{request.title}</CardTitle>
-                        <p className="text-sm text-muted-foreground">{request.description}</p>
+                        <CardTitle className="text-lg text-gray-900">{request.title}</CardTitle>
+                        <p className="text-sm text-gray-600 mt-1">{request.description}</p>
                       </div>
                       <div className="flex gap-2">
                         {getStatusBadge(request.status)}
@@ -642,31 +824,39 @@ export default function ProcurementMain() {
                       </div>
                     </div>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="p-6">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                      <div>
-                        <span className="font-medium">Category:</span> {request.category}
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                        <span className="font-medium text-gray-700">Category:</span> 
+                        <span className="text-gray-600">{request.category}</span>
                       </div>
-                      <div>
-                        <span className="font-medium">Amount:</span> ${request.estimatedAmount.toLocaleString()}
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        <span className="font-medium text-gray-700">Amount:</span> 
+                        <span className="text-green-600 font-semibold">${(request.estimatedCost || request.estimatedAmount || 0).toLocaleString()}</span>
                       </div>
-                      <div>
-                        <span className="font-medium">Department:</span> {request.department}
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                        <span className="font-medium text-gray-700">Department:</span> 
+                        <span className="text-gray-600">{request.department}</span>
                       </div>
-                      <div>
-                        <span className="font-medium">Requestor:</span> {request.requestor.firstName} {request.requestor.lastName}
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                        <span className="font-medium text-gray-700">Requestor:</span> 
+                        <span className="text-gray-600">{request.requestor?.firstName} {request.requestor?.lastName}</span>
                       </div>
                     </div>
-                    <div className="mt-4">
-                      <span className="font-medium">Justification:</span>
-                      <p className="text-sm text-muted-foreground mt-1">{request.justification}</p>
+                    <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                      <span className="font-medium text-blue-800">Justification:</span>
+                      <p className="text-sm text-blue-700 mt-1">{request.justification}</p>
                     </div>
-                    <div className="flex justify-between items-center mt-4">
-                      <span className="text-sm text-muted-foreground">
+                    <div className="flex justify-between items-center mt-4 pt-4 border-t border-gray-200">
+                      <span className="text-sm text-gray-500">
                         Created {new Date(request.createdAt).toLocaleDateString()}
                       </span>
                       <div className="flex gap-2">
-                        <Button variant="outline" size="sm">
+                        <Button variant="outline" size="sm" className="border-blue-300 text-blue-600 hover:bg-blue-50">
                           <Eye className="w-4 h-4 mr-1" />
                           View
                         </Button>
@@ -674,16 +864,18 @@ export default function ProcurementMain() {
                           variant="outline" 
                           size="sm"
                           onClick={() => handleDownloadPDF(request.id)}
+                          className="border-green-300 text-green-600 hover:bg-green-50"
                         >
                           <Download className="w-4 h-4 mr-1" />
                           PDF
                         </Button>
-                        {request.status === 'Submitted' && canApproveRequest && (
+                        {request.status === 'pending' && canApproveRequest && request.requestor?.id !== user?.id && (
                           <>
                             <Button 
                               variant="outline" 
                               size="sm"
-                              onClick={() => handleApproveRequest(request.id, 'Approved')}
+                              onClick={() => handleApproveRequest(request.id, 'approved')}
+                              className="border-green-300 text-green-600 hover:bg-green-50"
                             >
                               <CheckCircle className="w-4 h-4 mr-1" />
                               Approve
@@ -691,7 +883,8 @@ export default function ProcurementMain() {
                             <Button 
                               variant="outline" 
                               size="sm"
-                              onClick={() => handleApproveRequest(request.id, 'Rejected')}
+                              onClick={() => handleApproveRequest(request.id, 'rejected')}
+                              className="border-red-300 text-red-600 hover:bg-red-50"
                             >
                               <XCircle className="w-4 h-4 mr-1" />
                               Reject
@@ -868,7 +1061,7 @@ export default function ProcurementMain() {
                           <Eye className="w-4 h-4 mr-1" />
                           View
                         </Button>
-                        {expense.status === 'Submitted' && canApproveRequest && (
+                        {expense.status === 'Submitted' && canApproveRequest && expense.requestor?.id !== user?.id && (
                           <>
                             <Button 
                               variant="outline" 

@@ -25,7 +25,8 @@ import {
   Building,
   FileText,
   AlertTriangle,
-  CheckSquare
+  CheckSquare,
+  RefreshCw
 } from 'lucide-react';
 
 // Available departments from the system
@@ -138,6 +139,13 @@ export default function HRProcurement({ organizationId }: HRProcurementProps) {
 
   useEffect(() => {
     fetchRequests();
+    
+    // Set up auto-refresh every 30 seconds to catch status updates
+    const interval = setInterval(() => {
+      fetchRequests();
+    }, 30000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   const fetchRequests = async () => {
@@ -146,12 +154,33 @@ export default function HRProcurement({ organizationId }: HRProcurementProps) {
         credentials: 'include'
       });
       
+      console.log('HR Procurement - Response status:', response.status);
+      
       if (!response.ok) {
         throw new Error('Failed to fetch procurement requests');
       }
       
       const data = await response.json();
-      setRequests(Array.isArray(data.requests) ? data.requests : []);
+      console.log('HR Procurement - Raw data:', data);
+      
+      const newRequests = Array.isArray(data.requests) ? data.requests : data;
+      console.log('HR Procurement - Processed requests:', newRequests);
+      
+      // Check for status changes and show notifications
+      if (requests.length > 0) {
+        newRequests.forEach((newRequest: ProcurementRequest) => {
+          const oldRequest = requests.find(r => r.id === newRequest.id);
+          if (oldRequest && oldRequest.status !== newRequest.status) {
+            toast({
+              title: `Request ${newRequest.status === 'approved' ? 'Approved' : 'Rejected'}`,
+              description: `"${newRequest.title}" has been ${newRequest.status}`,
+              variant: newRequest.status === 'approved' ? 'default' : 'destructive',
+            });
+          }
+        });
+      }
+      
+      setRequests(newRequests);
     } catch (error) {
       console.error('Error fetching procurement requests:', error);
       toast({
@@ -287,266 +316,24 @@ export default function HRProcurement({ organizationId }: HRProcurementProps) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center mb-6">
         <div>
-          <h2 className="text-xl font-semibold">HR Procurement Requests</h2>
-          <p className="text-sm text-muted-foreground">
-            Create and manage procurement requests for HR department needs
-          </p>
+          <h2 className="text-2xl font-bold">Procurement Requests</h2>
+          <p className="text-muted-foreground">Manage and track procurement requests from all departments</p>
         </div>
         <div className="flex gap-2">
           <Button 
             variant="outline" 
-            onClick={() => setLocation('/dashboard/procurement')}
-            className="flex items-center gap-2"
+            onClick={fetchRequests}
+            disabled={loading}
           >
-            <ExternalLink className="h-4 w-4" />
-            View Full Procurement
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
           </Button>
-          <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                New Request
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <ShoppingCart className="h-5 w-5" />
-                  Create Procurement Request
-                </DialogTitle>
-              </DialogHeader>
-              <div className="space-y-6">
-                {/* Basic Information */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium flex items-center gap-2">
-                    <FileText className="h-4 w-4" />
-                    Basic Information
-                  </h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="title">Request Title *</Label>
-                      <Input
-                        id="title"
-                        value={formData.title}
-                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                        placeholder="e.g., Office Supplies for HR Department"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="department">Department *</Label>
-                      <Select value={formData.department} onValueChange={(value) => setFormData({ ...formData, department: value })}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select department" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {AVAILABLE_DEPARTMENTS.map((dept) => (
-                            <SelectItem key={dept} value={dept}>
-                              <div className="flex items-center gap-2">
-                                <Building className="h-4 w-4" />
-                                {dept}
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="description">Detailed Description *</Label>
-                    <Textarea
-                      id="description"
-                      value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      placeholder="Provide a detailed description of what is needed, specifications, quantities, etc."
-                      rows={4}
-                    />
-                  </div>
-                </div>
-
-                {/* Category and Cost */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium flex items-center gap-2">
-                    <DollarSign className="h-4 w-4" />
-                    Category & Cost
-                  </h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="category">Category *</Label>
-                      <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {PROCUREMENT_CATEGORIES.map((cat) => (
-                            <SelectItem key={cat.value} value={cat.value}>
-                              <div className="flex flex-col">
-                                <span className="font-medium">{cat.label}</span>
-                                <span className="text-xs text-muted-foreground">{cat.description}</span>
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="estimatedCost">Estimated Cost *</Label>
-                      <Input
-                        id="estimatedCost"
-                        type="number"
-                        value={formData.estimatedCost}
-                        onChange={(e) => setFormData({ ...formData, estimatedCost: e.target.value })}
-                        placeholder="0.00"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Priority and Urgency */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium flex items-center gap-2">
-                    <AlertTriangle className="h-4 w-4" />
-                    Priority & Timeline
-                  </h3>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <Label htmlFor="priority">Priority *</Label>
-                      <Select value={formData.priority} onValueChange={(value) => setFormData({ ...formData, priority: value })}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="low">Low</SelectItem>
-                          <SelectItem value="medium">Medium</SelectItem>
-                          <SelectItem value="high">High</SelectItem>
-                          <SelectItem value="critical">Critical</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="urgency">Urgency *</Label>
-                      <Select value={formData.urgency} onValueChange={(value) => setFormData({ ...formData, urgency: value })}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="normal">Normal</SelectItem>
-                          <SelectItem value="urgent">Urgent</SelectItem>
-                          <SelectItem value="critical">Critical</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="expectedDeliveryDate">Expected Delivery</Label>
-                      <Input
-                        id="expectedDeliveryDate"
-                        type="date"
-                        value={formData.expectedDeliveryDate}
-                        onChange={(e) => setFormData({ ...formData, expectedDeliveryDate: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Justification and Impact */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium flex items-center gap-2">
-                    <CheckSquare className="h-4 w-4" />
-                    Justification & Impact
-                  </h3>
-                  <div>
-                    <Label htmlFor="justification">Business Justification *</Label>
-                    <Textarea
-                      id="justification"
-                      value={formData.justification}
-                      onChange={(e) => setFormData({ ...formData, justification: e.target.value })}
-                      placeholder="Explain why this procurement is necessary, the business need, and expected benefits..."
-                      rows={3}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="impactOnOperations">Impact on Operations</Label>
-                    <Textarea
-                      id="impactOnOperations"
-                      value={formData.impactOnOperations}
-                      onChange={(e) => setFormData({ ...formData, impactOnOperations: e.target.value })}
-                      placeholder="Describe how this procurement will impact daily operations, productivity, or efficiency..."
-                      rows={2}
-                    />
-                  </div>
-                </div>
-
-                {/* Additional Details */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium flex items-center gap-2">
-                    <FileText className="h-4 w-4" />
-                    Additional Details
-                  </h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="preferredSupplier">Preferred Supplier (Optional)</Label>
-                      <Input
-                        id="preferredSupplier"
-                        value={formData.preferredSupplier}
-                        onChange={(e) => setFormData({ ...formData, preferredSupplier: e.target.value })}
-                        placeholder="If you have a preferred supplier"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="budgetCode">Budget Code (Optional)</Label>
-                      <Input
-                        id="budgetCode"
-                        value={formData.budgetCode}
-                        onChange={(e) => setFormData({ ...formData, budgetCode: e.target.value })}
-                        placeholder="Budget code if applicable"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="specialRequirements">Special Requirements</Label>
-                    <Textarea
-                      id="specialRequirements"
-                      value={formData.specialRequirements}
-                      onChange={(e) => setFormData({ ...formData, specialRequirements: e.target.value })}
-                      placeholder="Any special requirements, specifications, or conditions..."
-                      rows={2}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="alternativesConsidered">Alternatives Considered</Label>
-                    <Textarea
-                      id="alternativesConsidered"
-                      value={formData.alternativesConsidered}
-                      onChange={(e) => setFormData({ ...formData, alternativesConsidered: e.target.value })}
-                      placeholder="What alternatives were considered and why this option was chosen..."
-                      rows={2}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="riskAssessment">Risk Assessment</Label>
-                    <Textarea
-                      id="riskAssessment"
-                      value={formData.riskAssessment}
-                      onChange={(e) => setFormData({ ...formData, riskAssessment: e.target.value })}
-                      placeholder="Any potential risks or concerns with this procurement..."
-                      rows={2}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-2 pt-4 border-t">
-                  <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
-                    Cancel
-                  </Button>
-                  <Button onClick={handleCreateRequest}>
-                    Create Request
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
+          <Button onClick={() => setShowCreateDialog(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            New Request
+          </Button>
         </div>
       </div>
 

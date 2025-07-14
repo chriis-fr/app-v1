@@ -93,9 +93,14 @@ export default function GRNManager() {
       ]);
 
       if (grnsRes.ok) setGrns(await grnsRes.json());
-      if (ordersRes.ok) setPurchaseOrders(await ordersRes.json());
+      if (ordersRes.ok) {
+        const ordersData = await ordersRes.json();
+        // Extract purchaseOrders array from the response
+        setPurchaseOrders(ordersData.purchaseOrders || []);
+      }
     } catch (error) {
       console.error('Error fetching data:', error);
+      setPurchaseOrders([]); // Ensure it's always an array
     }
     setLoading(false);
   };
@@ -231,7 +236,7 @@ export default function GRNManager() {
                     <SelectValue placeholder="Select purchase order" />
                   </SelectTrigger>
                   <SelectContent>
-                    {purchaseOrders.map((po) => (
+                    {(purchaseOrders || []).map((po) => (
                       <SelectItem key={po.id} value={po.id}>
                         {po.poNumber} - {po.supplier.name}
                       </SelectItem>

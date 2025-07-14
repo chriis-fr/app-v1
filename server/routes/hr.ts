@@ -2196,4 +2196,25 @@ router.post('/payroll-settings', isAuthenticated, checkModuleAccess('hr'), isHRA
   }
 });
 
+// Get procurement requests for HR dashboard
+router.get('/procurement-requests', isAuthenticated, async (req: AuthRequest, res) => {
+  try {
+    const { organizationId } = getUserAndOrg(req);
+    
+    const requests = await (prisma as any).procurementRequest.findMany({
+      where: { organizationId },
+      include: {
+        requester: { select: { firstName: true, lastName: true, email: true, department: true } },
+        approvedByUser: { select: { firstName: true, lastName: true, email: true } }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    res.json(requests);
+  } catch (error) {
+    console.error('Error fetching procurement requests:', error);
+    res.status(500).json({ error: 'Failed to fetch procurement requests' });
+  }
+});
+
 export default router; 

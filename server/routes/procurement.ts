@@ -325,14 +325,22 @@ router.patch('/requests/:id/submit', isAuthenticated, async (req: any, res) => {
 });
 
 // Approve/Reject procurement request
-router.patch('/requests/:id/approve', isAuthenticated, checkPermission('procurement', 'approve'), async (req: any, res) => {
+router.patch('/requests/:id/approve', isAuthenticated, async (req: any, res) => {
   try {
     if (!req.user) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
 
+    // Check if user has permission to approve (owner, admin, executive, accounting)
+    const canApprove = req.user.role === 'owner' || req.user.role === 'admin' || req.user.role === 'executive' || req.user.role === 'accounting' || req.user.isOwner;
+    if (!canApprove) {
+      return res.status(403).json({ error: 'Insufficient permissions to approve procurement requests' });
+    }
+
     const { id } = req.params;
     const { status, rejectionReason } = req.body;
+
+    console.log('Approval request:', { id, status, rejectionReason, userId: req.user.id });
 
     const updateData: any = {
       status,
@@ -340,7 +348,7 @@ router.patch('/requests/:id/approve', isAuthenticated, checkPermission('procurem
       approvedAt: new Date()
     };
 
-    if (status === 'Rejected' && rejectionReason) {
+    if (status === 'rejected' && rejectionReason) {
       updateData.rejectionReason = rejectionReason;
     }
 
@@ -352,6 +360,33 @@ router.patch('/requests/:id/approve', isAuthenticated, checkPermission('procurem
         approvedByUser: { select: { firstName: true, lastName: true, email: true } }
       }
     });
+
+    console.log('Updated request:', request);
+
+    // Create notification for the requester
+    try {
+      await (prisma as any).notification.create({
+        data: {
+          title: `Procurement Request ${status === 'approved' ? 'Approved' : 'Rejected'}`,
+          message: `Your procurement request "${request.title}" has been ${status === 'approved' ? 'approved' : 'rejected'} by ${req.user.firstName} ${req.user.lastName}`,
+          type: 'procurement_approval',
+          userId: request.requesterId,
+          organizationId: request.organizationId,
+          priority: 'medium',
+          actionUrl: `/hr/procurement`,
+          metadata: JSON.stringify({
+            requestId: request.id,
+            status: status,
+            approvedBy: `${req.user.firstName} ${req.user.lastName}`,
+            approvedAt: new Date().toISOString(),
+            rejectionReason: rejectionReason || null
+          })
+        }
+      });
+    } catch (notificationError) {
+      console.error('Error creating notification:', notificationError);
+      // Don't fail the main request if notification fails
+    }
 
     res.json(request);
   } catch (error) {

@@ -354,7 +354,7 @@ export default function Dashboard() {
                       </div>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-3xl font-bold text-red-700">{attendanceData.absent || 0}</div>
+                      <div className="text-3xl font-bold text-red-700">{(employees?.length || 0) - (attendanceData.present || 0)}</div>
                       <p className="text-xs text-red-600 font-medium">
                         out of {employees?.length || 0} total
                       </p>
@@ -363,11 +363,11 @@ export default function Dashboard() {
                           <div className="flex-1 bg-red-200 rounded-full h-2">
                             <div 
                               className="bg-red-600 h-2 rounded-full transition-all duration-300" 
-                              style={{ width: `${(employees?.length || 0) > 0 ? ((attendanceData.absent || 0) / (employees?.length || 0)) * 100 : 0}%` }}
+                              style={{ width: `${(employees?.length || 0) > 0 ? (((employees?.length || 0) - (attendanceData.present || 0)) / (employees?.length || 0)) * 100 : 0}%` }}
                             ></div>
                           </div>
                           <span className="text-xs text-red-600 font-medium">
-                            {(employees?.length || 0) > 0 ? Math.round(((attendanceData.absent || 0) / (employees?.length || 0)) * 100) : 0}%
+                            {(employees?.length || 0) > 0 ? Math.round((((employees?.length || 0) - (attendanceData.present || 0)) / (employees?.length || 0)) * 100) : 0}%
                           </span>
                         </div>
                       </div>

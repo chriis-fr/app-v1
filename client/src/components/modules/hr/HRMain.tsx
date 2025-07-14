@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { 
   UserPlus, DollarSign, Clock, Loader2, BarChart, TrendingUp, Plus, Search, User2, Users, Building2,
   Calendar, FileText, Settings, Briefcase, CreditCard, Package, Building, Activity, Target,
-  CalendarDays, Receipt, Users2, Clock4, CheckCircle, XCircle, AlertCircle, ShoppingCart
+  CalendarDays, Receipt, Users2, Clock4, CheckCircle, XCircle, AlertCircle, ShoppingCart, Eye
 } from 'lucide-react';
 import { HRReports } from '@/components/hr/HRReports';
 import { useToast } from '@/components/ui/use-toast';
@@ -100,6 +100,7 @@ export default function HRMain() {
   const [searchTerm, setSearchTerm] = useState('');
   const [loginAccessFilter, setLoginAccessFilter] = useState<'all' | 'login' | 'no-login'>('all');
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [requests, setRequests] = useState<any[]>([]); // State for procurement requests
 
   useEffect(() => {
     fetchData();
@@ -140,7 +141,8 @@ export default function HRMain() {
         leaveBalanceResponse,
         notificationsResponse,
         activityLogsResponse,
-        dashboardSummaryResponse
+        dashboardSummaryResponse,
+        procurementResponse // Added procurement response
       ] = await Promise.all([
         fetch('/api/hr/employees', { credentials: 'include' }),
         fetch('/api/hr/payroll', { credentials: 'include' }),
@@ -152,7 +154,8 @@ export default function HRMain() {
         fetch('/api/hr/leave-balance', { credentials: 'include' }),
         fetch('/api/hr/notifications', { credentials: 'include' }),
         fetch('/api/hr/activity-logs', { credentials: 'include' }),
-        fetch('/api/hr/dashboard-summary', { credentials: 'include' })
+        fetch('/api/hr/dashboard-summary', { credentials: 'include' }),
+        fetch('/api/procurement/requests', { credentials: 'include' }) // Fixed: Use correct procurement endpoint
       ]);
 
       // Handle responses
@@ -185,6 +188,8 @@ export default function HRMain() {
           status: a.status || 'absent'
         })) || [];
         setAttendance(transformedAttendance);
+        
+        // Store API calculated counts for accurate dashboard display
       }
 
       if (leaveRequestsResponse.ok) {
@@ -210,6 +215,15 @@ export default function HRMain() {
       if (leaveBalanceResponse.ok) {
         const leaveBalanceData = await leaveBalanceResponse.json();
         setLeaveBalance(leaveBalanceData);
+      }
+
+      if (procurementResponse.ok) {
+        const procurementData = await procurementResponse.json();
+        console.log('HR Dashboard - Procurement Data:', procurementData);
+        console.log('HR Dashboard - Requests Array:', procurementData.requests || procurementData);
+        setRequests(procurementData.requests || procurementData); // Handle both response structures
+      } else {
+        console.error('HR Dashboard - Procurement Response not ok:', procurementResponse.status);
       }
 
       // Store additional data for use in components
@@ -253,7 +267,7 @@ export default function HRMain() {
 
   // Calculate dashboard stats
   const presentEmployees = attendance.filter(a => a.status === 'present').length;
-  const absentEmployees = attendance.filter(a => a.status === 'absent').length;
+  const absentEmployees = employees.length - presentEmployees; // All employees not present are absent
   const breakInEmployees = attendance.filter(a => a.status === 'break').length;
   const logoutEmployees = attendance.filter(a => a.status === 'logout').length;
 
@@ -552,6 +566,56 @@ export default function HRMain() {
               </CardContent>
             </Card>
           </div>
+
+              {/* Procurement Status Summary */}
+              <Card className="border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-purple-100">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-purple-900 flex items-center gap-2">
+                      <ShoppingCart className="h-5 w-5" />
+                      Procurement Status
+                    </CardTitle>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setActiveTab('procurement')}
+                      className="text-purple-600 border-purple-300 hover:bg-purple-50"
+                    >
+                      <Eye className="h-4 w-4 mr-2" />
+                      View All
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-yellow-600">
+                        {requests?.filter((r: any) => r.status === 'pending').length || 0}
+                      </div>
+                      <div className="text-sm text-yellow-700 font-medium">Pending</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-green-600">
+                        {requests?.filter((r: any) => r.status === 'approved').length || 0}
+                      </div>
+                      <div className="text-sm text-green-700 font-medium">Approved</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-red-600">
+                        {requests?.filter((r: any) => r.status === 'rejected').length || 0}
+                      </div>
+                      <div className="text-sm text-red-700 font-medium">Rejected</div>
+                    </div>
+                  </div>
+                  {/* Debug info */}
+                  <div className="mt-2 text-xs text-gray-500">
+                    Debug: Total requests: {requests?.length || 0} | 
+                    Pending: {requests?.filter((r: any) => r.status === 'pending').length || 0} | 
+                    Approved: {requests?.filter((r: any) => r.status === 'approved').length || 0} | 
+                    Rejected: {requests?.filter((r: any) => r.status === 'rejected').length || 0}
+                  </div>
+                </CardContent>
+              </Card>
 
               {/* Recent Activity Grid */}
               <div className="grid gap-6 md:grid-cols-2">

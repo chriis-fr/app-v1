@@ -17,7 +17,8 @@ import {
   User,
   Eye,
   ThumbsUp,
-  ThumbsDown
+  ThumbsDown,
+  RefreshCw
 } from 'lucide-react';
 
 interface ProcurementRequest {
@@ -75,6 +76,13 @@ export default function ProcurementApprovals() {
 
   useEffect(() => {
     fetchPendingRequests();
+    
+    // Set up auto-refresh every 30 seconds to catch new requests
+    const interval = setInterval(() => {
+      fetchPendingRequests();
+    }, 30000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   const fetchPendingRequests = async () => {
@@ -121,21 +129,35 @@ export default function ProcurementApprovals() {
     if (!selectedRequest) return;
 
     try {
+      console.log('Sending approval request:', {
+        id: selectedRequest.id,
+        status: approvalAction === 'approve' ? 'approved' : 'rejected',
+        rejectionReason: approvalComment
+      });
+
       const response = await fetch(`/api/procurement/requests/${selectedRequest.id}/approve`, {
-        method: 'POST',
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
         body: JSON.stringify({
           status: approvalAction === 'approve' ? 'approved' : 'rejected',
-          comment: approvalComment
+          rejectionReason: approvalComment
         }),
       });
 
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+
       if (!response.ok) {
-        throw new Error('Failed to update request status');
+        const errorData = await response.json();
+        console.error('Error response:', errorData);
+        throw new Error(errorData.error || 'Failed to update request status');
       }
+
+      const result = await response.json();
+      console.log('Approval result:', result);
 
       // Remove the request from pending list
       setPendingRequests(prev => prev.filter(req => req.id !== selectedRequest.id));
@@ -151,7 +173,7 @@ export default function ProcurementApprovals() {
       console.error('Error updating request status:', error);
       toast({
         title: 'Error',
-        description: 'Failed to update request status',
+        description: error instanceof Error ? error.message : 'Failed to update request status',
         variant: 'destructive',
       });
     }
@@ -217,6 +239,15 @@ export default function ProcurementApprovals() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={fetchPendingRequests}
+            disabled={loading}
+            size="sm"
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
           <Badge variant="outline" className="text-sm">
             {allRequests.length} Total Requests
           </Badge>
@@ -281,29 +312,33 @@ export default function ProcurementApprovals() {
                     >
                       <Eye className="h-4 w-4" />
                     </Button>
-                    <Button
-                      size="sm"
-                      onClick={() => {
-                        setSelectedRequest(request);
-                        setApprovalAction('approve');
-                        setShowApprovalDialog(true);
-                      }}
-                    >
-                      <ThumbsUp className="h-4 w-4 mr-1" />
-                      Approve
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedRequest(request);
-                        setApprovalAction('reject');
-                        setShowApprovalDialog(true);
-                      }}
-                    >
-                      <ThumbsDown className="h-4 w-4 mr-1" />
-                      Reject
-                    </Button>
+                    {request.requester?.id !== user?.id && (
+                      <>
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            setSelectedRequest(request);
+                            setApprovalAction('approve');
+                            setShowApprovalDialog(true);
+                          }}
+                        >
+                          <ThumbsUp className="h-4 w-4 mr-1" />
+                          Approve
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedRequest(request);
+                            setApprovalAction('reject');
+                            setShowApprovalDialog(true);
+                          }}
+                        >
+                          <ThumbsDown className="h-4 w-4 mr-1" />
+                          Reject
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </div>
               </CardContent>
