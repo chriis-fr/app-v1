@@ -22,6 +22,7 @@ import ProcurementMain from '@/components/modules/procurement/ProcurementMain';
 import { BarChart3, Users, DollarSign, Package, AlertTriangle, CheckCircle, TrendingUp, TrendingDown, UserPlus, Calendar, Briefcase, Building2, ShoppingCart, FileText, CreditCard } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { Button } from '@/components/ui/button';
 
 // Map module IDs to their main components
 const moduleComponentMap: Record<string, React.ComponentType<any>> = {
@@ -327,18 +328,18 @@ export default function Dashboard() {
                     <CardContent>
                       <div className="text-3xl font-bold text-green-700">{attendanceData.present || 0}</div>
                       <p className="text-xs text-green-600 font-medium">
-                        out of {attendanceData.totalEmployees || employees?.length || 0} total
+                        out of {employees?.length || 0} total
                       </p>
                       <div className="mt-2">
                         <div className="flex items-center gap-1">
                           <div className="flex-1 bg-green-200 rounded-full h-2">
                             <div 
                               className="bg-green-600 h-2 rounded-full transition-all duration-300" 
-                              style={{ width: `${(attendanceData.totalEmployees || employees?.length || 0) > 0 ? ((attendanceData.present || 0) / (attendanceData.totalEmployees || employees?.length || 0)) * 100 : 0}%` }}
+                              style={{ width: `${(employees?.length || 0) > 0 ? ((attendanceData.present || 0) / (employees?.length || 0)) * 100 : 0}%` }}
                             ></div>
                           </div>
                           <span className="text-xs text-green-600 font-medium">
-                            {(attendanceData.totalEmployees || employees?.length || 0) > 0 ? Math.round(((attendanceData.present || 0) / (attendanceData.totalEmployees || employees?.length || 0)) * 100) : 0}%
+                            {(employees?.length || 0) > 0 ? Math.round(((attendanceData.present || 0) / (employees?.length || 0)) * 100) : 0}%
                           </span>
                         </div>
                       </div>
@@ -355,18 +356,18 @@ export default function Dashboard() {
                     <CardContent>
                       <div className="text-3xl font-bold text-red-700">{attendanceData.absent || 0}</div>
                       <p className="text-xs text-red-600 font-medium">
-                        out of {attendanceData.totalEmployees || employees?.length || 0} total
+                        out of {employees?.length || 0} total
                       </p>
                       <div className="mt-2">
                         <div className="flex items-center gap-1">
                           <div className="flex-1 bg-red-200 rounded-full h-2">
                             <div 
                               className="bg-red-600 h-2 rounded-full transition-all duration-300" 
-                              style={{ width: `${(attendanceData.totalEmployees || employees?.length || 0) > 0 ? ((attendanceData.absent || 0) / (attendanceData.totalEmployees || employees?.length || 0)) * 100 : 0}%` }}
+                              style={{ width: `${(employees?.length || 0) > 0 ? ((attendanceData.absent || 0) / (employees?.length || 0)) * 100 : 0}%` }}
                             ></div>
                           </div>
                           <span className="text-xs text-red-600 font-medium">
-                            {(attendanceData.totalEmployees || employees?.length || 0) > 0 ? Math.round(((attendanceData.absent || 0) / (attendanceData.totalEmployees || employees?.length || 0)) * 100) : 0}%
+                            {(employees?.length || 0) > 0 ? Math.round(((attendanceData.absent || 0) / (employees?.length || 0)) * 100) : 0}%
                           </span>
                         </div>
                       </div>
@@ -390,11 +391,11 @@ export default function Dashboard() {
                           <div className="flex-1 bg-yellow-200 rounded-full h-2">
                             <div 
                               className="bg-yellow-600 h-2 rounded-full transition-all duration-300" 
-                              style={{ width: `${(attendanceData.totalEmployees || employees?.length || 0) > 0 ? ((attendanceData.late || 0) / (attendanceData.totalEmployees || employees?.length || 0)) * 100 : 0}%` }}
+                              style={{ width: `${(employees?.length || 0) > 0 ? ((attendanceData.late || 0) / (employees?.length || 0)) * 100 : 0}%` }}
                             ></div>
                           </div>
                           <span className="text-xs text-yellow-600 font-medium">
-                            {(attendanceData.totalEmployees || employees?.length || 0) > 0 ? Math.round(((attendanceData.late || 0) / (attendanceData.totalEmployees || employees?.length || 0)) * 100) : 0}%
+                            {(employees?.length || 0) > 0 ? Math.round(((attendanceData.late || 0) / (employees?.length || 0)) * 100) : 0}%
                           </span>
                         </div>
                       </div>
@@ -410,7 +411,7 @@ export default function Dashboard() {
                     </CardHeader>
                     <CardContent>
                       <div className="text-3xl font-bold text-blue-700">
-                        {(attendanceData.totalEmployees || employees?.length || 0) > 0 ? Math.round(((attendanceData.present || 0) / (attendanceData.totalEmployees || employees?.length || 0)) * 100) : 0}%
+                        {(employees?.length || 0) > 0 ? Math.round(((attendanceData.present || 0) / (employees?.length || 0)) * 100) : 0}%
                       </div>
                       <p className="text-xs text-blue-600 font-medium">
                         overall attendance
@@ -420,7 +421,7 @@ export default function Dashboard() {
                           <div className="flex-1 bg-blue-200 rounded-full h-2">
                             <div 
                               className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
-                              style={{ width: `${(attendanceData.totalEmployees || employees?.length || 0) > 0 ? ((attendanceData.present || 0) / (attendanceData.totalEmployees || employees?.length || 0)) * 100 : 0}%` }}
+                              style={{ width: `${(employees?.length || 0) > 0 ? ((attendanceData.present || 0) / (employees?.length || 0)) * 100 : 0}%` }}
                             ></div>
                           </div>
                           <span className="text-xs text-blue-600 font-medium">
@@ -442,27 +443,29 @@ export default function Dashboard() {
                   </CardHeader>
                   <CardContent>
                     <div className="flex gap-4">
-                      <button 
+                      <Button 
                         onClick={() => setLocation('/attendance')} 
-                        className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors"
+                        className="flex-1 bg-green-600 hover:bg-green-700"
                       >
                         <CheckCircle className="mr-2 h-4 w-4" />
                         Mark Attendance
-                      </button>
-                      <button 
+                      </Button>
+                      <Button 
+                        variant="outline" 
                         onClick={() => setLocation('/attendance/manual')} 
-                        className="flex-1 border border-gray-300 hover:bg-gray-50 px-4 py-2 rounded-lg transition-colors"
+                        className="flex-1"
                       >
                         <UserPlus className="mr-2 h-4 w-4" />
                         Manual Entry
-                      </button>
-                      <button 
+                      </Button>
+                      <Button 
+                        variant="outline" 
                         onClick={() => setLocation('/attendance/remote')} 
-                        className="flex-1 border border-gray-300 hover:bg-gray-50 px-4 py-2 rounded-lg transition-colors"
+                        className="flex-1"
                       >
                         <Package className="mr-2 h-4 w-4" />
                         Remote Attendance
-                      </button>
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>

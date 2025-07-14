@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Sparkles, Send, User, Loader2, Brain, Users, Calculator, Package, CreditCard, X } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 
@@ -223,6 +224,30 @@ export function AIChatBox({ isOpen, onClose, userRole, organizationId, initialMe
 
   const { icon, bgColor, borderColor } = getIconAndColor();
 
+  // Function to generate user initials
+  const getUserInitials = () => {
+    if (user?.firstName && user?.lastName) {
+      return `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`.toUpperCase();
+    } else if (user?.firstName) {
+      return user.firstName.charAt(0).toUpperCase();
+    } else if (user?.email) {
+      return user.email.charAt(0).toUpperCase();
+    }
+    return 'U';
+  };
+
+  // Function to get user avatar
+  const getUserAvatar = () => {
+    return (
+      <Avatar className="h-6 w-6">
+        <AvatarImage src={user?.avatarUrl || undefined} alt={user?.firstName || 'User'} />
+        <AvatarFallback className="text-xs bg-blue-600 text-white">
+          {getUserInitials()}
+        </AvatarFallback>
+      </Avatar>
+    );
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -278,7 +303,11 @@ export function AIChatBox({ isOpen, onClose, userRole, organizationId, initialMe
                         <div className="flex items-start gap-2">
                           {message.sender === 'ai' && (
                             <div className="mt-0.5">
-                              {icon}
+                              <Avatar className="h-6 w-6">
+                                <AvatarFallback className="text-xs bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+                                  AI
+                                </AvatarFallback>
+                              </Avatar>
                             </div>
                           )}
                           <div className="flex-1">
@@ -291,7 +320,9 @@ export function AIChatBox({ isOpen, onClose, userRole, organizationId, initialMe
                             )}
                           </div>
                           {message.sender === 'user' && (
-                            <User className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                            <div className="mt-0.5">
+                              {getUserAvatar()}
+                            </div>
                           )}
                         </div>
                       </div>

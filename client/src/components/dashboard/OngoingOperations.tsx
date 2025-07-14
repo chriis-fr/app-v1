@@ -16,31 +16,39 @@ export function OngoingOperations() {
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
+  // Fetch employees data for consistent employee count
+  const { data: employees = [] } = useQuery({
+    queryKey: ['hr-employees-operations'],
+    queryFn: () => api.get('/hr/employees'),
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
+
   // Combine recent activities from different modules
   const recentActivities = [
     ...blockchain.transactions.map(tx => ({
       type: 'transaction',
-      title: 'Blockchain Transaction',
-      description: `${tx.type} of ${tx.amount} ETH`,
+      title: `${tx.type} Transaction`,
+      description: `${tx.amount} ETH - ${tx.status}`,
       timestamp: new Date(tx.createdAt),
       status: tx.status
     })),
     ...hr.employees.map(emp => ({
       type: 'employee',
-      title: 'Employee Update',
-      description: `${emp.firstName} ${emp.lastName} - ${emp.role}`,
-      timestamp: new Date(emp.createdAt),
-      status: 'active'
+      title: `${emp.firstName} ${emp.lastName} joined`,
+      description: `New employee in ${emp.department}`,
+      timestamp: new Date(emp.joinDate),
+      status: 'Active'
     })),
     ...accounting.invoices.map(inv => ({
       type: 'invoice',
-      title: 'Invoice',
-      description: `Invoice #${inv.id} - $${inv.amount}`,
+      title: `Invoice #${inv.id}`,
+      description: `$${inv.amount} - ${inv.status}`,
       timestamp: new Date(inv.createdAt),
       status: inv.status
     }))
-  ].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
-   .slice(0, 5);
+  ]
+  .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+  .slice(0, 5);
 
   // Add attendance activities if data is available
   const attendanceActivities = attendanceData ? [
@@ -196,12 +204,12 @@ export function OngoingOperations() {
                     <div>
                       <p className="text-sm font-medium text-blue-800">Attendance Rate</p>
                       <p className="text-2xl font-bold text-blue-700">
-                        {(attendanceData.totalEmployees || 0) > 0 ? Math.round(((attendanceData.present || 0) / (attendanceData.totalEmployees || 0)) * 100) : 0}%
+                        {(employees?.length || 0) > 0 ? Math.round(((attendanceData.present || 0) / (employees?.length || 0)) * 100) : 0}%
                       </p>
                     </div>
                     <div className="text-right">
                       <p className="text-sm text-blue-600">Total Employees</p>
-                      <p className="text-lg font-semibold text-blue-700">{attendanceData.totalEmployees || 0}</p>
+                      <p className="text-lg font-semibold text-blue-700">{employees?.length || 0}</p>
                     </div>
                   </div>
                 </div>
