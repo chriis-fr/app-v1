@@ -1061,6 +1061,24 @@ router.post('/expenses', isAuthenticated, async (req: any, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
+    // Validate user authentication and required user fields
+    if (!req.user || !req.user.id || !req.user.organizationId) {
+      console.error('User authentication issue:', {
+        hasUser: !!req.user,
+        userId: req.user?.id,
+        organizationId: req.user?.organizationId,
+        userObject: req.user
+      });
+      return res.status(401).json({ error: 'User not properly authenticated' });
+    }
+
+    console.log('Creating expense request with user:', {
+      userId: req.user.id,
+      organizationId: req.user.organizationId,
+      userEmail: req.user.email,
+      department: department
+    });
+
     // Create expense request
     const expense = await (prisma as any).expenseRequest.create({
       data: {
@@ -1068,7 +1086,6 @@ router.post('/expenses', isAuthenticated, async (req: any, res) => {
         description,
         amount: parseFloat(amount),
         category,
-        department,
         justification,
         currency,
         status: 'pending',
@@ -1080,11 +1097,15 @@ router.post('/expenses', isAuthenticated, async (req: any, res) => {
       }
     });
 
-    // Find department members to notify
-    const departmentMembers = await (prisma as any).user.findMany({
+    // Find Executive and Finance/Accounting department members to notify
+    const approvalMembers = await (prisma as any).user.findMany({
       where: {
         organizationId: req.user.organizationId,
-        department: department,
+        OR: [
+          { department: 'Executive' },
+          { department: 'Finance' },
+          { department: 'Accounting' }
+        ],
         id: { not: req.user.id } // Exclude the requester
       },
       select: {
@@ -1092,26 +1113,28 @@ router.post('/expenses', isAuthenticated, async (req: any, res) => {
         firstName: true,
         lastName: true,
         email: true,
-        role: true
+        role: true,
+        department: true
       }
     });
 
-    // Create notification for department members
-    if (departmentMembers.length > 0) {
-      const notificationPromises = departmentMembers.map((member: any) =>
+    // Create notification for Executive and Finance/Accounting members
+    if (approvalMembers.length > 0) {
+      const notificationPromises = approvalMembers.map((member: any) =>
         (prisma as any).notification.create({
           data: {
-            title: 'New Expense Request',
-            message: `${req.user.firstName} ${req.user.lastName} has submitted a new expense request: ${title}`,
-            type: 'expense_request',
-            recipientId: member.id,
+            title: 'New Expense Request Requires Approval',
+            message: `${req.user.firstName} ${req.user.lastName} has submitted a new expense request from ${department} department: ${title}`,
+            type: 'expense_approval',
+            userId: member.id,
             organizationId: String(req.user.organizationId),
-            metadata: {
+            metadata: JSON.stringify({
               expenseId: expense.id,
               department: department,
               amount: amount,
-              category: category
-            }
+              category: category,
+              requester: `${req.user.firstName} ${req.user.lastName}`
+            })
           }
         })
       );
@@ -1141,15 +1164,15 @@ router.post('/expenses', isAuthenticated, async (req: any, res) => {
             title: 'Expense Request Requires Approval',
             message: `New expense request from ${department} department requires your approval: ${title}`,
             type: 'expense_approval',
-            recipientId: admin.id,
+            userId: admin.id,
             organizationId: String(req.user.organizationId),
-            metadata: {
+            metadata: JSON.stringify({
               expenseId: expense.id,
               department: department,
               amount: amount,
               category: category,
               requester: `${req.user.firstName} ${req.user.lastName}`
-            }
+            })
           }
         })
       );

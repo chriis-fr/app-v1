@@ -28,6 +28,10 @@ export const isAuthenticated = async (req: Request, res: Response, next: NextFun
       if (user) {
         // User found in MongoDB
         plainUser = user.toObject ? user.toObject() : { ...user };
+        // Ensure MongoDB users have the correct id field structure
+        if (plainUser._id && !plainUser.id) {
+          plainUser.id = plainUser._id.toString();
+        }
         console.log('User found in MongoDB');
       } else {
         // Try to find user in Prisma

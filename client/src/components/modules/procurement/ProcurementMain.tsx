@@ -128,7 +128,7 @@ interface ExpenseRequest {
   department: string;
   justification: string;
   createdAt: string;
-  requestor: {
+  requester: {
     id: string;
     firstName: string;
     lastName: string;
@@ -358,19 +358,16 @@ export default function ProcurementMain() {
 
   const handleCreateExpense = async () => {
     try {
-      // Convert department to departments array for backend compatibility
-      const expenseData = {
-        ...newExpense,
-        departments: [newExpense.department], // Send as array for multi-department support
-        amount: parseFloat(newExpense.amount) || 0
-      };
       const response = await fetch('/api/procurement/expenses', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify(expenseData)
+        body: JSON.stringify({
+          ...newExpense,
+          amount: parseFloat(newExpense.amount) || 0
+        })
       });
       if (response.ok) {
         setShowCreateExpense(false);
@@ -1059,7 +1056,7 @@ export default function ProcurementMain() {
                         <span className="font-medium">Department:</span> {expense.department}
                       </div>
                       <div>
-                        <span className="font-medium">Requestor:</span> {expense.requestor.firstName} {expense.requestor.lastName}
+                        <span className="font-medium">Requestor:</span> {expense.requester.firstName} {expense.requester.lastName}
                       </div>
                       <div>
                         <span className="font-medium">Currency:</span> {expense.currency}
@@ -1078,7 +1075,7 @@ export default function ProcurementMain() {
                           <Eye className="w-4 h-4 mr-1" />
                           View
                         </Button>
-                        {expense.status === 'Submitted' && canApproveRequest && expense.requestor?.id !== user?.id && (
+                        {expense.status === 'Submitted' && canApproveRequest && expense.requester?.id !== user?.id && (
                           <>
                             <Button 
                               variant="outline" 
