@@ -410,7 +410,7 @@ router.get('/requests/:id/pdf', isAuthenticated, async (req: any, res) => {
       include: {
         requester: { select: { firstName: true, lastName: true, email: true, department: true } },
         approvedByUser: { select: { firstName: true, lastName: true, email: true } },
-        organization: { select: { name: true, address: true, phone: true, email: true, website: true } }
+        organization: { select: { name: true, address: true } }
       }
     });
 
@@ -451,22 +451,37 @@ router.get('/requests/:id/pdf', isAuthenticated, async (req: any, res) => {
       } : undefined,
       organization: {
         name: request.organization?.name || 'Organization Name',
-        address: request.organization?.address || 'Address',
-        phone: request.organization?.phone || 'Phone',
-        email: request.organization?.email || 'Email',
-        website: request.organization?.website || 'Website'
+        address: request.organization?.address || 'Address not available',
+        phone: 'Phone not available',
+        email: 'Email not available',
+        website: 'Website not available'
       }
     };
 
     // Generate PDF
-    const pdfBuffer = PDFGenerator.generateProcurementRequestPDF(pdfData);
+    try {
+      console.log('Starting PDF generation for request:', request.id);
+      console.log('PDF data prepared:', {
+        id: pdfData.id,
+        title: pdfData.title,
+        organization: pdfData.organization.name
+      });
+      
+      const pdfBuffer = await PDFGenerator.generateProcurementRequestPDF(pdfData);
+      
+      console.log('PDF generated successfully, buffer size:', pdfBuffer.length);
 
-    // Set response headers for PDF download
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="procurement-request-${request.id}.pdf"`);
-    res.setHeader('Content-Length', pdfBuffer.length);
+      // Set response headers for PDF download
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="procurement-request-${request.id}.pdf"`);
+      res.setHeader('Content-Length', pdfBuffer.length);
 
-    res.send(pdfBuffer);
+      res.send(pdfBuffer);
+    } catch (pdfError) {
+      console.error('Error generating PDF:', pdfError);
+      const errorMessage = pdfError instanceof Error ? pdfError.message : 'Unknown error occurred';
+      res.status(500).json({ error: 'Failed to generate PDF: ' + errorMessage });
+    }
   } catch (error) {
     console.error('Error generating PDF:', error);
     res.status(500).json({ error: 'Failed to generate PDF' });

@@ -1,5 +1,11 @@
 import PDFDocument from 'pdfkit';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
 import { Request } from 'express';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 interface ProcurementRequestData {
   id: string;
@@ -41,265 +47,170 @@ interface ProcurementRequestData {
 }
 
 export class PDFGenerator {
-  static generateProcurementRequestPDF(data: ProcurementRequestData): Buffer {
-    const doc = new PDFDocument({
-      size: 'A4',
-      margin: 50
+  static generateProcurementRequestPDF(data: ProcurementRequestData): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+      const doc = new PDFDocument({
+        size: 'A4',
+        margin: 50,
+        autoFirstPage: true
+      });
+
+      const chunks: Buffer[] = [];
+      doc.on('data', (chunk) => chunks.push(chunk));
+      doc.on('end', () => {
+        resolve(Buffer.concat(chunks));
+      });
+      doc.on('error', (error) => {
+        reject(error);
+      });
+
+      // Modern color palette
+      const primaryColor = '#1e40af'; // Deep blue
+      const secondaryColor = '#64748b'; // Slate gray
+      const accentColor = '#059669'; // Emerald green
+      const warningColor = '#dc2626'; // Red
+      const borderColor = '#e2e8f0';
+
+      // Helper functions
+      const addSectionHeader = (title: string, y: number) => {
+        doc.font('Helvetica-Bold').fontSize(12).fillColor(primaryColor).text(title.toUpperCase(), 50, y);
+        doc.fillColor('black');
+        doc.moveTo(50, y + 12).lineTo(545, y + 12).strokeColor(primaryColor).stroke();
+        return y + 20;
+      };
+
+      const addLabelValue = (label: string, value: string, y: number) => {
+        doc.font('Helvetica-Bold').fontSize(10).text(`${label}:`, 50, y);
+        doc.font('Helvetica').fontSize(10).text(value, 200, y);
+      };
+
+      let currentY = 50;
+
+      // Header with actual logo in top right, with debug output
+      const logoPath = path.resolve(__dirname, '../client/public/chainsnobg.png');
+      console.log('Resolved logo path:', logoPath);
+      if (fs.existsSync(logoPath)) {
+        doc.image(logoPath, 440, 40, { width: 90, height: 90 });
+      } else {
+        console.error('Logo file does not exist at:', logoPath);
+        doc.rect(450, 50, 95, 40).strokeColor(borderColor).stroke();
+        doc.font('Helvetica-Bold').fontSize(10).fillColor(primaryColor).text('LOGO', 470, 65);
+        doc.font('Helvetica').fontSize(8).fillColor(secondaryColor).text('CHAINS-ERP', 460, 80);
+      }
+      doc.font('Helvetica-Bold').fontSize(16).fillColor(primaryColor).text('CHAINS-ERP', 50, currentY);
+      currentY += 20;
+      doc.font('Helvetica').fontSize(10).fillColor(secondaryColor).text(`Organization: ${data.organization.name || 'Organization'}`, 50, currentY);
+      currentY += 15;
+      doc.font('Helvetica-Bold').fontSize(14).text('Procurement Request Form', 50, currentY);
+      currentY += 15;
+      doc.font('Helvetica').fontSize(10).fillColor(secondaryColor).text(`Generated: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`, 50, currentY);
+      currentY += 30;
+
+      // Request Details Section
+      currentY = addSectionHeader('REQUEST DETAILS', currentY);
+
+      const requestDetails = [
+        ['Request ID', data.id],
+        ['Title', data.title],
+        ['Description', data.description],
+        ['Category', data.category],
+        ['Department', data.department || 'Not specified'],
+        ['Priority', data.priority],
+        ['Urgency', data.urgency],
+        ['Estimated Amount', `$${data.estimatedAmount.toLocaleString()}`],
+        ['Expected Delivery', data.expectedDeliveryDate ? new Date(data.expectedDeliveryDate).toLocaleDateString() : 'Not specified'],
+        ['Date Requested', new Date(data.createdAt).toLocaleDateString()],
+        ['Requestor', `${data.requestor.firstName} ${data.requestor.lastName}`],
+        ['Requestor Email', data.requestor.email],
+        ['Requestor Department', data.requestor.department]
+      ];
+
+      requestDetails.forEach(([label, value]) => {
+        addLabelValue(label, value, currentY);
+        currentY += 18;
+      });
+
+      currentY += 20;
+
+      // Item Details Section
+      currentY = addSectionHeader('ITEM DETAILS', currentY);
+
+      addLabelValue('Description', data.description, currentY);
+      currentY += 18;
+      addLabelValue('Qty', '1', currentY);
+      currentY += 18;
+      addLabelValue('Unit Price', `$${data.estimatedAmount}`, currentY);
+      currentY += 18;
+      addLabelValue('Total', `$${data.estimatedAmount}`, currentY);
+      currentY += 20;
+
+      // Justification Section
+      currentY = addSectionHeader('JUSTIFICATION & IMPACT', currentY);
+
+      addLabelValue('Business Justification', data.justification || 'No justification provided', currentY);
+      currentY += 18;
+
+      if (data.impactOnOperations) {
+        addLabelValue('Operational Impact', data.impactOnOperations, currentY);
+        currentY += 18;
+      }
+
+      currentY += 20;
+
+      // Additional Details Section
+      currentY = addSectionHeader('ADDITIONAL DETAILS', currentY);
+
+      const additionalDetails = [
+        ['Preferred Supplier', data.preferredSupplier || 'None specified'],
+        ['Budget Code', data.budgetCode || 'Not specified'],
+        ['Special Requirements', data.specialRequirements || 'None'],
+        ['Alternatives Considered', data.alternativesConsidered || 'None specified'],
+        ['Risk Assessment', data.riskAssessment || 'None specified']
+      ];
+
+      additionalDetails.forEach(([label, value]) => {
+        addLabelValue(label, value, currentY);
+        currentY += 18;
+      });
+
+      currentY += 20;
+
+      // Approval Section
+      currentY = addSectionHeader('APPROVAL SECTION', currentY);
+
+      // Requestor
+      doc.font('Helvetica-Bold').fontSize(10).text('Requestor:', 50, currentY);
+      doc.font('Helvetica').fontSize(10).text(`${data.requestor.firstName} ${data.requestor.lastName}, Email: ${data.requestor.email}, Date: ${new Date(data.createdAt).toLocaleDateString()}`, 200, currentY);
+      currentY += 18;
+
+      // Department Head
+      doc.font('Helvetica-Bold').fontSize(10).text('Department Head:', 50, currentY);
+      doc.font('Helvetica').fontSize(10).text('Department Head Name, Email: Department Head Email, Date: ___________', 200, currentY);
+      currentY += 18;
+
+      // Finance/Procurement
+      doc.font('Helvetica-Bold').fontSize(10).text('Finance/Procurement:', 50, currentY);
+      if (data.approver) {
+        doc.font('Helvetica').fontSize(10).text(`${data.approver.firstName} ${data.approver.lastName}, Email: ${data.approver.email}, Date: ${new Date().toLocaleDateString()}`, 200, currentY);
+      } else {
+        doc.font('Helvetica').fontSize(10).text('Finance Manager Name, Email: Finance Manager Email, Date: ___________', 200, currentY);
+      }
+      currentY += 18;
+
+      // Status
+      if (data.status) {
+        doc.font('Helvetica-Bold').fontSize(10).text('Status:', 50, currentY);
+        doc.font('Helvetica-Bold').fontSize(10).fillColor(accentColor).text(data.status.toUpperCase(), 200, currentY);
+        doc.fillColor('black');
+        currentY += 18;
+      }
+
+      currentY += 20;
+
+      // Footer
+      doc.font('Helvetica').fontSize(9).fillColor(secondaryColor).text('Generated by Chains-ERP', 50, currentY);
+
+      doc.end();
     });
-
-    const chunks: Buffer[] = [];
-    doc.on('data', (chunk) => chunks.push(chunk));
-
-    // Header with Organization Details
-    this.addHeader(doc, data.organization);
-    
-    // Title
-    doc.fontSize(20)
-       .font('Helvetica-Bold')
-       .text('PROCUREMENT REQUEST FORM', { align: 'center' })
-       .moveDown(0.5);
-
-    // Request Details
-    this.addRequestDetails(doc, data);
-    
-    // Item Details
-    this.addItemDetails(doc, data);
-    
-    // Justification and Impact
-    this.addJustificationSection(doc, data);
-    
-    // Additional Details
-    this.addAdditionalDetails(doc, data);
-    
-    // Approval Section
-    this.addApprovalSection(doc, data);
-    
-    // Footer
-    this.addFooter(doc, data);
-
-    doc.end();
-    return Buffer.concat(chunks);
-  }
-
-  private static addHeader(doc: PDFKit.PDFDocument, organization: any) {
-    // Organization Logo/Name
-    doc.fontSize(16)
-       .font('Helvetica-Bold')
-       .text(organization.name || 'ORGANIZATION NAME', { align: 'center' })
-       .moveDown(0.5);
-
-    // Organization Details
-    doc.fontSize(10)
-       .font('Helvetica')
-       .text(organization.address || 'Address Line 1', { align: 'center' })
-       .text(`${organization.phone || 'Phone'} | ${organization.email || 'Email'} | ${organization.website || 'Website'}`, { align: 'center' })
-       .moveDown(1);
-
-    // Separator line
-    doc.moveTo(50, doc.y)
-       .lineTo(545, doc.y)
-       .stroke()
-       .moveDown(1);
-  }
-
-  private static addRequestDetails(doc: PDFKit.PDFDocument, data: ProcurementRequestData) {
-    doc.fontSize(14)
-       .font('Helvetica-Bold')
-       .text('REQUEST DETAILS', { underline: true })
-       .moveDown(0.5);
-
-    const details = [
-      { label: 'Request ID:', value: data.id },
-      { label: 'Request Title:', value: data.title },
-      { label: 'Description:', value: data.description },
-      { label: 'Category:', value: data.category },
-      { label: 'Department:', value: data.department },
-      { label: 'Priority:', value: data.priority },
-      { label: 'Urgency:', value: data.urgency },
-      { label: 'Estimated Amount:', value: `$${data.estimatedAmount.toLocaleString()}` },
-      { label: 'Expected Delivery:', value: data.expectedDeliveryDate || 'Not specified' },
-      { label: 'Date Requested:', value: new Date(data.createdAt).toLocaleDateString() },
-      { label: 'Requestor:', value: `${data.requestor.firstName} ${data.requestor.lastName}` },
-      { label: 'Requestor Email:', value: data.requestor.email },
-      { label: 'Requestor Department:', value: data.requestor.department }
-    ];
-
-    details.forEach(({ label, value }) => {
-      doc.fontSize(10)
-         .font('Helvetica-Bold')
-         .text(label, { continued: true })
-         .font('Helvetica')
-         .text(` ${value}`)
-         .moveDown(0.3);
-    });
-
-    doc.moveDown(1);
-  }
-
-  private static addItemDetails(doc: PDFKit.PDFDocument, data: ProcurementRequestData) {
-    doc.fontSize(14)
-       .font('Helvetica-Bold')
-       .text('ITEM DETAILS', { underline: true })
-       .moveDown(0.5);
-
-    // Create a table-like structure
-    const startY = doc.y;
-    const colWidth = 120;
-    const rowHeight = 20;
-
-    // Headers
-    doc.fontSize(10)
-       .font('Helvetica-Bold')
-       .text('Item', 50, startY)
-       .text('Description', 170, startY)
-       .text('Quantity', 320, startY)
-       .text('Unit Price', 420, startY)
-       .text('Total', 520, startY);
-
-    // Draw table lines
-    doc.moveTo(50, startY + 15)
-       .lineTo(545, startY + 15)
-       .stroke();
-
-    // Sample item row (you can modify this based on actual items)
-    doc.fontSize(10)
-       .font('Helvetica')
-       .text('Item 1', 50, startY + 25)
-       .text(data.description.substring(0, 30) + '...', 170, startY + 25)
-       .text('1', 320, startY + 25)
-       .text(`$${data.estimatedAmount}`, 420, startY + 25)
-       .text(`$${data.estimatedAmount}`, 520, startY + 25);
-
-    doc.moveDown(2);
-  }
-
-  private static addJustificationSection(doc: PDFKit.PDFDocument, data: ProcurementRequestData) {
-    doc.fontSize(14)
-       .font('Helvetica-Bold')
-       .text('JUSTIFICATION & IMPACT', { underline: true })
-       .moveDown(0.5);
-
-    doc.fontSize(10)
-       .font('Helvetica-Bold')
-       .text('Business Justification:', { underline: true })
-       .moveDown(0.3);
-
-    doc.font('Helvetica')
-       .text(data.justification, { width: 445 })
-       .moveDown(0.5);
-
-    if (data.impactOnOperations) {
-      doc.font('Helvetica-Bold')
-         .text('Impact on Operations:', { underline: true })
-         .moveDown(0.3);
-
-      doc.font('Helvetica')
-         .text(data.impactOnOperations, { width: 445 })
-         .moveDown(0.5);
-    }
-
-    doc.moveDown(1);
-  }
-
-  private static addAdditionalDetails(doc: PDFKit.PDFDocument, data: ProcurementRequestData) {
-    doc.fontSize(14)
-       .font('Helvetica-Bold')
-       .text('ADDITIONAL DETAILS', { underline: true })
-       .moveDown(0.5);
-
-    const additionalDetails = [
-      { label: 'Preferred Supplier:', value: data.preferredSupplier || 'None specified' },
-      { label: 'Budget Code:', value: data.budgetCode || 'Not specified' },
-      { label: 'Special Requirements:', value: data.specialRequirements || 'None' },
-      { label: 'Alternatives Considered:', value: data.alternativesConsidered || 'None specified' },
-      { label: 'Risk Assessment:', value: data.riskAssessment || 'None specified' }
-    ];
-
-    additionalDetails.forEach(({ label, value }) => {
-      doc.fontSize(10)
-         .font('Helvetica-Bold')
-         .text(label, { underline: true })
-         .moveDown(0.3);
-
-      doc.font('Helvetica')
-         .text(value, { width: 445 })
-         .moveDown(0.5);
-    });
-
-    doc.moveDown(1);
-  }
-
-  private static addApprovalSection(doc: PDFKit.PDFDocument, data: ProcurementRequestData) {
-    doc.fontSize(14)
-       .font('Helvetica-Bold')
-       .text('APPROVAL SECTION', { underline: true })
-       .moveDown(1);
-
-    const approvalY = doc.y;
-    const signatureWidth = 150;
-    const signatureHeight = 60;
-
-    // Requestor Signature
-    doc.fontSize(10)
-       .font('Helvetica-Bold')
-       .text('Requestor Signature:', 50, approvalY);
-
-    // Signature box for requestor
-    doc.rect(50, approvalY + 15, signatureWidth, signatureHeight)
-       .stroke();
-
-    doc.fontSize(8)
-       .font('Helvetica')
-       .text(`${data.requestor.firstName} ${data.requestor.lastName}`, 50, approvalY + 80)
-       .text(data.requestor.email, 50, approvalY + 95)
-       .text(`Date: ${new Date(data.createdAt).toLocaleDateString()}`, 50, approvalY + 110);
-
-    // Department Head Signature
-    doc.fontSize(10)
-       .font('Helvetica-Bold')
-       .text('Department Head Signature:', 250, approvalY);
-
-    // Signature box for department head
-    doc.rect(250, approvalY + 15, signatureWidth, signatureHeight)
-       .stroke();
-
-    doc.fontSize(8)
-       .font('Helvetica')
-       .text('Department Head Name', 250, approvalY + 80)
-       .text('Department Head Email', 250, approvalY + 95)
-       .text('Date: _______________', 250, approvalY + 110);
-
-    // Finance/Procurement Signature
-    doc.fontSize(10)
-       .font('Helvetica-Bold')
-       .text('Finance/Procurement Signature:', 450, approvalY);
-
-    // Signature box for finance
-    doc.rect(450, approvalY + 15, signatureWidth, signatureHeight)
-       .stroke();
-
-    doc.fontSize(8)
-       .font('Helvetica')
-       .text('Finance Manager Name', 450, approvalY + 80)
-       .text('Finance Manager Email', 450, approvalY + 95)
-       .text('Date: _______________', 450, approvalY + 110);
-
-    doc.moveDown(3);
-  }
-
-  private static addFooter(doc: PDFKit.PDFDocument, data: ProcurementRequestData) {
-    const footerY = 750;
-
-    // Separator line
-    doc.moveTo(50, footerY)
-       .lineTo(545, footerY)
-       .stroke()
-       .moveDown(0.5);
-
-    doc.fontSize(8)
-       .font('Helvetica')
-       .text(`Document generated on ${new Date().toLocaleString()}`, { align: 'center' })
-       .text(`Request ID: ${data.id} | Status: ${data.status || 'Pending'}`, { align: 'center' })
-       .text('This document is automatically generated and contains all procurement request details.', { align: 'center' });
   }
 } 

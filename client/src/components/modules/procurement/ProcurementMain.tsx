@@ -49,6 +49,7 @@ import RFPManager from './RFPManager';
 import ContractManager from './ContractManager';
 import GRNManager from './GRNManager';
 import VendorPerformanceManager from './VendorPerformanceManager';
+import { useToast } from '@/components/ui/use-toast';
 
 interface ProcurementRequest {
   id: string;
@@ -185,16 +186,19 @@ export default function ProcurementMain() {
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [analytics, setAnalytics] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [pdfLoading, setPdfLoading] = useState<string | null>(null);
   const [showCreateRequest, setShowCreateRequest] = useState(false);
   const [showCreateExpense, setShowCreateExpense] = useState(false);
   const [showCreateSupplier, setShowCreateSupplier] = useState(false);
   const [showCreateBudget, setShowCreateBudget] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [complianceStatus, setComplianceStatus] = useState<any>(null);
+  const { toast } = useToast();
 
   // Role-based access control
   const canCreateRequest = user?.role === 'admin' || user?.role === 'manager' || user?.role === 'hr_admin' || user?.isOwner;
   const canApproveRequest = user?.role === 'admin' || user?.role === 'executive' || user?.role === 'accounting' || user?.isOwner;
+  const isHRUser = user?.role === 'hr' || user?.role === 'hr_admin';
   const canManagePolicies = user?.role === 'admin' || user?.isOwner;
   const canManageCommittee = user?.role === 'admin' || user?.isOwner;
   const canViewAnalytics = user?.role === 'admin' || user?.role === 'manager' || user?.role === 'executive' || user?.isOwner;
@@ -482,6 +486,14 @@ export default function ProcurementMain() {
 
   const handleDownloadPDF = async (id: string) => {
     try {
+      setPdfLoading(id);
+      
+      // Show loading state
+      toast({
+        title: 'Generating PDF',
+        description: 'Please wait while we generate your procurement request PDF...',
+      });
+
       const response = await fetch(`/api/procurement/requests/${id}/pdf`, {
         credentials: 'include'
       });
@@ -496,11 +508,30 @@ export default function ProcurementMain() {
         link.click();
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
+
+        // Show success message
+        toast({
+          title: 'PDF Downloaded',
+          description: 'Procurement request PDF has been downloaded successfully.',
+        });
       } else {
-        console.error('Failed to download PDF');
+        const errorData = await response.json();
+        console.error('Failed to download PDF:', errorData);
+        toast({
+          title: 'Download Failed',
+          description: errorData.error || 'Failed to generate PDF. Please try again.',
+          variant: 'destructive',
+        });
       }
     } catch (error) {
       console.error('Error downloading PDF:', error);
+      toast({
+        title: 'Download Error',
+        description: 'An error occurred while downloading the PDF. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setPdfLoading(null);
     }
   };
 
@@ -864,33 +895,19 @@ export default function ProcurementMain() {
                           variant="outline" 
                           size="sm"
                           onClick={() => handleDownloadPDF(request.id)}
+                          disabled={pdfLoading === request.id}
                           className="border-green-300 text-green-600 hover:bg-green-50"
                         >
-                          <Download className="w-4 h-4 mr-1" />
+                          {pdfLoading === request.id ? (
+                            <svg className="animate-spin h-4 w-4 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                          ) : (
+                            <Download className="w-4 h-4 mr-1" />
+                          )}
                           PDF
                         </Button>
-                        {request.status === 'pending' && canApproveRequest && request.requestor?.id !== user?.id && (
-                          <>
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => handleApproveRequest(request.id, 'approved')}
-                              className="border-green-300 text-green-600 hover:bg-green-50"
-                            >
-                              <CheckCircle className="w-4 h-4 mr-1" />
-                              Approve
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => handleApproveRequest(request.id, 'rejected')}
-                              className="border-red-300 text-red-600 hover:bg-red-50"
-                            >
-                              <XCircle className="w-4 h-4 mr-1" />
-                              Reject
-                            </Button>
-                          </>
-                        )}
                       </div>
                     </div>
                   </CardContent>
