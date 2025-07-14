@@ -163,60 +163,7 @@ export function OngoingOperations() {
           </CardContent>
         </Card>
 
-        {/* Attendance Status */}
-        {attendanceData && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
-                Live Attendance Status
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="p-4 bg-green-50 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                      <p className="text-sm font-medium text-green-800">Present</p>
-                    </div>
-                    <p className="text-2xl font-bold text-green-700">{attendanceData.present || 0}</p>
-                  </div>
-                  <div className="p-4 bg-red-50 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <XCircle className="h-4 w-4 text-red-600" />
-                      <p className="text-sm font-medium text-red-800">Absent</p>
-                    </div>
-                    <p className="text-2xl font-bold text-red-700">{attendanceData.absent || 0}</p>
-                  </div>
-                  <div className="p-4 bg-yellow-50 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-yellow-600" />
-                      <p className="text-sm font-medium text-yellow-800">Late</p>
-                    </div>
-                    <p className="text-2xl font-bold text-yellow-700">{attendanceData.late || 0}</p>
-                  </div>
-                </div>
-
-                {/* Attendance Rate */}
-                <div className="p-4 bg-blue-50 rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-blue-800">Attendance Rate</p>
-                      <p className="text-2xl font-bold text-blue-700">
-                        {(employees?.length || 0) > 0 ? Math.round(((attendanceData.present || 0) / (employees?.length || 0)) * 100) : 0}%
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-blue-600">Total Employees</p>
-                      <p className="text-lg font-semibold text-blue-700">{employees?.length || 0}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+       
       </div>
 
       {/* Alerts and Notifications */}

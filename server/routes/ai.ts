@@ -85,6 +85,7 @@ router.get('/insights', isAuthenticated, async (req, res) => {
 
     const insights = await aiInsightsService.generateInsights({
       organizationId: req.user.organizationId,
+      department: req.user?.department,
       userRole: req.user.role,
       userName: (req.user as any)?.firstName ? `${(req.user as any).firstName} ${(req.user as any).lastName || ''}`.trim() : req.user.email,
       forceRefresh: forceRefresh === 'true'
