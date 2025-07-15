@@ -165,24 +165,37 @@ export default function Sidebar() {
   ).filter(Boolean);
 
   const handleSettingsClick = () => {
+    console.log('Settings clicked - User role:', user?.role);
+    console.log('Settings clicked - User isOwner:', user?.isOwner);
+    console.log('Settings clicked - Normalized module access:', normalizedModuleAccess);
+    
     if (user?.isOwner) {
+      console.log('Navigating to organization settings (owner)');
       setLocation('/organization-settings');
       return;
     }
-    if (user?.role === 'admin' && normalizedModuleAccess.length > 1) {
-      setShowSettingsDropdown((v) => !v);
-      return;
-    }
-    if (user?.role === 'admin' && normalizedModuleAccess.length === 1) {
-      const route = moduleSettingsRoutes[normalizedModuleAccess[0]] || '/organization-settings';
-      setLocation(route);
-      return;
-    }
-    // HR admin special case
+    
+    // HR admin special case - check this first
     if (user?.role === 'hr_admin') {
+      console.log('Navigating to HR settings (hr_admin)');
       setLocation('/hr/settings');
       return;
     }
+    
+    if (user?.role === 'admin' && normalizedModuleAccess.length > 1) {
+      console.log('Showing settings dropdown (admin with multiple modules)');
+      setShowSettingsDropdown((v) => !v);
+      return;
+    }
+    
+    if (user?.role === 'admin' && normalizedModuleAccess.length === 1) {
+      const route = moduleSettingsRoutes[normalizedModuleAccess[0]] || '/organization-settings';
+      console.log('Navigating to module settings (admin with single module):', route);
+      setLocation(route);
+      return;
+    }
+    
+    console.log('Navigating to organization settings (default)');
     setLocation('/organization-settings');
   };
 

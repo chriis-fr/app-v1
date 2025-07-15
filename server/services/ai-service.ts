@@ -9,6 +9,7 @@ import {
   type PromptContext 
 } from './ai-prompts';
 import { OrganizationDataService, type OrganizationData, type ComprehensiveOrganizationData } from './organization-data.service';
+import prisma from '../prisma';
 
 interface ChatRequest {
   message: string;
@@ -133,10 +134,30 @@ class AIService {
       try {
         if (request.organization_id) {
           organizationData = await OrganizationDataService.getComprehensiveOrganizationData(request.organization_id);
-          // Fetch org info (name, type, industry, country, taxId, address, website, settings, etc.)
-          // For this, we can use the first part of organizationData, or fetch from Prisma if needed
-          // For now, use organizationData as orgInfo
-          orgInfo = organizationData;
+          
+          // Fetch organization info from Prisma to get the main organization fields
+          try {
+            const organization = await prisma.organization.findUnique({
+              where: { id: request.organization_id },
+              select: {
+                id: true,
+                name: true,
+                type: true,
+                industry: true,
+                size: true,
+                address: true,
+                country: true,
+                taxId: true,
+                website: true,
+                settings: true
+              }
+            });
+            orgInfo = organization;
+          } catch (prismaError) {
+            console.error('⚠️ Error fetching organization info from Prisma:', prismaError);
+            // Fallback to organizationData if Prisma fails
+            orgInfo = organizationData;
+          }
         }
       } catch (error) {
         console.error('⚠️ Error fetching organization data:', error);
@@ -252,7 +273,8 @@ class AIService {
       let finalResponse = aiResponse;
       const isOwner = request.context?.user_role === 'owner' || request.context?.isOwner;
       const isHR = request.context?.department?.toLowerCase() === 'hr' || request.context?.user_role === 'hr';
-      if ((isOwner || isHR) && missingFields.length > 0) {
+      const isAdmin = request.context?.user_role === 'admin';
+      if ((isOwner || isHR || isAdmin) && missingFields.length > 0) {
         finalResponse = `⚠️ Important: Your organization is missing the following required information: ${missingFields.join(', ')}.\nPlease fill these fields in the Organization Settings for full functionality.\n\n` + aiResponse;
       }
 

@@ -164,16 +164,18 @@ export default function OrganizationSettingsPage() {
     const token = getToken();
     const hasUser = !!user;
     const isOwner = user?.isOwner;
+    const isAdmin = user?.role === 'admin';
     const hasOrgId = !!user?.organizationId;
     
     console.log('Authentication check:', {
       hasToken: !!token,
       hasUser,
       isOwner,
+      isAdmin,
       hasOrgId
     });
     
-    return token && hasUser && isOwner && hasOrgId;
+    return token && hasUser && (isOwner || isAdmin) && hasOrgId;
   };
 
   const form = useForm<OrganizationFormData>({
@@ -716,6 +718,7 @@ export default function OrganizationSettingsPage() {
                 <p>User ID: {user?.id || 'Not set'}</p>
                 <p>User Role: {user?.role || 'Not set'}</p>
                 <p>Is Owner: {user?.isOwner ? 'Yes' : 'No'}</p>
+                <p>Is Admin: {user?.role === 'admin' ? 'Yes' : 'No'}</p>
                 <p>Organization ID: {user?.organizationId || 'Not set'}</p>
                 <p>Token: {getToken() ? 'Present' : 'Missing'}</p>
                 <p>Authentication Status: {isUserAuthenticated() ? '✅ Authenticated' : '❌ Not Authenticated'}</p>
@@ -725,7 +728,7 @@ export default function OrganizationSettingsPage() {
                 <ul className="list-disc list-inside mt-1">
                   {!getToken() && <li>Missing authentication token</li>}
                   {!user && <li>No user data available</li>}
-                  {user && !user.isOwner && <li>User is not an owner</li>}
+                  {user && !user.isOwner && user?.role !== 'admin' && <li>User is not an owner or admin</li>}
                   {user && !user.organizationId && <li>No organization ID</li>}
                 </ul>
               </div>

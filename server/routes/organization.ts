@@ -553,6 +553,56 @@ router.get('/settings', isAuthenticated, async (req, res) => {
   }
 });
 
+// Update organization info
+router.put('/', isAuthenticated, async (req, res) => {
+  try {
+    console.log('Organization info update request received');
+    const { name, type, industry, size, address, country, taxId, website } = req.body;
+    
+    // Get the user from the request
+    const user = (req as any).user;
+    console.log('User from request:', user);
+    console.log('User organizationId:', user?.organizationId);
+    console.log('User isOwner:', user?.isOwner);
+    console.log('User role:', user?.role);
+
+    if (!user) {
+      console.log('Unauthorized - no user');
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // For owners and admins, allow them to update their organization info
+    if ((user.isOwner || user.role === 'admin') && user.organizationId) {
+      console.log(`${user.isOwner ? 'Owner' : 'Admin'} updating organization info with ID:`, user.organizationId);
+      
+      // Update the organization info in Prisma
+      const updatedOrganization = await prisma.organization.update({
+        where: { id: user.organizationId },
+        data: {
+          name: name || undefined,
+          type: type || undefined,
+          industry: industry || undefined,
+          size: size || undefined,
+          address: address || undefined,
+          country: country || undefined,
+          taxId: taxId || undefined,
+          website: website || undefined,
+          updatedAt: new Date()
+        }
+      });
+      
+      console.log('Organization info updated successfully');
+      res.json(updatedOrganization);
+    } else {
+      console.log('User is not owner/admin or missing organizationId');
+      return res.status(403).json({ error: 'Access denied. Owner or Admin privileges required.' });
+    }
+  } catch (error) {
+    console.error('Error updating organization info:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Update organization settings
 router.put('/settings', isAuthenticated, async (req, res) => {
   try {
@@ -572,9 +622,9 @@ router.put('/settings', isAuthenticated, async (req, res) => {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    // For owners, allow them to update their organization settings
-    if (user.isOwner && user.organizationId) {
-      console.log('Owner updating organization with ID:', user.organizationId);
+    // For owners and admins, allow them to update their organization settings
+    if ((user.isOwner || user.role === 'admin') && user.organizationId) {
+      console.log(`${user.isOwner ? 'Owner' : 'Admin'} updating organization with ID:`, user.organizationId);
       
       // Ensure settings is a proper JSON object, not a string
       let settingsToSave = settings;
@@ -608,8 +658,8 @@ router.put('/settings', isAuthenticated, async (req, res) => {
       console.log('Updated organization settings:', updatedOrganization.settings);
       res.json(updatedOrganization);
     } else {
-      console.log('User is not owner or missing organizationId');
-      return res.status(403).json({ error: 'Access denied. Owner privileges required.' });
+      console.log('User is not owner/admin or missing organizationId');
+      return res.status(403).json({ error: 'Access denied. Owner or Admin privileges required.' });
     }
   } catch (error) {
     console.error('Error updating organization settings:', error);
@@ -626,8 +676,8 @@ router.post('/settings/fix', isAuthenticated, async (req, res) => {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    if (!user.isOwner) {
-      return res.status(403).json({ error: 'Access denied. Owner privileges required.' });
+    if (!user.isOwner && user.role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied. Owner or Admin privileges required.' });
     }
 
     const organization = await prisma.organization.findUnique({
