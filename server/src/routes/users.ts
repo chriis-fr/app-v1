@@ -6,9 +6,7 @@ import { isAuthenticated } from '../../middleware/auth';
 import { checkModuleAccess } from '../../middleware/module-access';
 import { Request, Response } from 'express';
 import { AuthenticatedUser } from '../../src/middleware/auth';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '../../prisma';
 
 // Extend Express Request type to include user
 interface AuthenticatedRequest extends Request {
@@ -324,6 +322,42 @@ router.delete('/:id', async (req, res) => {
   } catch (error) {
     console.error('Error deleting user:', error);
     res.status(500).json({ message: "Failed to delete user" });
+  }
+});
+
+// Activate user account
+router.post('/activate', async (req, res) => {
+  try {
+    const { token, email } = req.body;
+    
+    if (!token || !email) {
+      return res.status(400).json({ message: 'Token and email are required' });
+    }
+
+    // Find user by email
+    const user = await prisma.user.findFirst({
+      where: {
+        email: email
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Update user to set isActive and emailVerified to true
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        isActive: true,
+        emailVerified: true
+      } as any
+    });
+
+    res.json({ message: 'Account activated successfully' });
+  } catch (error) {
+    console.error('Error activating user:', error);
+    res.status(500).json({ message: 'Error activating account' });
   }
 });
 

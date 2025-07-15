@@ -355,16 +355,15 @@ export function setupAuth(app: Express) {
       console.log('User ID:', fullUser.id);
       console.log('Email:', fullUser.email);
       console.log('isActive:', fullUser.isActive);
-      console.log('emailVerified:', fullUser.emailVerified);
+      console.log('emailVerified:', (fullUser as any).emailVerified);
       console.log('==================');
 
-      // Check if user is activated and email verified - treat undefined as true
+      // Check if user is activated - treat undefined as true
       const isActive = fullUser.isActive !== false; // true if undefined or true
-      const emailVerified = fullUser.emailVerified !== false; // true if undefined or true
       
-      if (!isActive || !emailVerified) {
-        console.log('❌ Activation check failed - isActive:', isActive, 'emailVerified:', emailVerified);
-        console.log('❌ Raw values - isActive:', fullUser.isActive, 'emailVerified:', fullUser.emailVerified);
+      if (!isActive) {
+        console.log('❌ Activation check failed - isActive:', isActive);
+        console.log('❌ Raw values - isActive:', fullUser.isActive);
         return res.status(403).json({ 
           message: 'Account not activated', 
           requiresActivation: true,

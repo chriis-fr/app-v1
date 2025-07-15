@@ -32,10 +32,10 @@ import cors from 'cors';
 import { sendActivationEmail, testEmailConnection, sendTestEmail, sendMeetingNotification, sendNotificationEmail } from './services/emailService';
 import { Types } from 'mongoose';
 import * as mongoose from 'mongoose';
+import crypto from 'crypto';
+const prisma = new PrismaClient();
 // import { createNotification } from './services/ai-insights';
 // import { Employee } from './mongodb/models/hr';
-
-const prisma = new PrismaClient();
 
 // Add type declarations for organization document
 interface IOrganizationDocument {
@@ -2193,38 +2193,6 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
           kpis: businessPreset.keyKPIs,
           recommendedSettings: businessPreset.recommendedSettings
         },
-        roles: [
-          {
-            name: 'Owner',
-            description: 'Full access to all features',
-            permissions: ['all'],
-            isSystem: true,
-            moduleAccess: activeModules.map((module: string) => ({
-              module,
-              access: 'read_write'
-            }))
-          },
-          {
-            name: 'Admin',
-            description: 'Access to most features except sensitive data',
-            permissions: ['dashboard', 'order_management', 'inventory', 'hr'],
-            isSystem: true,
-            moduleAccess: activeModules.map((module: string) => ({
-              module,
-              access: 'read_write'
-            }))
-          },
-          {
-            name: 'Employee',
-            description: 'Basic access to required features',
-            permissions: ['dashboard', 'order_management'],
-            isSystem: true,
-            moduleAccess: activeModules.map((module: string) => ({
-              module,
-              access: 'read'
-            }))
-          }
-        ],
         waitlistedModules: orgData.waitlistedModules || []
       };
 
@@ -2252,10 +2220,13 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
           department: 'Executive',
           firstName: orgData.owner.firstName,
           lastName: orgData.owner.lastName,
-          organizationId: organization.id,
+          organization: {
+            connect: { id: organization.id }
+          },
           isOwner: true,
           status: 'active',
           position: 'Owner',
+          emailVerified: false,
           moduleAccess: {
             create: activeModules.map((module: string) => ({
               module: module,
@@ -2271,6 +2242,36 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
         include: ({} as any)
       });
       console.log('Owner user created successfully:', owner.id);
+
+      // Generate activation token
+      const activationToken = crypto.randomBytes(32).toString('hex');
+      
+      // Update user with activation token
+      await prisma.user.update({
+        where: { id: owner.id },
+        data: { 
+          activationToken: activationToken,
+          activationTokenExpires: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
+        }
+      });
+
+      // Send activation email
+      try {
+        const emailResult = await sendActivationEmail(
+          ownerEmail,
+          `${orgData.owner.firstName} ${orgData.owner.lastName}`,
+          activationToken,
+          organization.name
+        );
+        
+        if (emailResult.success) {
+          console.log('✅ Activation email sent successfully to:', ownerEmail);
+        } else {
+          console.error('❌ Failed to send activation email:', emailResult.error);
+        }
+      } catch (emailError) {
+        console.error('❌ Error sending activation email:', emailError);
+      }
 
       // Generate JWT token for automatic login
       const token = jwt.sign(

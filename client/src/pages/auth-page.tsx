@@ -380,6 +380,9 @@ export default function AuthPage() {
       case 'owner':
         return (
           <div className="space-y-4">
+            <div className="text-xs text-primary font-semibold mb-2">
+              {stepLabels[currentStep]}
+            </div>
             <h3 className="text-lg font-medium">Owner Information</h3>
             <div className="space-y-2">
               <Label>First Name</Label>
@@ -395,15 +398,20 @@ export default function AuthPage() {
               <Label>Password</Label>
               <Input type="password" placeholder="Password" {...registerForm.register('password')} />
             </div>
-            <Button onClick={handleNext} className="w-full">
-              Next <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
+            <div className="flex justify-end">
+              <Button onClick={handleNext}>
+                Next <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
           </div>
         );
 
       case 'organization':
         return (
           <div className="space-y-4">
+            <div className="text-xs text-primary font-semibold mb-2">
+              {stepLabels[currentStep]}
+            </div>
             <h3 className="text-lg font-medium">Organization Details</h3>
             <div className="space-y-2">
               <Label>Organization Name</Label>
@@ -460,6 +468,9 @@ export default function AuthPage() {
       case 'accounting':
         return (
           <div className="space-y-4">
+            <div className="text-xs text-primary font-semibold mb-2">
+              {stepLabels[currentStep]}
+            </div>
             <h3 className="text-lg font-medium">Accounting Settings</h3>
             <div className="space-y-2">
               <Label>Fiscal Year Start</Label>
@@ -492,9 +503,14 @@ export default function AuthPage() {
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={handleNext} className="w-full">
-              Next <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
+            <div className="flex justify-between">
+              <Button variant="outline" onClick={handleBack}>
+                <ArrowLeft className="mr-2 h-4 w-4" /> Back
+              </Button>
+              <Button onClick={handleNext}>
+                Next <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
           </div>
         );
 
@@ -651,6 +667,9 @@ export default function AuthPage() {
       case 'review':
         return (
           <div className="space-y-4">
+            <div className="text-xs text-primary font-semibold mb-2">
+              {stepLabels[currentStep]}
+            </div>
             <h3 className="text-lg font-medium">Review Your Registration</h3>
             <div className="space-y-4">
               <div>

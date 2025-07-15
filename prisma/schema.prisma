@@ -448,6 +448,7 @@ model Organization {
   description       String?
   type              String
   industry          String?
+  size              String?
   status            String?
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
@@ -455,6 +456,8 @@ model Organization {
   modules           Json?
   logoUrl           String?
   address           Json?
+  country           String?
+  taxId             String?
   phoneNumber       String?
   email             String?
   website           String?
@@ -536,7 +539,7 @@ model User {
   isActive          Boolean?       @default(false)
   emailVerified     Boolean?       @default(false)
   activationToken   String?
-  tokenExpiresAt    DateTime?
+  activationTokenExpires DateTime?
   moduleAccess      ModuleAccess[] @relation("UserModuleAccess")
   permissions       Json?
   position          String?

@@ -1,11 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { Loader2, CheckCircle2, XCircle, Mail, Shield, Lock, Users, Database, BarChart, Settings, Globe, Zap } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle, Mail, Database, BarChart, Users, Settings, Globe, Zap } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 
 function getTokenFromUrl() {
@@ -21,8 +18,6 @@ function getEmailFromUrl() {
 export default function ActivatePage() {
   const [token, setToken] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -36,44 +31,31 @@ export default function ActivatePage() {
     setEmail(urlEmail);
   }, []);
 
-  const showActivationForm = token && email;
+  // Auto-activate when token and email are available
+  useEffect(() => {
+    if (token && email && !loading && !success && !error) {
+      handleActivation();
+    }
+  }, [token, email]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleActivation = async () => {
     if (!token || !email) {
       setError('Invalid activation link. Please check your email for the correct link.');
       return;
     }
-    if (password !== confirmPassword) {
-      setError('Passwords do not match.');
-      return;
-    }
+    
     setLoading(true);
     try {
       const response = await fetch('/api/users/activate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, password, email })
+        body: JSON.stringify({ token, email })
       });
       
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Activation failed');
+        throw new Error(data.message || 'Activation failed');
       }
-      
-      const data = await response.json();
-      
-      // Store the token in localStorage for the auth context
-      localStorage.setItem('token', data.token);
-      
-      // Update auth context with the user data
-      setUser({
-        ...data.user,
-        isOwner: data.user.role === 'owner',
-        organization: data.user.organization,
-        moduleAccess: data.user.moduleAccess || [],
-        permissions: data.user.permissions || []
-      });
       
       setSuccess(true);
       
@@ -87,7 +69,7 @@ export default function ActivatePage() {
   };
 
   // If no token, show message to check email
-  if (!showActivationForm) {
+  if (!token || !email) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 relative overflow-hidden">
         {/* Background Icons */}
@@ -145,13 +127,12 @@ export default function ActivatePage() {
                 </AlertDescription>
               </Alert>
               
-              <Button 
-                variant="outline" 
+              <button 
                 onClick={() => setLocation('/auth')}
-                className="mt-4 border-blue-300 text-blue-700 hover:bg-blue-50"
+                className="mt-4 px-4 py-2 border border-blue-300 text-blue-700 rounded-md hover:bg-blue-50 transition-colors"
               >
                 Back to Login
-              </Button>
+              </button>
             </div>
           </Card>
         </div>
@@ -200,7 +181,7 @@ export default function ActivatePage() {
             <p className="text-gray-600 text-sm">Empowering Businesses, driving growth</p>
           </div>
 
-          <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Activate Your Account</h2>
+          <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Activating Your Account</h2>
           
           {success ? (
             <Alert className="mb-6 border-green-200 bg-green-50">
@@ -210,68 +191,18 @@ export default function ActivatePage() {
                 Your account is now active. Welcome to Chains ERP! Redirecting to dashboard...
               </AlertDescription>
             </Alert>
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {error && (
-                <Alert variant="destructive" className="border-red-200 bg-red-50">
-                  <XCircle className="h-5 w-5 text-red-600 mr-2 inline" />
-                  <AlertTitle className="text-red-800">Activation Error</AlertTitle>
-                  <AlertDescription className="text-red-700">{error}</AlertDescription>
-                </Alert>
-              )}
-              
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-gray-700 font-medium">New Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  minLength={8}
-                  required
-                  placeholder="Enter a strong password"
-                  className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword" className="text-gray-700 font-medium">Confirm Password</Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={e => setConfirmPassword(e.target.value)}
-                  minLength={8}
-                  required
-                  placeholder="Re-enter your password"
-                  className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                />
-              </div>
-              
-              <Button 
-                type="submit" 
-                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium py-3 rounded-lg shadow-lg transition-all duration-200 transform hover:scale-105" 
-                disabled={loading}
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2 inline" />
-                    Activating Account...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="h-4 w-4 mr-2 inline" />
-                    Activate Account
-                  </>
-                )}
-              </Button>
-              
-              <div className="text-center text-sm text-gray-500 mt-4">
-                <Lock className="h-4 w-4 inline mr-1" />
-                Your account will be secured with industry-standard encryption
-              </div>
-            </form>
-          )}
+          ) : loading ? (
+            <div className="text-center">
+              <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
+              <p className="text-gray-600">Activating your account...</p>
+            </div>
+          ) : error ? (
+            <Alert variant="destructive" className="border-red-200 bg-red-50">
+              <XCircle className="h-5 w-5 text-red-600 mr-2 inline" />
+              <AlertTitle className="text-red-800">Activation Error</AlertTitle>
+              <AlertDescription className="text-red-700">{error}</AlertDescription>
+            </Alert>
+          ) : null}
         </Card>
       </div>
     </div>
