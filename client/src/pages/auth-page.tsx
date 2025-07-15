@@ -840,6 +840,7 @@ export default function AuthPage() {
                       firstName: formData.firstName,
                       lastName: formData.lastName,
                     },
+                    selectedModules: formData.selectedModules,
                     waitlistedModules: waitlistedModules,
                   }, {
                     onSuccess: () => {

@@ -48,6 +48,7 @@ interface RegisterData {
     firstName: string;
     lastName: string;
   };
+  selectedModules?: string[];
   waitlistedModules?: string[];
 }
 

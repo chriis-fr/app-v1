@@ -283,6 +283,11 @@ export function setupAuth(app: Express) {
         updatedAt: new Date()
       };
       
+      console.log('=== REGISTRATION DEBUG ===');
+      console.log('Form data selectedModules:', formData.selectedModules);
+      console.log('Organization activeModules:', organizationData.activeModules);
+      console.log('==========================');
+      
       console.log('Creating organization with data:', organizationData);
       const organization = await storage.createOrganization(organizationData);
       console.log('Organization created:', organization);
