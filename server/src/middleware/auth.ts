@@ -67,15 +67,38 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
     }
 
     // Set user in request with proper type handling
+    const isOwner = user.role === 'owner' || user.isOwner === true;
+    let moduleAccess = (user as any).moduleAccess?.map((ma: ModuleAccess) => ma.module) || [];
+    if (isOwner && (!moduleAccess || moduleAccess.length === 0)) {
+      // Grant all modules to owners
+      moduleAccess = [
+        'accounting', 'procurement', 'manufacturing', 'inventory', 'order_management', 'warehouse', 'supply_chain', 'crm', 'project_service', 'workforce', 'hr', 'ecommerce', 'marketing', 'pos', 'quality', 'maintenance', 'project', 'analytics', 'global_finance', 'international_trade', 'customer_experience', 'vendor_management', 'ai_analytics', 'ecommerce_global', 'localization', 'digital_currency'
+      ];
+    }
+    let permissions: { module: string; actions: string[] }[] = [];
+    if (typeof user.permissions === 'string') {
+      try {
+        permissions = JSON.parse(user.permissions);
+      } catch {
+        permissions = [];
+      }
+    } else if (Array.isArray(user.permissions)) {
+      permissions = user.permissions as { module: string; actions: string[] }[];
+    } else if (user.permissions && typeof user.permissions === 'object') {
+      // Prisma JsonArray or similar
+      permissions = Array.isArray(user.permissions)
+        ? user.permissions.map((p: any) => ({ module: p.module, actions: p.actions }))
+        : [];
+    }
     const authenticatedUser: AuthenticatedUser = {
       id: user.id,
       email: user.email,
       role: user.role,
       organizationId: user.organizationId || '',
-      isOwner: user.isOwner || false,
-      moduleAccess: (user as any).moduleAccess?.map((ma: ModuleAccess) => ma.module) || [],
+      isOwner,
+      moduleAccess,
       department: user.department || undefined,
-      permissions: (user.permissions as { module: string; actions: string[] }[]) || [],
+      permissions,
       organization: (user as any).organization ? {
         id: (user as any).organization.id,
         name: (user as any).organization.name,
@@ -93,7 +116,6 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
         roles: (user as any).organization.roles as any[]
       } : undefined
     };
-
     req.user = authenticatedUser;
     next();
   } catch (error) {

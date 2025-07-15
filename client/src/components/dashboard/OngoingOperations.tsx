@@ -1,35 +1,69 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Activity, Clock, Users, FileText, ArrowRightLeft, AlertCircle } from 'lucide-react';
+import { Activity, Clock, Users, FileText, ArrowRightLeft, AlertCircle, CheckCircle, XCircle, Calendar } from 'lucide-react';
 import { staticData } from '@/data/static';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@/lib/api';
+import { useAuth } from '@/hooks/use-auth';
 
 export function OngoingOperations() {
   const { blockchain, hr, accounting } = staticData;
+  const { user } = useAuth();
+
+  // Fetch live attendance data
+  const { data: attendanceData } = useQuery({
+    queryKey: ['attendance-live-operations'],
+    queryFn: () => api.get('/attendance/live'),
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
+
+  // Fetch employees data for consistent employee count
+  const { data: employees = [] } = useQuery({
+    queryKey: ['hr-employees-operations'],
+    queryFn: () => api.get('/hr/employees'),
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
 
   // Combine recent activities from different modules
   const recentActivities = [
     ...blockchain.transactions.map(tx => ({
       type: 'transaction',
-      title: 'Blockchain Transaction',
-      description: `${tx.type} of ${tx.amount} ETH`,
+      title: `${tx.type} Transaction`,
+      description: `${tx.amount} ETH - ${tx.status}`,
       timestamp: new Date(tx.createdAt),
       status: tx.status
     })),
     ...hr.employees.map(emp => ({
       type: 'employee',
-      title: 'Employee Update',
-      description: `${emp.firstName} ${emp.lastName} - ${emp.role}`,
-      timestamp: new Date(emp.createdAt),
-      status: 'active'
+      title: `${emp.firstName} ${emp.lastName} joined`,
+      description: `New employee in ${emp.department}`,
+      timestamp: new Date(emp.joinDate),
+      status: 'Active'
     })),
     ...accounting.invoices.map(inv => ({
       type: 'invoice',
-      title: 'Invoice',
-      description: `Invoice #${inv.id} - $${inv.amount}`,
+      title: `Invoice #${inv.id}`,
+      description: `$${inv.amount} - ${inv.status}`,
       timestamp: new Date(inv.createdAt),
       status: inv.status
     }))
-  ].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
-   .slice(0, 5);
+  ]
+  .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+  .slice(0, 5);
+
+  // Add attendance activities if data is available
+  const attendanceActivities = attendanceData ? [
+    {
+      type: 'attendance',
+      title: 'Live Attendance Update',
+      description: `${attendanceData.present || 0} present, ${attendanceData.absent || 0} absent, ${attendanceData.late || 0} late`,
+      timestamp: new Date(),
+      status: 'Live'
+    }
+  ] : [];
+
+  const allActivities = [...attendanceActivities, ...recentActivities]
+    .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+    .slice(0, 5);
 
   return (
     <div className="space-y-6">
@@ -46,12 +80,13 @@ export function OngoingOperations() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {recentActivities.map((activity, index) => (
+              {allActivities.map((activity, index) => (
                 <div key={index} className="flex items-start gap-3">
                   <div className="mt-1">
                     {activity.type === 'transaction' && <ArrowRightLeft className="h-4 w-4 text-blue-500" />}
                     {activity.type === 'employee' && <Users className="h-4 w-4 text-green-500" />}
                     {activity.type === 'invoice' && <FileText className="h-4 w-4 text-purple-500" />}
+                    {activity.type === 'attendance' && <Calendar className="h-4 w-4 text-red-500" />}
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
@@ -63,8 +98,8 @@ export function OngoingOperations() {
                     <p className="text-sm text-muted-foreground">{activity.description}</p>
                     <div className="mt-1">
                       <span className={`text-xs px-2 py-1 rounded-full ${
-                        activity.status === 'Completed' || activity.status === 'Paid' ? 'bg-green-100 text-green-700' :
-                        activity.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
+                        activity.status === 'Completed' || activity.status === 'Paid' || activity.status === 'Live' ? 'bg-green-100 text-green-700' :
+                        activity.status === 'Pending' || activity.status === 'Absent' || activity.status === 'Late' ? 'bg-yellow-100 text-yellow-700' :
                         'bg-blue-100 text-blue-700'
                       }`}>
                         {activity.status}
@@ -127,6 +162,8 @@ export function OngoingOperations() {
             </div>
           </CardContent>
         </Card>
+
+       
       </div>
 
       {/* Alerts and Notifications */}

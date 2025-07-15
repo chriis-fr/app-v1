@@ -22,12 +22,14 @@ interface DataTableProps<TData> {
   columns: ColumnDef<TData>[];
   data: TData[];
   onRowClick?: (row: TData) => void;
+  onCellClick?: (row: TData, columnId: string) => void;
 }
 
 export function DataTable<TData>({
   columns,
   data,
   onRowClick,
+  onCellClick,
 }: DataTableProps<TData>) {
   const [sorting, setSorting] = useState<SortingState>([]);
 
@@ -75,7 +77,16 @@ export function DataTable<TData>({
                   onClick={() => onRowClick?.(row.original)}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
+                    <TableCell 
+                      key={cell.id}
+                      onClick={(e) => {
+                        if (onCellClick) {
+                          e.stopPropagation();
+                          onCellClick(row.original, cell.column.id);
+                        }
+                      }}
+                      className={onCellClick ? 'cursor-pointer' : ''}
+                    >
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext()

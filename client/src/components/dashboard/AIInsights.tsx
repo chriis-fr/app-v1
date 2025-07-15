@@ -2,8 +2,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Lightbulb, TrendingUp, Shield, BarChart } from 'lucide-react';
 import { staticData } from '@/data/static';
+import { useOrganization } from '@/contexts/OrganizationContext';
 
 export function AIInsights() {
+  const { organization } = useOrganization();
+  if (!organization?.aiEnabled) return null;
+
   const { aiAnalytics } = staticData.companies[0];
 
   return (

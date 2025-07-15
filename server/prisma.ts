@@ -4,7 +4,7 @@ import dotenv from 'dotenv'
 // Load environment variables
 dotenv.config()
 
-// Create a new PrismaClient instance with logging enabled
+// Use the root Prisma client that has all the models
 const prisma = new PrismaClient({
   log: ['query', 'info', 'warn', 'error'],
 })

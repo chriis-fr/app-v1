@@ -2,6 +2,8 @@ import express, { Request, Response } from 'express';
 import { UserModel } from '../../models/user.model';
 import prisma from '../../prisma';
 import { Document, Types } from 'mongoose';
+import mongoose from 'mongoose';
+import { Employee } from '../../mongodb/models';
 
 interface SkillMatch {
   name: string;
@@ -169,11 +171,69 @@ router.put('/:id/compensation', async (req: Request, res: Response) => {
 
 // When fetching users for HR, exclude owners
 router.get('/employees', async (req: Request, res: Response) => {
+
   try {
-    // Exclude owners from employee list
-    const employees = await UserModel.find({ role: { $ne: 'owner' } });
-    res.json(employees);
+    // Exclude owners from employee list and filter by organizationId
+    const orgId = req.user?.organizationId;
+    if (!orgId) {
+      return res.status(401).json({ message: 'No organization context' });
+    }
+
+    // Fetch employees with login access from User collection
+    const usersWithLogin = await UserModel.find({ 
+      role: { $ne: 'owner' }, 
+      organizationId: orgId 
+    });
+
+    // Fetch basic employees from Employee collection
+    const basicEmployees = await Employee.find({ organizationId: orgId });
+
+    // Format users with login access (they have login credentials)
+    const formattedUsersWithLogin = usersWithLogin.map(user => ({
+      _id: user._id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      department: user.department,
+      position: user.position,
+      role: user.role,
+      status: user.status || 'active',
+      isActive: (user as any).isActive ?? true,
+      canLogin: (user as any).canLogin ?? true,
+      username: user.username,
+      emailVerified: user.emailVerified,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt
+    }));
+
+    // Format basic employees to match user structure
+    const formattedBasicEmployees = basicEmployees.map(emp => ({
+      _id: emp._id,
+      firstName: emp.firstName,
+      lastName: emp.lastName,
+      email: emp.email,
+      department: emp.department,
+      position: emp.position,
+      role: 'employee', // Default role for basic employees
+      status: emp.status || 'active',
+      isActive: emp.status === 'active',
+      canLogin: (emp as any).canLogin ?? false,
+      employeeId: emp.employeeId,
+      startDate: emp.startDate,
+      salary: emp.salary,
+      phone: emp.phone,
+      documents: emp.documents,
+      createdAt: emp.createdAt,
+      updatedAt: emp.updatedAt
+    }));
+
+    // Combine both arrays
+    const allEmployees = [...formattedUsersWithLogin, ...formattedBasicEmployees];
+
+
+    res.json(allEmployees);
   } catch (error) {
+    console.error('Error fetching employees:', error);
     res.status(500).json({ message: 'Error fetching employees' });
   }
 });
@@ -181,14 +241,96 @@ router.get('/employees', async (req: Request, res: Response) => {
 // When creating a new user/employee, allow canLogin to be set (default false for non-login roles)
 router.post('/employees', async (req: Request, res: Response) => {
   try {
-    const user = new UserModel({
-      ...req.body,
-      canLogin: req.body.canLogin ?? false // Default to false if not provided
+
+    
+    // Validate required fields
+    if (!req.body.firstName || !req.body.lastName || !req.body.department || !req.body.organizationId) {
+      return res.status(400).json({ 
+        message: 'Missing required fields: firstName, lastName, department, organizationId' 
+      });
+    }
+
+    // For basic employees, position can be custom or from department positions
+    const position = req.body.position || req.body.customPosition;
+    if (!position) {
+      return res.status(400).json({ message: 'Position is required' });
+    }
+
+    const canLogin = req.body.canLogin ?? false;
+
+    if (canLogin) {
+      // Create user account for employees who need login
+      const userData = {
+        ...req.body,
+        position: position,
+        role: req.body.role || 'employee',
+        isActive: true,
+        status: 'active'
+      };
+
+
+
+      const user = new UserModel(userData);
+      await user.save();
+      
+      
+      res.status(201).json(user);
+    } else {
+      // Create employee record for basic employees (no login)
+      
+      // Convert organizationId to ObjectId
+      const organizationId = new mongoose.Types.ObjectId(req.body.organizationId);
+      
+      // Generate employee number and employeeId
+      const employeeCount = await Employee.countDocuments({ organizationId });
+      const employeeNumber = `EMP${String(employeeCount + 1).padStart(3, '0')}`;
+      const employeeId = `EMP${String(employeeCount + 1).padStart(6, '0')}`;
+
+      const employeeData = {
+        organizationId,
+        employeeId,
+        employeeNumber,
+        firstName: req.body.firstName,
+        lastName: req.body.lastName,
+        email: req.body.email || `${req.body.firstName.toLowerCase()}.${req.body.lastName.toLowerCase()}@company.com`,
+        phoneNumber: req.body.phoneNumber,
+        department: req.body.department,
+        position: position,
+        employmentDate: new Date(),
+        employmentStatus: 'active',
+        canLogin: false,
+        role: req.body.role || 'employee',
+        contractType: req.body.employmentType,
+        employmentGrade: req.body.employmentGrade,
+        salary: req.body.salary,
+        // Additional fields that might be expected
+        isActive: true,
+        status: 'active',
+        lastLogin: null,
+        createdBy: req.user?.id,
+        updatedBy: req.user?.id
+        // Note: Not setting userId field to avoid unique index constraint violation
+      };
+
+      
+
+      const employee = await Employee.create(employeeData);
+      
+      
+      res.status(201).json(employee);
+    }
+  } catch (error: any) {
+    console.error('HR router: Error creating employee:', error);
+    console.error('HR router: Error details:', {
+      name: error.name,
+      message: error.message,
+      code: error.code
     });
-    await user.save();
-    res.status(201).json(user);
-  } catch (error) {
-    res.status(500).json({ message: 'Error creating employee' });
+    res.status(500).json({ 
+      message: 'Error creating employee',
+      error: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 

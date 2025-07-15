@@ -3,12 +3,14 @@ import { isAuthenticated } from '../middleware/auth';
 import { checkModuleAccess } from '../middleware/module-access';
 import { AuthRequest, CountryConfig } from '../types';
 import OrganizationStructure, { OrganizationStructureDocument } from '../models/OrganizationStructure';
-import User from '../models/User';
+import { UserModel } from '../models/user.model';
 import mongoose from 'mongoose';
 import { getCountryConfig } from '../config/countries';
 import { Business } from '../models/Business';
+import { PrismaClient } from '@prisma/client';
 
 const router = express.Router();
+const prisma = new PrismaClient();
 
 // Middleware to check if user is admin
 const isAdmin = (req: AuthRequest, res: express.Response, next: express.NextFunction) => {
@@ -134,7 +136,7 @@ router.put('/structure/:id/assign', isAuthenticated, checkModuleAccess('hr'), is
     const { employeeId } = req.body;
     
     // Check if employee exists
-    const employee = await User.findById(employeeId);
+    const employee = await UserModel.findById(employeeId);
     if (!employee) {
       return res.status(404).json({ message: 'Employee not found' });
     }
@@ -280,7 +282,7 @@ router.post('/structure/:id/assign-employee', isAuthenticated, checkModuleAccess
     const { employeeId, assignmentType, startDate, endDate, isException, exceptionReason } = req.body;
     
     // Check if employee exists
-    const employee = await User.findById(employeeId);
+    const employee = await UserModel.findById(employeeId);
     if (!employee) {
       return res.status(404).json({ message: 'Employee not found' });
     }
@@ -523,43 +525,290 @@ router.get('/positions/evaluation-score', isAuthenticated, checkModuleAccess('hr
   }
 });
 
-// Update organization settings
-router.put('/settings', isAuthenticated, async (req: AuthRequest, res) => {
+// Get organization settings
+router.get('/settings', isAuthenticated, async (req, res) => {
   try {
-    const { settings } = req.body;
-    const organization = await OrganizationStructure.findById(req.user?.organizationId);
+    const user = (req as any).user;
+    
+    if (!user || !user.organizationId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const organization = await prisma.organization.findUnique({
+      where: { id: user.organizationId }
+    });
 
     if (!organization) {
-      return res.status(404).json({ message: 'Organization not found' });
+      return res.status(404).json({ error: 'Organization not found' });
     }
 
-    // If country is being changed, update accounting settings
-    if (settings.country && settings.country !== organization.country) {
-      const countryConfig = getCountryConfig(settings.country);
-      settings.accounting = {
-        ...organization.settings?.accounting,
-        fiscalYearStart: countryConfig.defaultSettings.accounting?.fiscalYearStart,
-        fiscalYearEnd: countryConfig.defaultSettings.accounting?.fiscalYearEnd,
-        taxYearStart: countryConfig.defaultSettings.accounting?.taxYearStart,
-        taxYearEnd: countryConfig.defaultSettings.accounting?.taxYearEnd,
-        currency: countryConfig.currency,
-        taxRates: countryConfig.taxSystem?.rates || {},
-        chartOfAccounts: organization.settings?.accounting?.chartOfAccounts || countryConfig.defaultSettings.accounting?.chartOfAccounts || []
-      };
+    console.log('Current organization settings type:', typeof organization.settings);
+    console.log('Current organization settings:', organization.settings);
+    
+    // Return settings as proper JSON object
+    res.json(organization.settings || {});
+  } catch (error) {
+    console.error('Error fetching organization settings:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Update organization info
+router.put('/', isAuthenticated, async (req, res) => {
+  try {
+    console.log('Organization info update request received');
+    const { name, type, industry, size, address, country, taxId, website } = req.body;
+    
+    // Get the user from the request
+    const user = (req as any).user;
+    console.log('User from request:', user);
+    console.log('User organizationId:', user?.organizationId);
+    console.log('User isOwner:', user?.isOwner);
+    console.log('User role:', user?.role);
+
+    if (!user) {
+      console.log('Unauthorized - no user');
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    // Update organization settings
-    organization.settings = {
-      ...organization.settings,
-      ...settings
-    };
+    // For owners and admins, allow them to update their organization info
+    if ((user.isOwner || user.role === 'admin') && user.organizationId) {
+      console.log(`${user.isOwner ? 'Owner' : 'Admin'} updating organization info with ID:`, user.organizationId);
+      
+      // Update the organization info in Prisma
+      const updatedOrganization = await prisma.organization.update({
+        where: { id: user.organizationId },
+        data: {
+          name: name || undefined,
+          type: type || undefined,
+          industry: industry || undefined,
+          size: size || undefined,
+          address: address || undefined,
+          country: country || undefined,
+          taxId: taxId || undefined,
+          website: website || undefined,
+          updatedAt: new Date()
+        }
+      });
+      
+      console.log('Organization info updated successfully');
+      res.json(updatedOrganization);
+    } else {
+      console.log('User is not owner/admin or missing organizationId');
+      return res.status(403).json({ error: 'Access denied. Owner or Admin privileges required.' });
+    }
+  } catch (error) {
+    console.error('Error updating organization info:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 
-    await organization.save();
+// Update organization settings
+router.put('/settings', isAuthenticated, async (req, res) => {
+  try {
+    console.log('Organization settings update request received');
+    const { settings } = req.body;
+    console.log('Settings data type:', typeof settings);
+    console.log('Settings data:', settings);
+    
+    // Get the user from the request
+    const user = (req as any).user;
+    console.log('User from request:', user);
+    console.log('User organizationId:', user?.organizationId);
+    console.log('User isOwner:', user?.isOwner);
 
-    res.json(organization);
+    if (!user) {
+      console.log('Unauthorized - no user');
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // For owners and admins, allow them to update their organization settings
+    if ((user.isOwner || user.role === 'admin') && user.organizationId) {
+      console.log(`${user.isOwner ? 'Owner' : 'Admin'} updating organization with ID:`, user.organizationId);
+      
+      // Ensure settings is a proper JSON object, not a string
+      let settingsToSave = settings;
+      if (typeof settings === 'string') {
+        try {
+          settingsToSave = JSON.parse(settings);
+          console.log('Parsed settings from string:', settingsToSave);
+        } catch (e) {
+          console.error('Failed to parse settings string:', e);
+          return res.status(400).json({ error: 'Invalid settings format' });
+        }
+      }
+      
+      // Validate that settings is an object
+      if (typeof settingsToSave !== 'object' || settingsToSave === null) {
+        console.error('Settings is not a valid object:', typeof settingsToSave);
+        return res.status(400).json({ error: 'Settings must be a valid object' });
+      }
+      
+      console.log('Final settings to save:', JSON.stringify(settingsToSave, null, 2));
+      
+      // Update the organization settings in Prisma
+      const updatedOrganization = await prisma.organization.update({
+        where: { id: user.organizationId },
+        data: {
+          settings: settingsToSave // Store as proper JSON object
+        }
+      });
+      
+      console.log('Organization updated successfully');
+      console.log('Updated organization settings:', updatedOrganization.settings);
+      res.json(updatedOrganization);
+    } else {
+      console.log('User is not owner/admin or missing organizationId');
+      return res.status(403).json({ error: 'Access denied. Owner or Admin privileges required.' });
+    }
   } catch (error) {
     console.error('Error updating organization settings:', error);
-    res.status(500).json({ message: 'Error updating organization settings' });
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Fix corrupted organization settings
+router.post('/settings/fix', isAuthenticated, async (req, res) => {
+  try {
+    const user = (req as any).user;
+    
+    if (!user || !user.organizationId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    if (!user.isOwner && user.role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied. Owner or Admin privileges required.' });
+    }
+
+    const organization = await prisma.organization.findUnique({
+      where: { id: user.organizationId }
+    });
+
+    if (!organization) {
+      return res.status(404).json({ error: 'Organization not found' });
+    }
+
+    console.log('Current settings before fix:', organization.settings);
+    
+    // Create default settings structure
+    const defaultSettings = {
+      theme: {
+        primaryColor: '#282881',
+        secondaryColor: '#ffffff',
+        darkMode: false,
+        fontFamily: 'Inter',
+        borderRadius: '0.5rem',
+        spacing: '1rem'
+      },
+      branding: {
+        logo: null,
+        favicon: null,
+        companyName: organization.name || 'Your Company',
+        tagline: '',
+        website: '',
+        email: '',
+        phone: '',
+        address: '',
+        socialMedia: {
+          facebook: '',
+          twitter: '',
+          linkedin: '',
+          instagram: ''
+        }
+      },
+      modules: {
+        enabled: organization.activeModules || ['accounting'],
+        defaultModule: 'accounting'
+      },
+      notifications: {
+        email: true,
+        push: true,
+        sms: false
+      },
+      security: {
+        twoFactorAuth: false,
+        sessionTimeout: 30,
+        passwordPolicy: {
+          minLength: 8,
+          requireSpecialChars: true,
+          requireNumbers: true
+        }
+      },
+      integrations: {
+        paymentGateways: [],
+        emailService: '',
+        smsService: ''
+      },
+      backup: {
+        frequency: 'daily',
+        retention: 30,
+        autoBackup: true
+      },
+      workingDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
+      workingHours: {
+        start: '09:00',
+        end: '17:00'
+      },
+      holidays: [],
+      ai: {
+        isEnabled: true,
+        allowPersonalAI: true,
+        allowOrganizationAI: true,
+        model: 'gpt-3.5-turbo',
+        temperature: 0.7,
+        maxTokens: 1000,
+        moduleSettings: {
+          hr: {
+            enabled: true,
+            canAccessEmployeeData: true,
+            canAccessPayrollData: true,
+            canAccessHiringData: true,
+            canAccessPerformanceData: true
+          },
+          finance: {
+            enabled: true,
+            canAccessFinancialData: true,
+            canAccessAccountingData: true,
+            canAccessBudgetData: true,
+            canAccessTaxData: true
+          },
+          inventory: {
+            enabled: true,
+            canAccessStockData: true,
+            canAccessWarehouseData: true,
+            canAccessSupplyChainData: true
+          },
+          sales: {
+            enabled: true,
+            canAccessCustomerData: true,
+            canAccessSalesData: true,
+            canAccessCRMData: true
+          },
+          general: {
+            enabled: true,
+            canAccessGeneralData: true,
+            canAccessAnalyticsData: true
+          }
+        }
+      }
+    };
+
+    // Update the organization with proper settings
+    const updatedOrganization = await prisma.organization.update({
+      where: { id: user.organizationId },
+      data: {
+        settings: defaultSettings
+      }
+    });
+
+    console.log('Settings fixed successfully');
+    res.json({ 
+      message: 'Settings fixed successfully',
+      settings: updatedOrganization.settings 
+    });
+  } catch (error) {
+    console.error('Error fixing organization settings:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -573,6 +822,129 @@ router.get('/:id', isAuthenticated, async (req: AuthRequest, res) => {
     res.json(org);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching organization' });
+  }
+});
+
+// Get custom field definitions for a module
+router.get('/custom-fields/:module', isAuthenticated, async (req: AuthRequest, res) => {
+  try {
+    const orgId = req.user?.organizationId;
+    if (!orgId) return res.status(401).json({ message: 'No organization found' });
+    const org = await Business.findOne({ _id: orgId });
+    if (!org) return res.status(404).json({ message: 'Organization not found' });
+    const module = req.params.module;
+    const customFields = org.settings?.customFields?.[module] || [];
+    res.json(customFields);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching custom fields' });
+  }
+});
+
+// Set custom field definitions for a module
+router.post('/custom-fields/:module', isAuthenticated, isAdmin, async (req: AuthRequest, res) => {
+  try {
+    const orgId = req.user?.organizationId;
+    if (!orgId) return res.status(401).json({ message: 'No organization found' });
+    const org = await Business.findOne({ _id: orgId });
+    if (!org) return res.status(404).json({ message: 'Organization not found' });
+    const module = req.params.module;
+    const customFields = req.body.customFields || [];
+    if (!org.settings) org.settings = {
+      customFields: {},
+      currency: 'USD',
+      theme: 'light',
+      timezone: 'UTC',
+      modules: [] as any,
+      notifications: { email: false, slack: false, webhook: '' }
+    };
+    org.settings = org.settings as NonNullable<typeof org.settings>;
+    if (!org.settings.customFields) org.settings.customFields = {};
+    org.settings.customFields[module] = customFields;
+    await org.save();
+    res.json({ success: true, customFields });
+  } catch (error) {
+    res.status(500).json({ message: 'Error saving custom fields' });
+  }
+});
+
+// Organization Roles Routes
+router.get('/roles', async (_req, res) => {
+  try {
+    // Mock organization roles data for testing
+    const roles = [
+      {
+        id: '1',
+        name: 'Admin',
+        description: 'Full access to all features',
+        permissions: ['all'],
+        isSystem: true,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      {
+        id: '2',
+        name: 'Manager',
+        description: 'Access to most features except sensitive data',
+        permissions: ['dashboard', 'order_management', 'inventory', 'hr'],
+        isSystem: true,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      {
+        id: '3',
+        name: 'Employee',
+        description: 'Basic access to required features',
+        permissions: ['dashboard', 'order_management'],
+        isSystem: true,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+    ];
+    
+    res.json(roles);
+  } catch (error) {
+    console.error('Error fetching organization roles:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/roles', async (req, res) => {
+  try {
+    const roleData = req.body;
+    
+    // Mock role creation response
+    const role = {
+      id: Math.random().toString(36).substring(7),
+      ...roleData,
+      isSystem: false,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    res.status(201).json(role);
+  } catch (error) {
+    console.error('Error creating organization role:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.patch('/roles/:roleId', async (req, res) => {
+  try {
+    const roleId = req.params.roleId;
+    const roleData = req.body;
+    
+    // Mock role update response
+    const role = {
+      id: roleId,
+      ...roleData,
+      isSystem: false,
+      updatedAt: new Date()
+    };
+    
+    res.json(role);
+  } catch (error) {
+    console.error('Error updating organization role:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 

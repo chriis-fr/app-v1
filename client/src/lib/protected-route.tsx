@@ -16,6 +16,12 @@ export function ProtectedRoute({ component: Component, requiredModule, ...rest }
     return null;
   }
 
+  // Check if user is activated - if not, redirect to activate page
+  if (user && (user.isActive === false || user.emailVerified === false)) {
+    setLocation('/activate');
+    return null;
+  }
+
   // Always allow owners
   if (user?.isOwner) {
     return <Route {...rest} component={Component} />;

@@ -16,6 +16,10 @@ const businessSchema = new mongoose.Schema({
       email: Boolean,
       slack: Boolean,
       webhook: String
+    },
+    customFields: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {}
     }
   },
   subscription: {

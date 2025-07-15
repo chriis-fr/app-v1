@@ -14,9 +14,10 @@ model Organization {
   type          String
   industry      String
   size          String?
-  walletAddress String?  @unique
+  walletAddress String? 
   activeModules String[]
   maxModules    Int      @default(2)
+  waitlistedModules String[]
   address       String?
   country       String?
   taxId         String?
@@ -24,6 +25,22 @@ model Organization {
   settings      Json?
   roles         Json?
   users         User[]
+  jobPostings   JobPosting[]      @relation("OrgJobPostings")
+  jobApplications JobApplication[] @relation("OrgJobApplications")
+  notifications Notification[]    @relation("OrgNotifications")
+  procurementRequests ProcurementRequest[] @relation("OrgProcurementRequests")
+  purchaseOrders PurchaseOrder[] @relation("OrgPurchaseOrders")
+  suppliers     Supplier[] @relation("OrgSuppliers")
+  expenseRequests ExpenseRequest[] @relation("OrgExpenseRequests")
+  payments      Payment[] @relation("OrgPayments")
+  budgets       Budget[] @relation("OrgBudgets")
+  procurementComments ProcurementComment[] @relation("OrgProcurementComments")
+  rfps          RFP[] @relation("OrgRFPs")
+  rfpResponses  RFPResponse[] @relation("OrgRFPResponses")
+  contracts     Contract[] @relation("OrgContracts")
+  grns          GoodsReceivedNote[] @relation("OrgGRNs")
+  vendorPerformances VendorPerformance[] @relation("OrgVendorPerformances")
+  vendorContracts VendorContract[] @relation("OrgVendorContracts")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -44,6 +61,10 @@ model User {
   organizationId String?      @db.ObjectId
   organization  Organization? @relation(fields: [organizationId], references: [id])
   isOwner       Boolean?
+  isActive       Boolean?      @default(false)
+  emailVerified Boolean?      @default(false)
+  activationToken String?
+  activationTokenExpires DateTime?
   status        String?       @default("active")
   lastLogin     DateTime?
   employeeId    String?
@@ -65,8 +86,47 @@ model User {
   wallet        Json?
   legalDetails  Json?
   address       Json?
+  avatarUrl     String?       // Profile image URL
+  
+  // Enhanced Payroll & Onboarding Fields
+  fullName      String?       // Display name for payroll
+  country       String?       // For tax and compliance
+  currencyPreference String?  // USD, KES, etc.
+  payoutMethod  String?       // stellar_wallet, mpesa, bank_transfer, etc.
+  walletAddress String?       // Stellar wallet or phone number for mobile money
+  taxId         String?       // For tax reporting
+  salaryAmount  Float?        // Base pay
+  salaryFrequency String?     // monthly, biweekly, etc.
+  contractType  String?       // full_time, part_time, contract, etc.
+  startDate     DateTime?     // Employment start date
+  deductions    Json?         // List of recurring deductions (loans, pensions)
+  
   moduleAccess  ModuleAccess[]
   permissions   Json?         @default("[]")
+  jobPostings   JobPosting[]        @relation("UserJobPostings")
+  jobApplicationReviews JobApplication[] @relation("UserJobApplicationReviews")
+  meetings      Meeting[]     @relation("UserMeetings")
+  meetingAttendees MeetingAttendee[] @relation("UserMeetingAttendees")
+  timeTrackingEntries TimeTrackingEntry[] @relation("UserTimeTracking")
+  notifications Notification[] @relation("UserNotifications")
+  procurementRequests ProcurementRequest[] @relation("UserProcurementRequests")
+  procurementApprovals ProcurementRequest[] @relation("UserProcurementApprovals")
+  purchaseOrders PurchaseOrder[] @relation("UserPurchaseOrders")
+  purchaseOrderApprovals PurchaseOrder[] @relation("UserPurchaseOrderApprovals")
+  expenseRequests ExpenseRequest[] @relation("UserExpenseRequests")
+  expenseApprovals ExpenseRequest[] @relation("UserExpenseApprovals")
+  payments      Payment[] @relation("UserPayments")
+  budgets       Budget[] @relation("UserBudgets")
+  procurementComments ProcurementComment[] @relation("UserProcurementComments")
+  rfps          RFP[] @relation("UserRFPs")
+  rfpResponses  RFPResponse[] @relation("UserRFPResponses")
+  rfpResponseEvaluations RFPResponse[] @relation("UserRFPResponseEvaluations")
+  contracts     Contract[] @relation("UserContracts")
+  contractLegalReviews Contract[] @relation("UserContractLegalReviews")
+  contractApprovals Contract[] @relation("UserContractApprovals")
+  grns          GoodsReceivedNote[] @relation("UserGRNs")
+  vendorEvaluations VendorPerformance[] @relation("UserVendorEvaluations")
+  vendorContracts VendorContract[] @relation("UserVendorContracts")
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
@@ -83,4 +143,602 @@ model ModuleAccess {
   updatedAt DateTime @updatedAt
 
   @@map("moduleAccess")
+}
+
+model TimeTrackingEntry {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId         String   @db.ObjectId
+  organizationId String   @db.ObjectId
+  startTime      DateTime
+  endTime        DateTime?
+  status         String
+  type           String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  // Relations
+  user           User     @relation("UserTimeTracking", fields: [userId], references: [id])
+}
+
+model Meeting {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  organizerId    String   @db.ObjectId
+  organizationId String   @db.ObjectId
+  title          String
+  description    String?
+  startTime      DateTime
+  endTime        DateTime
+  status         String
+  type           String
+  timezone       String
+  location       String?
+  isVirtual      Boolean  @default(false)
+  meetingUrl     String?
+  recurring      Json?
+  reminders      Json?
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  attendees      MeetingAttendee[]
+  organizer      User     @relation("UserMeetings", fields: [organizerId], references: [id])
+}
+
+model MeetingAttendee {
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  meetingId    String    @db.ObjectId
+  userId       String    @db.ObjectId
+  timezone     String
+  status       String
+  responseTime DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  meeting      Meeting   @relation(fields: [meetingId], references: [id])
+  user         User      @relation("UserMeetingAttendees", fields: [userId], references: [id])
+}
+
+model Task {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  organizationId String   @db.ObjectId
+  title          String
+  description    String?
+  assigneeId     String   @db.ObjectId
+  priority       String
+  status         String
+  dueDate        DateTime
+  timezone       String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 } 
+
+model JobPosting {
+  id                  String           @id @default(auto()) @map("_id") @db.ObjectId
+  organizationId      String           @db.ObjectId
+  organization        Organization     @relation("OrgJobPostings", fields: [organizationId], references: [id])
+  title               String
+  department          String
+  location            String
+  employmentType      String
+  experienceLevel     String
+  salary              Json?
+  description         String
+  requirements        Json?
+  responsibilities    Json?
+  benefits            Json?
+  applicationDeadline DateTime?
+  status              String           @default("draft")
+  isPublic            Boolean          @default(true)
+  publicId            String           @unique
+  views               Int              @default(0)
+  applications        Int              @default(0)
+  createdBy           String           @db.ObjectId
+  createdByUser       User             @relation("UserJobPostings", fields: [createdBy], references: [id])
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  JobApplication      JobApplication[]
+
+  @@map("job_postings")
+}
+
+model JobApplication {
+  id                  String       @id @default(auto()) @map("_id") @db.ObjectId
+  jobPostingId        String       @db.ObjectId
+  jobPosting          JobPosting   @relation(fields: [jobPostingId], references: [id])
+  organizationId      String       @db.ObjectId
+  organization        Organization @relation("OrgJobApplications", fields: [organizationId], references: [id])
+  firstName           String
+  lastName            String
+  email               String
+  phone               String?
+  dateOfBirth         DateTime?
+  gender              String?
+  address             Json?
+  currentPosition     String?
+  currentCompany      String?
+  experience          Int?
+  education           String?
+  skills              Json?
+  certifications      Json?
+  languages           Json?
+  coverLetter         String?
+  expectedSalary      Json?
+  availability        String?
+  resume              Json?
+  additionalDocuments Json?
+  status              String       @default("pending")
+  reviewedBy          String?      @db.ObjectId
+  reviewedByUser      User?        @relation("UserJobApplicationReviews", fields: [reviewedBy], references: [id])
+  reviewedAt          DateTime?
+  reviewNotes         String?
+  interviews          Json?
+  communications      Json?
+  source              String       @default("website")
+  ipAddress           String?
+  userAgent           String?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  @@map("job_applications")
+}
+
+model Notification {
+  id             String       @id @default(auto()) @map("_id") @db.ObjectId
+  type           String // meeting, task, approval, system, user, finance, inventory
+  title          String
+  message        String
+  userId         String       @db.ObjectId
+  user           User         @relation("UserNotifications", fields: [userId], references: [id])
+  organizationId String       @db.ObjectId
+  organization   Organization @relation("OrgNotifications", fields: [organizationId], references: [id])
+  priority       String       @default("medium") // low, medium, high
+  isRead         Boolean      @default(false)
+  actionUrl      String?
+  metadata       String? // JSON string for additional data
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@map("notifications")
+}
+
+// Procurement Models
+model ProcurementRequest {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  organizationId  String   @db.ObjectId
+  organization    Organization @relation("OrgProcurementRequests", fields: [organizationId], references: [id])
+  requesterId     String   @db.ObjectId
+  requester       User     @relation("UserProcurementRequests", fields: [requesterId], references: [id])
+  title           String
+  description     String
+  category        String
+  priority        String   @default("medium")
+  status          String   @default("pending")
+  estimatedCost   Float?
+  currency        String   @default("USD")
+  urgency         String   @default("normal")
+  justification   String?
+  attachments     Json?
+  departments     String[] // Array of departments for multi-department support
+  expectedDeliveryDate DateTime?
+  preferredSupplier String?
+  specialRequirements String?
+  impactOnOperations String?
+  alternativesConsidered String?
+  riskAssessment String?
+  approvedBy      String?  @db.ObjectId
+  approvedByUser  User?    @relation("UserProcurementApprovals", fields: [approvedBy], references: [id])
+  approvedAt      DateTime?
+  rejectionReason String?
+  comments        ProcurementComment[]
+  purchaseOrders  PurchaseOrder[]
+  rfps            RFP[]
+  contracts       Contract[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("procurement_requests")
+}
+
+model PurchaseOrder {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  organizationId  String   @db.ObjectId
+  organization    Organization @relation("OrgPurchaseOrders", fields: [organizationId], references: [id])
+  procurementRequestId String? @db.ObjectId
+  procurementRequest ProcurementRequest? @relation(fields: [procurementRequestId], references: [id])
+  supplierId      String   @db.ObjectId
+  supplier        Supplier @relation(fields: [supplierId], references: [id])
+  createdById     String   @db.ObjectId
+  createdBy       User     @relation("UserPurchaseOrders", fields: [createdById], references: [id])
+  poNumber        String   @unique
+  status          String   @default("draft")
+  totalAmount     Float
+  currency        String   @default("USD")
+  items           PurchaseOrderItem[]
+  terms           String?
+  deliveryDate    DateTime?
+  paymentTerms    String?
+  approvedBy      String?  @db.ObjectId
+  approvedByUser  User?    @relation("UserPurchaseOrderApprovals", fields: [approvedBy], references: [id])
+  approvedAt      DateTime?
+  comments        ProcurementComment[]
+  payments        Payment[]
+  contracts       Contract[]
+  grns            GoodsReceivedNote[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("purchase_orders")
+}
+
+model Supplier {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  organizationId  String   @db.ObjectId
+  organization    Organization @relation("OrgSuppliers", fields: [organizationId], references: [id])
+  name            String
+  contactPerson   String?
+  email           String?
+  phone           String?
+  address         Json?
+  taxId           String?
+  category        String?
+  rating          Float?
+  status          String   @default("active")
+  paymentTerms    String?
+  notes           String?
+  purchaseOrders  PurchaseOrder[]
+  rfpResponses    RFPResponse[]
+  contracts       Contract[]
+  performances    VendorPerformance[]
+  vendorContracts VendorContract[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("suppliers")
+}
+
+model ExpenseRequest {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  organizationId  String   @db.ObjectId
+  organization    Organization @relation("OrgExpenseRequests", fields: [organizationId], references: [id])
+  requesterId     String   @db.ObjectId
+  requester       User     @relation("UserExpenseRequests", fields: [requesterId], references: [id])
+  title           String
+  description     String
+  amount          Float
+  currency        String   @default("USD")
+  category        String
+  priority        String   @default("medium")
+  status          String   @default("pending")
+  urgency         String   @default("normal")
+  justification   String?
+  attachments     Json?
+  approvedBy      String?  @db.ObjectId
+  approvedByUser  User?    @relation("UserExpenseApprovals", fields: [approvedBy], references: [id])
+  approvedAt      DateTime?
+  rejectionReason String?
+  comments        ProcurementComment[]
+  payments        Payment[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("expense_requests")
+}
+
+model Payment {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  organizationId  String   @db.ObjectId
+  organization    Organization @relation("OrgPayments", fields: [organizationId], references: [id])
+  expenseRequestId String? @db.ObjectId
+  expenseRequest  ExpenseRequest? @relation(fields: [expenseRequestId], references: [id])
+  purchaseOrderId String?  @db.ObjectId
+  purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
+  processedById   String   @db.ObjectId
+  processedBy     User     @relation("UserPayments", fields: [processedById], references: [id])
+  amount          Float
+  currency        String   @default("USD")
+  paymentMethod   String
+  status          String   @default("pending")
+  transactionId   String?
+  notes           String?
+  processedAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("payments")
+}
+
+model Budget {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  organizationId  String   @db.ObjectId
+  organization    Organization @relation("OrgBudgets", fields: [organizationId], references: [id])
+  createdById     String   @db.ObjectId
+  createdBy       User     @relation("UserBudgets", fields: [createdById], references: [id])
+  name            String
+  description     String?
+  amount          Float
+  currency        String   @default("USD")
+  period          String   // monthly, quarterly, yearly
+  startDate       DateTime
+  endDate         DateTime
+  category        String?
+  status          String   @default("active")
+  spentAmount     Float    @default(0)
+  remainingAmount Float?
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("budgets")
+}
+
+model ProcurementComment {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  organizationId  String   @db.ObjectId
+  organization    Organization @relation("OrgProcurementComments", fields: [organizationId], references: [id])
+  authorId        String   @db.ObjectId
+  author          User     @relation("UserProcurementComments", fields: [authorId], references: [id])
+  procurementRequestId String? @db.ObjectId
+  procurementRequest ProcurementRequest? @relation(fields: [procurementRequestId], references: [id])
+  purchaseOrderId String?  @db.ObjectId
+  purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
+  expenseRequestId String? @db.ObjectId
+  expenseRequest  ExpenseRequest? @relation(fields: [expenseRequestId], references: [id])
+  contractId      String?  @db.ObjectId
+  contract        Contract? @relation(fields: [contractId], references: [id])
+  content         String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("procurement_comments")
+}
+
+// RFP Models
+model RFP {
+  id                  String   @id @default(auto()) @map("_id") @db.ObjectId
+  organizationId      String   @db.ObjectId
+  organization        Organization @relation("OrgRFPs", fields: [organizationId], references: [id])
+  procurementRequestId String? @db.ObjectId
+  procurementRequest  ProcurementRequest? @relation(fields: [procurementRequestId], references: [id])
+  createdById         String   @db.ObjectId
+  createdBy           User     @relation("UserRFPs", fields: [createdById], references: [id])
+  rfpNumber           String   @unique
+  title               String
+  description         String
+  requirements        Json
+  evaluationCriteria  Json
+  submissionDeadline  DateTime
+  status              String   @default("draft")
+  responses           RFPResponse[]
+  contracts           Contract[]
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@map("rfps")
+}
+
+model RFPResponse {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  organizationId  String   @db.ObjectId
+  organization    Organization @relation("OrgRFPResponses", fields: [organizationId], references: [id])
+  rfpId           String   @db.ObjectId
+  rfp             RFP      @relation(fields: [rfpId], references: [id])
+  supplierId      String   @db.ObjectId
+  supplier        Supplier @relation(fields: [supplierId], references: [id])
+  submittedById   String   @db.ObjectId
+  submittedBy     User     @relation("UserRFPResponses", fields: [submittedById], references: [id])
+  proposal        String
+  pricing         Json
+  timeline         Json
+  technicalSpecs  Json
+  status          String   @default("submitted")
+  technicalScore  Float?
+  priceScore      Float?
+  totalScore      Float?
+  notes           String?
+  evaluatedById   String?  @db.ObjectId
+  evaluatedBy     User?    @relation("UserRFPResponseEvaluations", fields: [evaluatedById], references: [id])
+  evaluatedAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("rfp_responses")
+}
+
+// Contract Models
+model Contract {
+  id                  String   @id @default(auto()) @map("_id") @db.ObjectId
+  organizationId      String   @db.ObjectId
+  organization        Organization @relation("OrgContracts", fields: [organizationId], references: [id])
+  rfpId               String?  @db.ObjectId
+  rfp                 RFP?     @relation(fields: [rfpId], references: [id])
+  supplierId          String   @db.ObjectId
+  supplier            Supplier @relation(fields: [supplierId], references: [id])
+  procurementRequestId String? @db.ObjectId
+  procurementRequest  ProcurementRequest? @relation(fields: [procurementRequestId], references: [id])
+  purchaseOrderId     String?  @db.ObjectId
+  purchaseOrder       PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
+  createdById         String   @db.ObjectId
+  createdBy           User     @relation("UserContracts", fields: [createdById], references: [id])
+  contractNumber      String   @unique
+  title               String
+  description         String
+  contractType        String
+  startDate           DateTime
+  endDate             DateTime
+  totalValue          Float
+  currency            String   @default("USD")
+  paymentTerms        String?
+  sla                 Json?
+  penalties           Json?
+  status              String   @default("draft")
+  attachments         Json?
+  legalReviewBy       String?  @db.ObjectId
+  legalReviewer       User?    @relation("UserContractLegalReviews", fields: [legalReviewBy], references: [id])
+  legalReviewAt       DateTime?
+  approvedBy          String?  @db.ObjectId
+  approver            User?    @relation("UserContractApprovals", fields: [approvedBy], references: [id])
+  approvedAt          DateTime?
+  comments            ProcurementComment[]
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@map("contracts")
+}
+
+// GRN Models
+model GoodsReceivedNote {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  organizationId  String   @db.ObjectId
+  organization    Organization @relation("OrgGRNs", fields: [organizationId], references: [id])
+  purchaseOrderId String   @db.ObjectId
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  receivedById    String   @db.ObjectId
+  receivedBy      User     @relation("UserGRNs", fields: [receivedById], references: [id])
+  grnNumber       String   @unique
+  receivedDate    DateTime
+  notes           String?
+  status          String   @default("received")
+  items           GRNItem[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("goods_received_notes")
+}
+
+model GRNItem {
+  id                  String   @id @default(auto()) @map("_id") @db.ObjectId
+  grnId               String   @db.ObjectId
+  grn                 GoodsReceivedNote @relation(fields: [grnId], references: [id])
+  purchaseOrderItemId  String   @db.ObjectId
+  purchaseOrderItem    PurchaseOrderItem @relation(fields: [purchaseOrderItemId], references: [id])
+  receivedQuantity    Int
+  acceptedQuantity    Int
+  rejectedQuantity    Int      @default(0)
+  rejectionReason     String?
+  qualityCheck        String?
+  notes               String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@map("grn_items")
+}
+
+model PurchaseOrderItem {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  purchaseOrderId String   @db.ObjectId
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  itemName        String
+  description     String?
+  quantity        Int
+  unitPrice       Float
+  totalPrice      Float
+  unitOfMeasure   String?
+  specifications  Json?
+  grnItems        GRNItem[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("purchase_order_items")
+}
+
+// Vendor Performance Models
+model VendorPerformance {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  organizationId  String   @db.ObjectId
+  organization    Organization @relation("OrgVendorPerformances", fields: [organizationId], references: [id])
+  supplierId      String   @db.ObjectId
+  supplier        Supplier @relation(fields: [supplierId], references: [id])
+  evaluatedById   String   @db.ObjectId
+  evaluatedBy     User     @relation("UserVendorEvaluations", fields: [evaluatedById], references: [id])
+  evaluationDate  DateTime @default(now())
+  performanceScore Float
+  qualityScore    Float
+  deliveryScore   Float
+  communicationScore Float
+  costEffectivenessScore Float
+  overallRating   String
+  strengths       String?
+  weaknesses      String?
+  recommendations String?
+  nextReviewDate  DateTime?
+  status          String   @default("active")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("vendor_performances")
+}
+
+model VendorContract {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  organizationId  String   @db.ObjectId
+  organization    Organization @relation("OrgVendorContracts", fields: [organizationId], references: [id])
+  supplierId      String   @db.ObjectId
+  supplier        Supplier @relation(fields: [supplierId], references: [id])
+  contractNumber  String   @unique
+  contractType    String
+  startDate       DateTime
+  endDate         DateTime
+  totalValue      Float
+  currency        String   @default("USD")
+  status          String   @default("active")
+  terms           Json?
+  sla             Json?
+  penalties       Json?
+  createdById     String   @db.ObjectId
+  createdBy       User     @relation("UserVendorContracts", fields: [createdById], references: [id])
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("vendor_contracts")
+}
+
+model Attendance {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  employeeId    String   // Can be user ID or manual employee ID
+  employeeName  String   // Name for workers without login access
+  date          DateTime @db.Date
+  status        String   // "present", "absent", "late", "half-day"
+  checkInTime   DateTime?
+  checkOutTime  DateTime?
+  totalHours    Float?   // Calculated work hours
+  notes         String?  // Optional work notes
+  markedBy      String?  // Who marked the attendance (user ID or "manual")
+  organizationId String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([employeeId, date, organizationId])
+  @@index([organizationId, date])
+  @@index([employeeId])
+}
+
+model AttendanceLog {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  employeeId    String
+  employeeName  String
+  logType       String   // "check-in", "check-out"
+  timestamp     DateTime @default(now())
+  location      String?  // Optional location tracking
+  device        String?  // Device used for check-in
+  notes         String?
+  organizationId String
+  markedBy      String?  // Who created this log
+
+  @@index([organizationId, employeeId, timestamp])
+  @@index([timestamp])
+}
+
+model WorkNote {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  employeeId    String
+  employeeName  String
+  date          DateTime @db.Date
+  workDescription String
+  hoursWorked   Float?
+  project       String?
+  tasks         String?
+  organizationId String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([employeeId, date, organizationId])
+  @@index([organizationId, date])
+}

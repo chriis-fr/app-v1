@@ -3,6 +3,7 @@ import React from 'react';
 import CompactSidebar from '../layout/CompactSidebar';
 import Sidebar from '../layout/Sidebar';
 import Header from '../layout/Header';
+import { AIFloatingButton } from '../ai';
 import { useAuth } from '@/hooks/use-auth';
 import { useLocation } from 'wouter';
 
@@ -46,12 +47,20 @@ export function DashboardLayout({ children }: React.PropsWithChildren) {
           <div className="w-64 h-screen overflow-hidden flex-shrink-0">
             <Sidebar />
           </div>
-          <div className="flex-1 flex flex-col min-h-screen">
+          <div className="flex-1 flex flex-col h-screen">
             <Header />
-            <main className="pt-16 p-8">{children}</main>
+            <main className="flex-1 overflow-y-auto pt-16 p-8">{children}</main>
           </div>
         </>
       )}
+      
+      {/* AI Floating Button - appears on all dashboards */}
+      <div className="relative">
+        <AIFloatingButton 
+          userRole={user?.role}
+          organizationId={user?.organizationId}
+        />
+      </div>
     </div>
   );
 }

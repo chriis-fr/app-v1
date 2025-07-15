@@ -6,6 +6,7 @@ import { isAuthenticated } from '../../middleware/auth';
 import { checkModuleAccess } from '../../middleware/module-access';
 import { Request, Response } from 'express';
 import { AuthenticatedUser } from '../../src/middleware/auth';
+import prisma from '../../prisma';
 
 // Extend Express Request type to include user
 interface AuthenticatedRequest extends Request {
@@ -45,47 +46,44 @@ const updateUserSchema = z.object({
 // Get all users
 router.get('/', async (req, res) => {
   try {
-    // Mock user data for testing
-    const users = [
-      {
-        id: '1',
-        username: 'johndoe',
-        firstName: 'John',
-        lastName: 'Doe',
-        email: 'john.doe@example.com',
-        role: 'admin',
-        department: 'IT',
-        position: 'Manager',
-        status: 'active',
-        moduleAccess: [
-          { moduleName: 'dashboard' },
-          { moduleName: 'order_management' },
-          { moduleName: 'inventory' },
-          { moduleName: 'hr' }
-        ],
-        createdAt: new Date(),
-        updatedAt: new Date()
-      },
-      {
-        id: '2',
-        username: 'janesmith',
-        firstName: 'Jane',
-        lastName: 'Smith',
-        email: 'jane.smith@example.com',
-        role: 'user',
-        department: 'Sales',
-        position: 'Representative',
-        status: 'active',
-        moduleAccess: [
-          { moduleName: 'dashboard' },
-          { moduleName: 'order_management' }
-        ],
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }
-    ];
+    const currentUser = req.user as AuthenticatedUser;
     
-    res.json(users);
+    if (!currentUser) {
+      return res.status(401).json({ message: 'User not authenticated' });
+    }
+
+    // Fetch real users from database
+    const users = await prisma.user.findMany({
+      where: {
+        organizationId: currentUser.organizationId
+      },
+      include: {
+        moduleAccess: true
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+
+    // Transform moduleAccess to expected format
+    const formattedUsers = users.map(user => ({
+      id: user.id,
+      username: user.username,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      role: user.role,
+      department: user.department,
+      position: user.position,
+      status: user.status,
+      moduleAccess: user.moduleAccess?.map(access => ({ 
+        moduleName: access.module 
+      })) || [],
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt
+    }));
+    
+    res.json(formattedUsers);
   } catch (error) {
     console.error('Error fetching users:', error);
     res.status(500).json({ message: "Failed to fetch users" });
@@ -172,29 +170,46 @@ router.post('/', isAuthenticated, checkModuleAccess('users'), async (req: Reques
 router.get('/:id', async (req, res) => {
   try {
     const userId = req.params.id;
+    const currentUser = req.user as AuthenticatedUser;
     
-    // Mock user data for testing
-    const user = {
-      id: userId,
-      username: 'johndoe',
-      firstName: 'John',
-      lastName: 'Doe',
-      email: 'john.doe@example.com',
-      role: 'admin',
-      department: 'IT',
-      position: 'Manager',
-      status: 'active',
-      moduleAccess: [
-        { moduleName: 'dashboard' },
-        { moduleName: 'order_management' },
-        { moduleName: 'inventory' },
-        { moduleName: 'hr' }
-      ],
-      createdAt: new Date(),
-      updatedAt: new Date()
+    if (!currentUser) {
+      return res.status(401).json({ message: 'User not authenticated' });
+    }
+
+    // Fetch real user from database
+    const user = await prisma.user.findFirst({
+      where: {
+        id: userId,
+        organizationId: currentUser.organizationId
+      },
+      include: {
+        moduleAccess: true
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Transform moduleAccess to expected format
+    const formattedUser = {
+      id: user.id,
+      username: user.username,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      role: user.role,
+      department: user.department,
+      position: user.position,
+      status: user.status,
+      moduleAccess: user.moduleAccess?.map(access => ({ 
+        moduleName: access.module 
+      })) || [],
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt
     };
     
-    res.json(user);
+    res.json(formattedUser);
   } catch (error) {
     console.error('Error fetching user:', error);
     res.status(500).json({ message: "Failed to fetch user" });
@@ -206,33 +221,65 @@ router.put('/:id', async (req, res) => {
   try {
     const validatedData = updateUserSchema.parse(req.body);
     const userId = req.params.id;
+    const currentUser = req.user as AuthenticatedUser;
     
-    // Mock user data for testing
-    const user = {
-      id: userId,
-      username: validatedData.username || 'johndoe',
-      firstName: validatedData.firstName || 'John',
-      lastName: validatedData.lastName || 'Doe',
-      email: validatedData.email || 'john.doe@example.com',
-      role: validatedData.role || 'admin',
-      department: validatedData.department || 'IT',
-      position: validatedData.position || 'Manager',
-      status: validatedData.status || 'active',
-      moduleAccess: validatedData.moduleAccess?.map(module => ({ moduleName: module })) || [
-        { moduleName: 'dashboard' },
-        { moduleName: 'order_management' },
-        { moduleName: 'inventory' },
-        { moduleName: 'hr' }
-      ],
-      createdAt: new Date(),
-      updatedAt: new Date()
+    if (!currentUser) {
+      return res.status(401).json({ message: 'User not authenticated' });
+    }
+
+    // Check if user exists and belongs to the same organization
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        id: userId,
+        organizationId: currentUser.organizationId
+      }
+    });
+
+    if (!existingUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Remove moduleAccess from validatedData since it's a relation
+    const { moduleAccess, ...updateData } = validatedData;
+
+    // Update user in database
+    const updatedUser = await prisma.user.update({
+      where: {
+        id: userId
+      },
+      data: {
+        ...updateData,
+        updatedAt: new Date()
+      },
+      include: {
+        moduleAccess: true
+      }
+    });
+
+    // Transform moduleAccess to expected format
+    const formattedUser = {
+      id: updatedUser.id,
+      username: updatedUser.username,
+      firstName: updatedUser.firstName,
+      lastName: updatedUser.lastName,
+      email: updatedUser.email,
+      role: updatedUser.role,
+      department: updatedUser.department,
+      position: updatedUser.position,
+      status: updatedUser.status,
+      moduleAccess: updatedUser.moduleAccess?.map(access => ({ 
+        moduleName: access.module 
+      })) || [],
+      createdAt: updatedUser.createdAt,
+      updatedAt: updatedUser.updatedAt
     };
     
-    res.json(user);
+    res.json(formattedUser);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ message: 'Validation error', errors: error.errors });
     }
+    console.error('Error updating user:', error);
     res.status(500).json({ message: 'Error updating user' });
   }
 });
@@ -241,11 +288,76 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const userId = req.params.id;
+    const currentUser = req.user as AuthenticatedUser;
+    
+    if (!currentUser) {
+      return res.status(401).json({ message: 'User not authenticated' });
+    }
+
+    // Check if user exists and belongs to the same organization
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        id: userId,
+        organizationId: currentUser.organizationId
+      }
+    });
+
+    if (!existingUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Prevent deleting the current user
+    if (userId === currentUser.id) {
+      return res.status(400).json({ message: 'Cannot delete your own account' });
+    }
+
+    // Delete user from database
+    await prisma.user.delete({
+      where: {
+        id: userId
+      }
+    });
     
     res.json({ message: `User ${userId} deleted successfully` });
   } catch (error) {
     console.error('Error deleting user:', error);
     res.status(500).json({ message: "Failed to delete user" });
+  }
+});
+
+// Activate user account
+router.post('/activate', async (req, res) => {
+  try {
+    const { token, email } = req.body;
+    
+    if (!token || !email) {
+      return res.status(400).json({ message: 'Token and email are required' });
+    }
+
+    // Find user by email
+    const user = await prisma.user.findFirst({
+      where: {
+        email: email
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Update user to set isActive and emailVerified to true
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        isActive: true,
+        emailVerified: true
+      } as any
+    });
+
+    res.json({ message: 'Account activated successfully' });
+  } catch (error) {
+    console.error('Error activating user:', error);
+    res.status(500).json({ message: 'Error activating account' });
   }
 });
 

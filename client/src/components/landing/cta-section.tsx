@@ -59,12 +59,15 @@ export function CTASection() {
               </p>
 
               <div className="flex flex-col sm:flex-row justify-center gap-4 mb-12">
-                <Link href="https://forms.gle/nHs8eDTv5D727yfq5">
-                  <a className="inline-flex items-center px-8 py-3 rounded-lg bg-white text-blue-600 font-medium hover:bg-blue-50 transition-colors">
-                    Start Free Trial
-                    <ArrowRight className="ml-2 h-5 w-5" />
-                  </a>
-                </Link>
+                <a 
+                  href="https://forms.gle/nHs8eDTv5D727yfq5"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center px-8 py-3 rounded-lg bg-white text-blue-600 font-medium hover:bg-blue-50 transition-colors"
+                >
+                  Start Free Trial
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </a>
                 <Link href="/book">
                   <a className="inline-flex items-center px-8 py-3 rounded-lg bg-blue-700 text-white font-medium hover:bg-blue-600 transition-colors">
                     Schedule a Demo

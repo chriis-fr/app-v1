@@ -35,7 +35,14 @@ export const availableModules = [
 // ---------------------------------
 // Organization types
 // ---------------------------------
-export const organizationTypes = ["business", "ngo"] as const;
+export const industries = [
+  "retail", "healthcare", "finance", "manufacturing", "education", "technology", "logistics", "agriculture", "energy", "hospitality", "real_estate", "media", "transportation", "construction", "government", "nonprofit", "professional_services", "food_beverage", "telecommunications", "automotive", "pharmaceuticals"
+] as const;
+export type Industry = typeof industries[number];
+
+export const organizationTypes = [
+  "sme", "startup", "corporate", "enterprise", "ngo", "government", "business"
+] as const;
 export type OrganizationType = typeof organizationTypes[number];
 
 // ---------------------------------
@@ -46,7 +53,10 @@ export const userRoles = [
   'admin',
   'manager',
   'employee',
-  'contractor'
+  'contractor',
+  'vendor_admin',
+  'vendor_manager',
+  'vendor_employee'
 ] as const;
 
 // ---------------------------------
@@ -63,7 +73,189 @@ export const departments = [
   'IT',
   'Customer Support',
   'Product',
-  'Design'
+  'Design',
+  'Other'
+] as const;
+
+// ---------------------------------
+// Department Positions (organized by department)
+// ---------------------------------
+export const departmentPositions = {
+  'Executive': [
+    'CEO',
+    'CTO',
+    'CFO',
+    'COO',
+    'VP of Operations',
+    'VP of Technology',
+    'VP of Sales',
+    'VP of Marketing'
+  ],
+  'Engineering': [
+    'Engineering Manager',
+    'Senior Software Engineer',
+    'Software Engineer',
+    'Frontend Developer',
+    'Backend Developer',
+    'Full Stack Developer',
+    'DevOps Engineer',
+    'QA Engineer',
+    'Technical Lead',
+    'Architect'
+  ],
+  'Sales': [
+    'Sales Manager',
+    'Sales Director',
+    'Account Executive',
+    'Sales Representative',
+    'Sales Development Representative',
+    'Customer Success Manager',
+    'Sales Operations Manager'
+  ],
+  'Marketing': [
+    'Marketing Manager',
+    'Marketing Director',
+    'Digital Marketing Specialist',
+    'Content Marketing Manager',
+    'SEO Specialist',
+    'Social Media Manager',
+    'Brand Manager',
+    'Marketing Analyst'
+  ],
+  'Finance': [
+    'Finance Manager',
+    'Financial Controller',
+    'Accountant',
+    'Financial Analyst',
+    'Accounts Payable Specialist',
+    'Accounts Receivable Specialist',
+    'Payroll Specialist'
+  ],
+  'HR': [
+    'HR Manager',
+    'HR Director',
+    'HR Generalist',
+    'Recruiter',
+    'Talent Acquisition Specialist',
+    'Compensation Analyst',
+    'Benefits Administrator',
+    'Training Coordinator'
+  ],
+  'Operations': [
+    'Operations Manager',
+    'Operations Director',
+    'Process Manager',
+    'Supply Chain Manager',
+    'Logistics Coordinator',
+    'Facilities Manager',
+    'Project Manager'
+  ],
+  'IT': [
+    'IT Manager',
+    'IT Director',
+    'System Administrator',
+    'Network Engineer',
+    'IT Support Specialist',
+    'Security Analyst',
+    'Database Administrator',
+    'IT Project Manager'
+  ],
+  'Customer Support': [
+    'Support Manager',
+    'Customer Success Manager',
+    'Support Specialist',
+    'Technical Support Engineer',
+    'Customer Experience Manager',
+    'Support Team Lead'
+  ],
+  'Product': [
+    'Product Manager',
+    'Product Director',
+    'Product Owner',
+    'Product Analyst',
+    'Product Marketing Manager',
+    'Product Operations Manager'
+  ],
+  'Design': [
+    'Design Manager',
+    'Creative Director',
+    'UI/UX Designer',
+    'Graphic Designer',
+    'Product Designer',
+    'Visual Designer',
+    'Design Systems Manager'
+  ],
+  'Other': [
+    'Custom Position'
+  ]
+} as const;
+
+// ---------------------------------
+// Office Location Types
+// ---------------------------------
+export const officeLocations = [
+  'onsite',
+  'remote'
+] as const;
+
+// ---------------------------------
+// Timezones (Simplified for easy selection)
+// ---------------------------------
+export const timezones = [
+  'UTC',
+  'GMT',
+  'EAT', // East Africa Time (Kenya, Tanzania, Uganda, etc.)
+  'WAT', // West Africa Time (Nigeria, Ghana, etc.)
+  'CAT', // Central Africa Time (South Africa, Zimbabwe, etc.)
+  'SAST', // South Africa Standard Time
+  'EET', // Eastern European Time
+  'CET', // Central European Time
+  'WET', // Western European Time
+  'EST', // Eastern Standard Time (US/Canada)
+  'CST', // Central Standard Time (US/Canada)
+  'MST', // Mountain Standard Time (US/Canada)
+  'PST', // Pacific Standard Time (US/Canada)
+  'AST', // Atlantic Standard Time
+  'HST', // Hawaii Standard Time
+  'IST', // India Standard Time
+  'PKT', // Pakistan Standard Time
+  'BST', // Bangladesh Standard Time
+  'JST', // Japan Standard Time
+  'KST', // Korea Standard Time
+  'CST_CN', // China Standard Time
+  'SGT', // Singapore Time
+  'PHT', // Philippines Time
+  'WIB', // Western Indonesian Time
+  'WITA', // Central Indonesian Time
+  'WIT', // Eastern Indonesian Time
+  'AEST', // Australian Eastern Standard Time
+  'ACST', // Australian Central Standard Time
+  'AWST', // Australian Western Standard Time
+  'NZST', // New Zealand Standard Time
+  'FJT', // Fiji Time
+  'SST', // Samoa Standard Time
+  'CHST', // Chamorro Standard Time
+  'GST', // Gulf Standard Time (UAE, Oman, etc.)
+  'MSK', // Moscow Standard Time
+  'TRT', // Turkey Time
+  'IRST', // Iran Standard Time
+  'AST_SA', // Saudi Arabia Standard Time
+  'AST_EG', // Egypt Standard Time
+  'AST_IL', // Israel Standard Time
+  'AST_JO', // Jordan Standard Time
+  'AST_LB', // Lebanon Standard Time
+  'AST_IQ', // Iraq Standard Time
+  'AST_PS', // Palestine Standard Time
+  'AST_SY', // Syria Standard Time
+  'AST_YE', // Yemen Standard Time
+  'AST_QA', // Qatar Standard Time
+  'AST_KW', // Kuwait Standard Time
+  'AST_BH', // Bahrain Standard Time
+  'AST_OM', // Oman Standard Time
+  'AST_AE', // UAE Standard Time
+  'AST_IR', // Iran Standard Time
+  'AST_TR', // Turkey Standard Time
+  'AST_RU', // Russia Standard Time
 ] as const;
 
 // ---------------------------------
@@ -74,7 +266,36 @@ export const partnerTypes = [
   "client",
   "supplier",
   "distributor",
+  "contractor",
+  "service_provider",
+  "manufacturer",
+  "wholesaler",
+  "retailer"
+] as const;
+
+// ---------------------------------
+// Vendor Types (for determining UI and operations)
+// ---------------------------------
+export const vendorTypes = [
+  "supplier",
+  "service_provider",
+  "manufacturer",
+  "distributor",
+  "wholesaler",
+  "retailer",
+  "logistics",
+  "consultant",
   "contractor"
+] as const;
+
+// ---------------------------------
+// Vendor Access Levels
+// ---------------------------------
+export const vendorAccessLevels = [
+  "basic",      // Basic access to their own data
+  "standard",   // Standard access with some organization data
+  "premium",    // Premium access with full integration
+  "enterprise"  // Enterprise access with custom integrations
 ] as const;
 
 // ---------------------------------
@@ -198,6 +419,7 @@ export const userSchema = z.object({
   updatedAt: z.date().default(() => new Date()),
   emailVerified: z.boolean().optional(),
   isActive: z.boolean().optional(),
+  vendorId: z.string().optional(),
 });
 
 // Define a schema for an Organization document.
@@ -205,7 +427,7 @@ export const organizationSchema = z.object({
   id: z.string(),
   name: z.string().min(2),
   type: z.enum(organizationTypes),
-  industry: z.string().min(2),
+  industry: z.enum(industries),
   size: z.string().optional(),
   walletAddress: z.string().optional(),
   activeModules: z.array(z.enum(availableModules)).default(["accounting"]), // Make finance default
@@ -265,6 +487,127 @@ export const businessPartnerSchema = z.object({
   updatedAt: z.date(),
 });
 
+// Define a schema for a Vendor document (extends Business Partner)
+export const vendorSchema = z.object({
+  id: z.string(),
+  vendorId: z.string(), // Unique vendor ID for the organization
+  name: z.string(),
+  email: z.string().email(),
+  phone: z.string(),
+  website: z.string(),
+  type: z.enum(vendorTypes),
+  status: z.enum(["active", "inactive", "pending", "suspended"]).default("active"),
+  organizationId: z.string(), // The organization this vendor belongs to
+  clientOrganizations: z.array(z.string()), // Organizations this vendor can work with
+  accessLevel: z.enum(vendorAccessLevels).default("basic"),
+  vendorCode: z.string(), // Unique code for this vendor
+  businessCategory: z.string(),
+  specialties: z.array(z.string()),
+  certifications: z.array(z.object({
+    name: z.string(),
+    issuer: z.string(),
+    issueDate: z.string(),
+    expiryDate: z.string(),
+    documentUrl: z.string().optional()
+  })).optional(),
+  insurance: z.object({
+    provider: z.string(),
+    policyNumber: z.string(),
+    coverage: z.number(),
+    expiryDate: z.string()
+  }).optional(),
+  performance: z.object({
+    rating: z.number().min(0).max(5),
+    totalOrders: z.number(),
+    onTimeDelivery: z.number(), // percentage
+    qualityScore: z.number().min(0).max(100),
+    lastReviewDate: z.string()
+  }).optional(),
+  paymentTerms: z.object({
+    netDays: z.number(),
+    earlyPaymentDiscount: z.number().optional(),
+    latePaymentPenalty: z.number().optional()
+  }).optional(),
+  contactPersons: z.array(z.object({
+    name: z.string(),
+    position: z.string(),
+    email: z.string(),
+    phone: z.string(),
+    isPrimary: z.boolean()
+  })).optional(),
+  services: z.array(z.object({
+    name: z.string(),
+    description: z.string(),
+    category: z.string(),
+    pricing: z.object({
+      type: z.enum(["fixed", "hourly", "per_unit", "percentage"]),
+      amount: z.number(),
+      currency: z.string()
+    })
+  })).optional(),
+  products: z.array(z.object({
+    name: z.string(),
+    sku: z.string(),
+    category: z.string(),
+    price: z.number(),
+    currency: z.string(),
+    minOrderQuantity: z.number(),
+    leadTime: z.number() // in days
+  })).optional(),
+  documents: z.array(z.object({
+    type: z.string(),
+    name: z.string(),
+    url: z.string(),
+    uploadedAt: z.string(),
+    expiryDate: z.string().optional()
+  })).optional(),
+  wallet: z.object({
+    balance: z.number(),
+    currency: z.string(),
+    bankAccounts: z.array(z.object({
+      id: z.string(),
+      bankName: z.string(),
+      accountNumber: z.string(),
+      accountType: z.string(),
+      isDefault: z.boolean()
+    }))
+  }).optional(),
+  legalDetails: z.object({
+    taxId: z.string(),
+    businessType: z.string(),
+    registrationNumber: z.string(),
+    incorporationDate: z.string(),
+    vatNumber: z.string().optional(),
+    businessLicense: z.string().optional()
+  }).optional(),
+  address: z.object({
+    street: z.string(),
+    city: z.string(),
+    state: z.string(),
+    country: z.string(),
+    postalCode: z.string(),
+    isBillingAddress: z.boolean(),
+    isShippingAddress: z.boolean()
+  }).optional(),
+  settings: z.object({
+    autoApproveOrders: z.boolean().default(false),
+    requireApproval: z.boolean().default(true),
+    allowDirectPurchase: z.boolean().default(false),
+    notificationPreferences: z.object({
+      email: z.boolean().default(true),
+      sms: z.boolean().default(false),
+      push: z.boolean().default(true)
+    }),
+    integrationSettings: z.object({
+      apiEnabled: z.boolean().default(false),
+      webhookUrl: z.string().optional(),
+      syncFrequency: z.enum(["realtime", "hourly", "daily"]).default("daily")
+    })
+  }).optional(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
 // Registration schema for an organization + the first admin user
 export const registerOrganizationSchema = z.object({
   username: z.string().min(3),
@@ -275,7 +618,7 @@ export const registerOrganizationSchema = z.object({
   phoneNumber: z.string().min(10),
   type: z.enum(organizationTypes),
   name: z.string().min(2),
-  industry: z.string().min(2),
+  industry: z.enum(industries),
   selectedModules: z.array(z.enum(availableModules)).max(2),
   country: z.string().optional(),
   address: z.string().optional(),
@@ -353,6 +696,47 @@ export interface OrganizationSettings {
     date: string;
   }>;
   customSettings?: Record<string, any>;
+  ai?: {
+    isEnabled: boolean;
+    allowPersonalAI: boolean;
+    allowOrganizationAI: boolean;
+    model: string;
+    temperature: number;
+    maxTokens: number;
+    moduleSettings: {
+      hr: {
+        enabled: boolean;
+        canAccessEmployeeData: boolean;
+        canAccessPayrollData: boolean;
+        canAccessHiringData: boolean;
+        canAccessPerformanceData: boolean;
+      };
+      finance: {
+        enabled: boolean;
+        canAccessFinancialData: boolean;
+        canAccessAccountingData: boolean;
+        canAccessBudgetData: boolean;
+        canAccessTaxData: boolean;
+      };
+      inventory: {
+        enabled: boolean;
+        canAccessStockData: boolean;
+        canAccessWarehouseData: boolean;
+        canAccessSupplyChainData: boolean;
+      };
+      sales: {
+        enabled: boolean;
+        canAccessCustomerData: boolean;
+        canAccessSalesData: boolean;
+        canAccessCRMData: boolean;
+      };
+      general: {
+        enabled: boolean;
+        canAccessGeneralData: boolean;
+        canAccessAnalyticsData: boolean;
+      };
+    };
+  };
   accounting?: {
     fiscalYearStart: string;
     fiscalYearEnd: string;
@@ -501,6 +885,8 @@ export type User = Omit<z.infer<typeof userSchema>, "role" | "createdAt" | "upda
   modulePermissions?: any[];
   emailVerified?: boolean;
   isActive?: boolean;
+  vendorId?: string;
+  timezone?: string; // Direct timezone property for easier access
 };
 
 // ---------------------------------
@@ -513,6 +899,16 @@ export type BusinessPartner = Omit<z.infer<typeof businessPartnerSchema>, "creat
 };
 
 // ---------------------------------
+// Merged "Vendor" Type
+// ---------------------------------
+export type Vendor = Omit<z.infer<typeof vendorSchema>, "createdAt" | "updatedAt"> & {
+  createdAt: string;
+  updatedAt: string;
+  organization?: Organization;
+  clientOrganizations?: Organization[];
+};
+
+// ---------------------------------
 // Other Types
 // ---------------------------------
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -520,6 +916,31 @@ export type RegisterOrganization = z.infer<typeof registerOrganizationSchema>;
 export type AvailableModule = typeof availableModules[number];
 export type UserRole = typeof userRoles[number];
 export type Department = typeof departments[number];
+export type VendorType = typeof vendorTypes[number];
+export type VendorAccessLevel = typeof vendorAccessLevels[number];
+export type PartnerType = typeof partnerTypes[number];
+export type OfficeLocation = typeof officeLocations[number];
+export type Timezone = typeof timezones[number];
+export type DepartmentPosition = typeof departmentPositions[Department][number];
+export type TimeTrackingStatus = typeof timeTrackingStatuses[number];
+export type TimeTrackingType = typeof timeTrackingTypes[number];
+export type MeetingStatus = typeof meetingStatuses[number];
+export type MeetingType = typeof meetingTypes[number];
+export type TaskStatus = typeof taskStatuses[number];
+export type TaskPriority = typeof taskPriorities[number];
+export type JobPostingStatus = typeof jobPostingStatuses[number];
+export type EmploymentType = typeof employmentTypes[number];
+export type ExperienceLevel = typeof experienceLevels[number];
+export type ApplicationStatus = typeof applicationStatuses[number];
+export type AvailabilityOption = typeof availabilityOptions[number];
+
+// Type exports for the new schemas
+export type TimeTrackingEntry = z.infer<typeof timeTrackingEntrySchema>;
+export type TimeTrackingSummary = z.infer<typeof timeTrackingSummarySchema>;
+export type Meeting = z.infer<typeof meetingSchema>;
+export type Task = z.infer<typeof taskSchema>;
+export type JobPosting = z.infer<typeof jobPostingSchema>;
+export type JobApplication = z.infer<typeof jobApplicationSchema>;
 
 export interface LoginData {
   username: string;
@@ -657,6 +1078,59 @@ export const organizationSettingsSchema = z.object({
         employer: z.number(),
       }),
     })),
+  }).optional(),
+  hiring: z.object({
+    enablePublicApplications: z.boolean().default(true),
+    applicationDeadline: z.number().default(30),
+    requireResume: z.boolean().default(true),
+    requireCoverLetter: z.boolean().default(false),
+    allowMultipleApplications: z.boolean().default(false),
+    autoRejectAfterDays: z.number().default(90),
+    emailNotifications: z.boolean().default(true),
+    defaultApplicationStatus: z.string().default('pending'),
+    customFields: z.record(z.any()).optional(),
+    applicationFormSettings: z.record(z.any()).optional(),
+  }).optional(),
+  ai: z.object({
+    isEnabled: z.boolean().default(true),
+    allowPersonalAI: z.boolean().default(true),
+    allowOrganizationAI: z.boolean().default(true),
+    model: z.string().default('gpt-3.5-turbo'),
+    temperature: z.number().default(0.7),
+    maxTokens: z.number().default(1000),
+    moduleSettings: z.object({
+      hr: z.object({
+        enabled: z.boolean().default(true),
+        canAccessEmployeeData: z.boolean().default(true),
+        canAccessPayrollData: z.boolean().default(true),
+        canAccessHiringData: z.boolean().default(true),
+        canAccessPerformanceData: z.boolean().default(true),
+      }),
+      finance: z.object({
+        enabled: z.boolean().default(true),
+        canAccessFinancialData: z.boolean().default(true),
+        canAccessAccountingData: z.boolean().default(true),
+        canAccessBudgetData: z.boolean().default(true),
+        canAccessTaxData: z.boolean().default(true),
+      }),
+      inventory: z.object({
+        enabled: z.boolean().default(true),
+        canAccessStockData: z.boolean().default(true),
+        canAccessWarehouseData: z.boolean().default(true),
+        canAccessSupplyChainData: z.boolean().default(true),
+      }),
+      sales: z.object({
+        enabled: z.boolean().default(true),
+        canAccessCustomerData: z.boolean().default(true),
+        canAccessSalesData: z.boolean().default(true),
+        canAccessCRMData: z.boolean().default(true),
+      }),
+      general: z.object({
+        enabled: z.boolean().default(true),
+        canAccessGeneralData: z.boolean().default(true),
+        canAccessAnalyticsData: z.boolean().default(true),
+      }),
+    }),
   }).optional(),
 });
 
@@ -834,3 +1308,391 @@ export type MongoOrganizationSettings = {
   recommendedModules?: string[];
   primaryModule?: string;
 };
+
+// ---------------------------------
+// Timezone Utilities
+// ---------------------------------
+
+// Convert simplified timezone codes to IANA timezone identifiers
+export const getIANATimezone = (timezoneCode: string): string => {
+  const timezoneMap: Record<string, string> = {
+    'UTC': 'UTC',
+    'GMT': 'GMT',
+    'EST': 'America/New_York',
+    'CST': 'America/Chicago',
+    'MST': 'America/Denver',
+    'PST': 'America/Los_Angeles',
+    'EAT': 'Africa/Nairobi',
+    'CAT': 'Africa/Harare',
+    'WAT': 'Africa/Lagos',
+    'SAST': 'Africa/Johannesburg',
+    'IST': 'Asia/Kolkata',
+    'JST': 'Asia/Tokyo',
+    'CST_CN': 'Asia/Shanghai',
+    'AEST': 'Australia/Sydney',
+    'NZST': 'Pacific/Auckland'
+  };
+  return timezoneMap[timezoneCode] || 'UTC';
+};
+
+export const getTimezoneDisplayName = (timezoneCode: string): string => {
+  const displayNames: Record<string, string> = {
+    'UTC': 'UTC (UTC+0)',
+    'GMT': 'GMT (UTC+0)',
+    'EST': 'EST (UTC-5)',
+    'CST': 'CST (UTC-6)',
+    'MST': 'MST (UTC-7)',
+    'PST': 'PST (UTC-8)',
+    'EAT': 'EAT (UTC+3)',
+    'CAT': 'CAT (UTC+2)',
+    'WAT': 'WAT (UTC+1)',
+    'SAST': 'SAST (UTC+2)',
+    'IST': 'IST (UTC+5:30)',
+    'JST': 'JST (UTC+9)',
+    'CST_CN': 'CST China (UTC+8)',
+    'AEST': 'AEST (UTC+10)',
+    'NZST': 'NZST (UTC+12)'
+  };
+  return displayNames[timezoneCode] || `${timezoneCode} (UTC+0)`;
+};
+
+// Get timezone offset in hours for display
+export const getTimezoneOffset = (timezoneCode: string): string => {
+  const offsetMap: Record<string, string> = {
+    'UTC': 'UTC+0',
+    'GMT': 'UTC+0',
+    'EST': 'UTC-5',
+    'CST': 'UTC-6',
+    'MST': 'UTC-7',
+    'PST': 'UTC-8',
+    'EAT': 'UTC+3',
+    'CAT': 'UTC+2',
+    'WAT': 'UTC+1',
+    'SAST': 'UTC+2',
+    'IST': 'UTC+5:30',
+    'JST': 'UTC+9',
+    'CST_CN': 'UTC+8',
+    'AEST': 'UTC+10',
+    'NZST': 'UTC+12'
+  };
+  return offsetMap[timezoneCode] || 'UTC+0';
+};
+
+// ---------------------------------
+// Time Tracking Types
+// ---------------------------------
+export const timeTrackingStatuses = [
+  'active',
+  'paused',
+  'completed',
+  'stopped'
+] as const;
+
+export const timeTrackingTypes = [
+  'task',
+  'project',
+  'meeting',
+  'break',
+  'training',
+  'other'
+] as const;
+
+// Time tracking entry schema
+export const timeTrackingEntrySchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  organizationId: z.string(),
+  projectId: z.string().optional(),
+  taskId: z.string().optional(),
+  description: z.string(),
+  type: z.enum(timeTrackingTypes),
+  status: z.enum(timeTrackingStatuses),
+  startTime: z.date(),
+  endTime: z.date().optional(),
+  duration: z.number().optional(), // in minutes
+  timezone: z.string(), // user's timezone when tracking
+  location: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  notes: z.string().optional(),
+  billable: z.boolean().default(false),
+  hourlyRate: z.number().optional(),
+  createdAt: z.date(),
+  updatedAt: z.date()
+});
+
+// Time tracking summary schema
+export const timeTrackingSummarySchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  organizationId: z.string(),
+  date: z.date(),
+  totalHours: z.number(),
+  billableHours: z.number(),
+  timezone: z.string(),
+  entries: z.array(z.string()), // array of entry IDs
+  breaks: z.number().default(0),
+  overtime: z.number().default(0),
+  createdAt: z.date(),
+  updatedAt: z.date()
+});
+
+// ---------------------------------
+// Meeting Scheduling Types
+// ---------------------------------
+export const meetingStatuses = [
+  'scheduled',
+  'in_progress',
+  'completed',
+  'cancelled',
+  'rescheduled'
+] as const;
+
+export const meetingTypes = [
+  'one_on_one',
+  'team_meeting',
+  'client_meeting',
+  'training',
+  'review',
+  'other'
+] as const;
+
+// Meeting schema
+export const meetingSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  description: z.string().optional(),
+  organizerId: z.string(),
+  organizationId: z.string(),
+  type: z.enum(meetingTypes),
+  status: z.enum(meetingStatuses),
+  startTime: z.date(),
+  endTime: z.date(),
+  timezone: z.string(), // organizer's timezone
+  location: z.string().optional(),
+  isVirtual: z.boolean().default(false),
+  meetingUrl: z.string().optional(),
+  attendees: z.array(z.object({
+    userId: z.string(),
+    timezone: z.string(),
+    status: z.enum(['accepted', 'declined', 'pending', 'tentative']),
+    responseTime: z.date().optional()
+  })),
+  recurring: z.object({
+    isRecurring: z.boolean(),
+    frequency: z.enum(['daily', 'weekly', 'monthly', 'yearly']).optional(),
+    interval: z.number().optional(),
+    endDate: z.date().optional()
+  }).optional(),
+  reminders: z.array(z.object({
+    type: z.enum(['email', 'push', 'sms']),
+    minutesBefore: z.number()
+  })).optional(),
+  notes: z.string().optional(),
+  createdAt: z.date(),
+  updatedAt: z.date()
+});
+
+// ---------------------------------
+// Hiring Types
+// ---------------------------------
+export const jobPostingStatuses = [
+  'draft',
+  'published',
+  'closed',
+  'archived'
+] as const;
+
+export const employmentTypes = [
+  'full-time',
+  'part-time',
+  'contract',
+  'temporary',
+  'intern'
+] as const;
+
+export const experienceLevels = [
+  'entry',
+  'junior',
+  'mid',
+  'senior',
+  'lead',
+  'executive'
+] as const;
+
+export const applicationStatuses = [
+  'pending',
+  'reviewing',
+  'shortlisted',
+  'interviewed',
+  'offered',
+  'rejected',
+  'withdrawn'
+] as const;
+
+export const availabilityOptions = [
+  'immediate',
+  '2_weeks',
+  '1_month',
+  '3_months',
+  'negotiable'
+] as const;
+
+// ---------------------------------
+// Task Management Types
+// ---------------------------------
+export const taskStatuses = [
+  'todo',
+  'in_progress',
+  'review',
+  'completed',
+  'cancelled',
+  'on_hold'
+] as const;
+
+export const taskPriorities = [
+  'low',
+  'medium',
+  'high',
+  'urgent'
+] as const;
+
+// Task schema
+export const taskSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  description: z.string().optional(),
+  assigneeId: z.string(),
+  assignerId: z.string(),
+  organizationId: z.string(),
+  projectId: z.string().optional(),
+  status: z.enum(taskStatuses),
+  priority: z.enum(taskPriorities),
+  estimatedHours: z.number().optional(),
+  actualHours: z.number().optional(),
+  dueDate: z.date().optional(),
+  timezone: z.string(), // assignee's timezone
+  tags: z.array(z.string()).optional(),
+  attachments: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    url: z.string(),
+    type: z.string()
+  })).optional(),
+  comments: z.array(z.object({
+    id: z.string(),
+    userId: z.string(),
+    content: z.string(),
+    timestamp: z.date(),
+    timezone: z.string()
+  })).optional(),
+  timeTracking: z.array(z.string()).optional(), // array of time tracking entry IDs
+  dependencies: z.array(z.string()).optional(), // array of task IDs
+  createdAt: z.date(),
+  updatedAt: z.date()
+});
+
+// Job Posting schema
+export const jobPostingSchema = z.object({
+  id: z.string(),
+  organizationId: z.string(),
+  title: z.string(),
+  department: z.string(),
+  location: z.string(),
+  employmentType: z.enum(employmentTypes),
+  experienceLevel: z.enum(experienceLevels),
+  salary: z.object({
+    min: z.number().optional(),
+    max: z.number().optional(),
+    currency: z.string().default('USD'),
+    isNegotiable: z.boolean().default(true)
+  }).optional(),
+  description: z.string(),
+  requirements: z.object({
+    skills: z.array(z.string()).optional(),
+    experience: z.number().optional(),
+    education: z.string().optional(),
+    certifications: z.array(z.string()).optional(),
+    languages: z.array(z.string()).optional()
+  }).optional(),
+  responsibilities: z.array(z.string()).optional(),
+  benefits: z.array(z.string()).optional(),
+  applicationDeadline: z.date().optional(),
+  status: z.enum(jobPostingStatuses).default('draft'),
+  isPublic: z.boolean().default(true),
+  publicId: z.string(),
+  views: z.number().default(0),
+  applications: z.number().default(0),
+  createdBy: z.string(),
+  createdAt: z.date(),
+  updatedAt: z.date()
+});
+
+// Job Application schema
+export const jobApplicationSchema = z.object({
+  id: z.string(),
+  jobPostingId: z.string(),
+  organizationId: z.string(),
+  firstName: z.string(),
+  lastName: z.string(),
+  email: z.string().email(),
+  phone: z.string().optional(),
+  dateOfBirth: z.date().optional(),
+  gender: z.string().optional(),
+  address: z.object({
+    street: z.string().optional(),
+    city: z.string().optional(),
+    state: z.string().optional(),
+    country: z.string().optional(),
+    postalCode: z.string().optional()
+  }).optional(),
+  currentPosition: z.string().optional(),
+  currentCompany: z.string().optional(),
+  experience: z.number().optional(),
+  education: z.string().optional(),
+  skills: z.array(z.string()).optional(),
+  certifications: z.array(z.string()).optional(),
+  languages: z.array(z.string()).optional(),
+  coverLetter: z.string().optional(),
+  expectedSalary: z.object({
+    amount: z.number().optional(),
+    currency: z.string().default('USD')
+  }).optional(),
+  availability: z.enum(availabilityOptions).default('negotiable'),
+  resume: z.object({
+    filename: z.string(),
+    url: z.string(),
+    uploadedAt: z.date()
+  }).optional(),
+  additionalDocuments: z.array(z.object({
+    filename: z.string(),
+    url: z.string(),
+    description: z.string().optional(),
+    uploadedAt: z.date()
+  })).optional(),
+  status: z.enum(applicationStatuses).default('pending'),
+  reviewedBy: z.string().optional(),
+  reviewedAt: z.date().optional(),
+  reviewNotes: z.string().optional(),
+  interviews: z.array(z.object({
+    scheduledAt: z.date().optional(),
+    conductedAt: z.date().optional(),
+    interviewer: z.string().optional(),
+    type: z.enum(['phone', 'video', 'in-person']).optional(),
+    notes: z.string().optional(),
+    rating: z.number().min(1).max(5).optional(),
+    status: z.enum(['scheduled', 'completed', 'cancelled', 'no-show']).optional()
+  })).optional(),
+  communications: z.array(z.object({
+    type: z.enum(['email', 'phone', 'system']),
+    subject: z.string().optional(),
+    message: z.string(),
+    sentAt: z.date(),
+    sentBy: z.string().optional(),
+    isRead: z.boolean().default(false)
+  })).optional(),
+  source: z.string().default('website'),
+  ipAddress: z.string().optional(),
+  userAgent: z.string().optional(),
+  createdAt: z.date(),
+  updatedAt: z.date()
+});

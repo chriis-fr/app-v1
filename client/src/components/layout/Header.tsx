@@ -6,6 +6,7 @@ import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import UserProfileDropdown from './UserProfileDropdown';
+import NotificationDropdown from './NotificationDropdown';
 
 export default function Header() {
   const { user, isLoading } = useAuth();
@@ -64,9 +65,7 @@ export default function Header() {
       </div>
 
       <div className="flex items-center gap-2">
-        <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-          <Bell className="h-5 w-5 text-gray-600" />
-        </button>
+        <NotificationDropdown />
         <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
           <HelpCircle className="h-5 w-5 text-gray-600" />
         </button>

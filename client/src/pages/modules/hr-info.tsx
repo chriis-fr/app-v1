@@ -33,37 +33,7 @@ import { SkillMatching } from '@/components/hr/SkillMatching';
 import { DataTable } from '@/components/ui/data-table';
 import { columns, Employee, Credential } from '@/pages/hr/columns';
 import { Payroll } from '@/components/hr/Payroll';
-
-// Dummy data for HR metrics
-const hrData = {
-  dailyStats: [
-    { date: '2024-03-01', value: 150 },
-    { date: '2024-03-02', value: 155 },
-    { date: '2024-03-03', value: 148 },
-    { date: '2024-03-04', value: 162 },
-    { date: '2024-03-05', value: 158 },
-    { date: '2024-03-06', value: 165 },
-    { date: '2024-03-07', value: 170 }
-  ],
-  topDepartments: [
-    { name: 'Engineering', value: 45 },
-    { name: 'Sales', value: 35 },
-    { name: 'Marketing', value: 25 },
-    { name: 'Operations', value: 20 },
-    { name: 'Finance', value: 15 }
-  ],
-  employeeStatus: [
-    { name: 'Active', value: 85 },
-    { name: 'On Leave', value: 10 },
-    { name: 'Training', value: 5 }
-  ],
-  metrics: [
-    { name: 'Total Employees', value: 250, change: '+5%', trend: 'up' as const },
-    { name: 'Average Tenure', value: '3.2 years', change: '+0.3', trend: 'up' as const },
-    { name: 'Turnover Rate', value: '8.5%', change: '-2%', trend: 'down' as const },
-    { name: 'Training Hours', value: '24.5', change: '+3.2', trend: 'up' as const }
-  ]
-};
+import { hasFullAccess, hasModuleAccess } from '@/utils/access';
 
 export default function HRInfoPage() {
   const [, setLocation] = useLocation();
@@ -86,6 +56,13 @@ export default function HRInfoPage() {
     enableDataExport: true,
     enableIntegration: true
   });
+  const [metrics, setMetrics] = useState({
+    totalEmployees: 0,
+    activeEmployees: 0,
+    onLeave: 0,
+    training: 0,
+    turnoverRate: 0,
+  });
 
   useEffect(() => {
     if (!user) {
@@ -94,8 +71,7 @@ export default function HRInfoPage() {
     }
 
     // Check if user is owner or in executive department
-    const isAuthorized = user.role === 'owner' || 
-                        (user.department?.toLowerCase() === 'executive' && user.moduleAccess?.includes('hr'));
+    const isAuthorized = hasFullAccess(user) || hasModuleAccess(user, 'hr');
 
     if (!isAuthorized) {
       toast({
@@ -107,8 +83,40 @@ export default function HRInfoPage() {
       return;
     }
 
-    setIsLoading(false);
-  }, [user]);
+    async function fetchEmployees() {
+      setIsLoading(true);
+      try {
+        const res = await fetch('/api/hr/employees');
+        const data = await res.json();
+        setEmployees(data);
+        // Calculate metrics
+        const totalEmployees = data.length;
+        const activeEmployees = data.filter((e: any) => e.status === 'active').length;
+        const onLeave = data.filter((e: any) => e.status === 'on_leave').length;
+        const training = data.filter((e: any) => e.status === 'training').length;
+        // Example: turnoverRate (set to 0 or calculate if you have data)
+        setMetrics({
+          totalEmployees,
+          activeEmployees,
+          onLeave,
+          training,
+          turnoverRate: 0,
+        });
+      } catch (e) {
+        setEmployees([]);
+        setMetrics({
+          totalEmployees: 0,
+          activeEmployees: 0,
+          onLeave: 0,
+          training: 0,
+          turnoverRate: 0,
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchEmployees();
+  }, []);
 
   if (isLoading) {
     return (
@@ -220,10 +228,6 @@ export default function HRInfoPage() {
                 <BarChart className="mr-2 h-4 w-4" />
                 Overview
               </TabsTrigger>
-              <TabsTrigger value="settings">
-                <Settings className="mr-2 h-4 w-4" />
-                Settings
-              </TabsTrigger>
               <TabsTrigger value="roles">
                 <Shield className="mr-2 h-4 w-4" />
                 Roles & Permissions
@@ -236,60 +240,146 @@ export default function HRInfoPage() {
                 <Network className="mr-2 h-4 w-4" />
                 Integrations
               </TabsTrigger>
+              <TabsTrigger value="settings">
+                <Settings className="mr-2 h-4 w-4" />
+                Settings
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview">
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                {hrData.metrics.map((metric, index) => (
-                  <Card key={index}>
-                <CardHeader>
-                      <CardTitle className="text-sm font-medium">
-                        {metric.name}
-                      </CardTitle>
-                </CardHeader>
-                <CardContent>
-                      <div className="text-2xl font-bold">{metric.value}</div>
-                      <p className={`text-xs ${metric.trend === 'up' ? 'text-green-500' : 'text-red-500'}`}>
-                        {metric.change}
-                      </p>
-                      </CardContent>
-                    </Card>
-                ))}
+              <div className="grid gap-4 gap-y-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+                <Card className={metrics.totalEmployees === 0 ? 'bg-gray-50 border-dashed border-2 border-gray-200' : ''}>
+                  <CardHeader>
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      Total Employees
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {metrics.totalEmployees === 0 ? (
+                      <div className="flex flex-col items-center text-gray-400">
+                        <div className="text-lg font-bold">0</div>
+                        <div className="text-xs mt-1">No employees yet</div>
+                      </div>
+                    ) : (
+                      <div className="text-2xl font-bold">{metrics.totalEmployees}</div>
+                    )}
+                  </CardContent>
+                </Card>
+                <Card className={metrics.totalEmployees === 0 ? 'bg-gray-50 border-dashed border-2 border-gray-200' : ''}>
+                  <CardHeader>
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      Active Employees
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {metrics.totalEmployees === 0 ? (
+                      <div className="flex flex-col items-center text-gray-400">
+                        <div className="text-lg font-bold">0</div>
+                        <div className="text-xs mt-1">No employees yet</div>
+                      </div>
+                    ) : (
+                      <div className="text-2xl font-bold">{metrics.activeEmployees}</div>
+                    )}
+                  </CardContent>
+                </Card>
+                <Card className={metrics.totalEmployees === 0 ? 'bg-gray-50 border-dashed border-2 border-gray-200' : ''}>
+                  <CardHeader>
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      On Leave
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {metrics.totalEmployees === 0 ? (
+                      <div className="flex flex-col items-center text-gray-400">
+                        <div className="text-lg font-bold">0</div>
+                        <div className="text-xs mt-1">No employees yet</div>
+                      </div>
+                    ) : (
+                      <div className="text-2xl font-bold">{metrics.onLeave}</div>
+                    )}
+                  </CardContent>
+                </Card>
+                <Card className={metrics.totalEmployees === 0 ? 'bg-gray-50 border-dashed border-2 border-gray-200' : ''}>
+                  <CardHeader>
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      Training
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {metrics.totalEmployees === 0 ? (
+                      <div className="flex flex-col items-center text-gray-400">
+                        <div className="text-lg font-bold">0</div>
+                        <div className="text-xs mt-1">No employees yet</div>
+                      </div>
+                    ) : (
+                      <div className="text-2xl font-bold">{metrics.training}</div>
+                    )}
+                  </CardContent>
+                </Card>
+                <Card className={metrics.totalEmployees === 0 ? 'bg-gray-50 border-dashed border-2 border-gray-200' : ''}>
+                  <CardHeader>
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      Turnover Rate
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {metrics.totalEmployees === 0 ? (
+                      <div className="flex flex-col items-center text-gray-400">
+                        <div className="text-lg font-bold">0%</div>
+                        <div className="text-xs mt-1">No employees yet</div>
+                      </div>
+                    ) : (
+                      <div className="text-2xl font-bold">{metrics.turnoverRate}%</div>
+                    )}
+                  </CardContent>
+                </Card>
               </div>
-
               <div className="grid gap-4 md:grid-cols-2 mt-4">
-                    <Card>
-                      <CardHeader>
+                <Card>
+                  <CardHeader>
                     <CardTitle>Department Distribution</CardTitle>
-                      </CardHeader>
-                      <CardContent>
+                  </CardHeader>
+                  <CardContent>
                     <div className="space-y-4">
-                      {hrData.topDepartments.map((dept, index) => (
-                        <div key={index} className="flex items-center justify-between">
-                          <span>{dept.name}</span>
-                          <span className="font-medium">{dept.value} employees</span>
-                        </div>
-                      ))}
+                      {employees.length === 0 ? (
+                        <div className="text-gray-400 text-center">No employees yet</div>
+                      ) : (
+                        Object.entries(employees.reduce((acc, emp) => {
+                          acc[emp.department] = (acc[emp.department] || 0) + 1;
+                          return acc;
+                        }, {} as Record<string, number>)).map(([name, value], index) => (
+                          <div key={index} className="flex items-center justify-between">
+                            <span>{name}</span>
+                            <span className="font-medium">{value} employees</span>
+                          </div>
+                        ))
+                      )}
                     </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardHeader>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader>
                     <CardTitle>Employee Status</CardTitle>
-                      </CardHeader>
-                      <CardContent>
+                  </CardHeader>
+                  <CardContent>
                     <div className="space-y-4">
-                      {hrData.employeeStatus.map((status, index) => (
-                        <div key={index} className="flex items-center justify-between">
-                          <span>{status.name}</span>
-                          <span className="font-medium">{status.value}%</span>
-                        </div>
-                      ))}
+                      {employees.length === 0 ? (
+                        <div className="text-gray-400 text-center">No employees yet</div>
+                      ) : (
+                        Object.entries(employees.reduce((acc, emp) => {
+                          acc[emp.status] = (acc[emp.status] || 0) + 1;
+                          return acc;
+                        }, {} as Record<string, number>)).map(([name, value], index) => (
+                          <div key={index} className="flex items-center justify-between">
+                            <span>{name.replace('_', ' ')}</span>
+                            <span className="font-medium">{value}</span>
+                          </div>
+                        ))
+                      )}
                     </div>
-                      </CardContent>
-                    </Card>
-                  </div>
+                  </CardContent>
+                </Card>
+              </div>
             </TabsContent>
 
             <TabsContent value="settings">

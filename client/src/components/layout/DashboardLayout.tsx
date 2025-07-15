@@ -2,6 +2,7 @@ import React from 'react';
 import CompactSidebar from './CompactSidebar';
 import Sidebar from './Sidebar';
 import Header from './Header';
+import { useAuth } from '@/hooks/use-auth';
 
 type DashboardLayoutProps = {
   children: React.ReactNode;
@@ -14,8 +15,13 @@ export default function DashboardLayout({
   title = "Dashboard", 
   description = "Welcome to your Enterprise Resource Planning system" 
 }: DashboardLayoutProps) {
+  const { user } = useAuth();
+  const theme = user?.organization?.settings?.theme || { primaryColor: '#f8fafc', secondaryColor: '#222', darkMode: false };
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div
+      className="min-h-screen"
+      style={{ background: theme.primaryColor, color: theme.secondaryColor }}
+    >
       <CompactSidebar />
       <Sidebar />
       <Header />

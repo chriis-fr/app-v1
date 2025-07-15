@@ -224,27 +224,6 @@ const dummyProducts: Product[] = [
   }
 ];
 
-const dummyCustomers: Customer[] = [
-  {
-    id: '1',
-    name: 'John Doe',
-    email: 'john@example.com',
-    phone: '+1234567890',
-    loyaltyPoints: 150,
-    membershipLevel: 'silver',
-    discount: 0.05
-  },
-  {
-    id: '2',
-    name: 'Jane Smith',
-    email: 'jane@example.com',
-    phone: '+1987654321',
-    loyaltyPoints: 500,
-    membershipLevel: 'gold',
-    discount: 0.10
-  }
-];
-
 export default function POSMain() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
@@ -294,12 +273,13 @@ export default function POSMain() {
     }
   });
 
-  // Modify the customers query to use dummy data
-  const { data: customers = dummyCustomers, isLoading: isLoadingCustomers, error: customersError } = useQuery({
+  // Modify the customers query to use real data fetching
+  const { data: customers = [], isLoading: isLoadingCustomers, error: customersError } = useQuery({
     queryKey: ['pos-customers'],
     queryFn: async () => {
       try {
-        return await api.get('/pos/customers');
+        const response = await api.get('/pos/customers');
+        return response.data || [];
       } catch (error) {
         console.error('Error fetching customers:', error);
         return dummyCustomers;

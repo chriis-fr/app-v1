@@ -302,49 +302,53 @@ export default function FinancePage() {
 
   const fetchFinancialMetrics = async () => {
     try {
-      const response = await fetch('/api/finance/metrics');
-      const data = await response.json();
-      setFinancialMetrics(data);
-    } catch (err) {
-      console.error('Error fetching financial metrics:', err);
-      // Use dummy data instead of setting error
-      setFinancialMetrics({
-        totalAssets: {
-          fiat: 250000,
-          crypto: 150000,
-          total: 400000
-        },
-        metrics: {
-          revenue: {
-            monthly: 125000,
-            growth: 12
-          },
-          expenses: {
-            monthly: 75000,
-            growth: -5
-          }
-        },
-        funds: {
-          totalAssets: 400000,
-          accounts: [
-            { id: 1, name: 'Operating Account', balance: 150000, type: 'Checking' },
-            { id: 2, name: 'Savings Account', balance: 200000, type: 'Savings' },
-            { id: 3, name: 'Investment Account', balance: 50000, type: 'Investment' }
-          ]
-        },
-        payroll: {
-          currentMonth: {
-            totalPayroll: 45000,
-            netPayroll: 35000,
-            employeeCount: 25
-          },
-          employees: [
-            { id: 1, name: 'John Doe', position: 'Developer', netSalary: 5000, paymentStatus: 'Paid' },
-            { id: 2, name: 'Jane Smith', position: 'Designer', netSalary: 4500, paymentStatus: 'Paid' },
-            { id: 3, name: 'Mike Johnson', position: 'Manager', netSalary: 6000, paymentStatus: 'Pending' }
-          ]
+      setIsRefreshing(true);
+      
+      // Fetch real employee data for payroll
+      const employeesResponse = await fetch('/api/hr/employees', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       });
+      
+      let employees = [];
+      if (employeesResponse.ok) {
+        employees = await employeesResponse.json();
+      }
+
+      // Transform employee data for payroll display
+      const payrollEmployees = employees.map((emp: any, index: number) => ({
+        id: emp.id,
+        name: `${emp.firstName} ${emp.lastName}`,
+        position: emp.position || 'Employee',
+        netSalary: emp.salary || 0,
+        paymentStatus: 'Pending' // This would come from actual payroll data
+      }));
+
+      setFinancialMetrics({
+        totalAssets: {
+          fiat: 350000,
+          crypto: 150000,
+          total: 500000
+        },
+        accounts: [
+          { id: 1, name: 'Operating Account', balance: 150000, type: 'Checking' },
+          { id: 2, name: 'Savings Account', balance: 200000, type: 'Savings' },
+          { id: 3, name: 'Investment Account', balance: 50000, type: 'Investment' }
+        ],
+        payroll: {
+          currentMonth: {
+            totalPayroll: payrollEmployees.reduce((sum: number, emp: any) => sum + emp.netSalary, 0),
+            netPayroll: payrollEmployees.reduce((sum: number, emp: any) => sum + emp.netSalary, 0),
+            employeeCount: payrollEmployees.length
+          },
+          employees: payrollEmployees
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching financial metrics:', error);
+    } finally {
+      setIsRefreshing(false);
     }
   };
 

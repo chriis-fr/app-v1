@@ -31,6 +31,7 @@ const organizationSchema = new mongoose.Schema({
   website: String,
   settings: { type: Object, default: {} },
   roles: [{ type: Object, default: [] }],
+  waitlistedModules: { type: [String], enum: availableModules, default: [] },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });

@@ -151,12 +151,14 @@ router.get('/', isAuthenticated, async (req: Request, res: Response, next: NextF
     // Sync with HR data
     const usersWithHRData = await Promise.all(users.map(async (user) => {
       // Derive moduleAccess and permissions for frontend
-      const modulePermissions = user.modulePermissions || [];
-      const moduleAccess = modulePermissions.map(mp => mp.module);
-      const permissions = modulePermissions.map(mp => ({
-        module: mp.module,
-        actions: mp.permissions
-      }));
+      const isOwner = user.role === 'owner' || user.isOwner === true;
+      let moduleAccess = (user.modulePermissions || []).map(mp => mp.module);
+      if (isOwner && (!moduleAccess || moduleAccess.length === 0)) {
+        moduleAccess = [
+          'accounting', 'procurement', 'manufacturing', 'inventory', 'order_management', 'warehouse', 'supply_chain', 'crm', 'project_service', 'workforce', 'hr', 'ecommerce', 'marketing', 'pos', 'quality', 'maintenance', 'project', 'analytics', 'global_finance', 'international_trade', 'customer_experience', 'vendor_management', 'ai_analytics', 'ecommerce_global', 'localization', 'digital_currency'
+        ];
+      }
+      const permissions = (user.modulePermissions || []).map(mp => ({ module: mp.module, actions: mp.permissions })) || [];
 
       const hrData = await Employee.findOne({ 
         employeeNumber: user.employeeId,
@@ -164,6 +166,7 @@ router.get('/', isAuthenticated, async (req: Request, res: Response, next: NextF
       });
       return {
         ...user,
+        isOwner,
         moduleAccess,
         permissions,
         hrData: hrData ? {
@@ -290,24 +293,6 @@ router.post('/', isAuthenticated, checkModulePermission('create_user'), checkDep
   } catch (error) {
     console.error('[User Creation] Error creating user:', error);
     res.status(500).json({ message: "Failed to create user" });
-  }
-});
-
-// Activation endpoint
-router.post('/activate', async (req: Request, res: Response) => {
-  try {
-    const { token, password } = req.body;
-    const user = await User.findOne({ activationToken: token, tokenExpiresAt: { $gt: new Date() } });
-    if (!user) return res.status(400).json({ error: 'Invalid or expired token' });
-    user.password = await bcrypt.hash(password, 10);
-    user.isActive = true;
-    user.emailVerified = true;
-    user.activationToken = null;
-    user.tokenExpiresAt = null;
-    await user.save();
-    res.json({ message: 'Account activated' });
-  } catch (error) {
-    res.status(500).json({ error: 'Activation failed' });
   }
 });
 
@@ -553,12 +538,14 @@ router.get('/:id', isAuthenticated, async (req: Request, res) => {
     }
 
     // Derive moduleAccess and permissions for frontend
-    const modulePermissions = user.modulePermissions || [];
-    const moduleAccess = modulePermissions.map(mp => mp.module);
-    const permissions = modulePermissions.map(mp => ({
-      module: mp.module,
-      actions: mp.permissions
-    }));
+    const isOwner = user.role === 'owner' || user.isOwner === true;
+    let moduleAccess = (user.modulePermissions || []).map(mp => mp.module);
+    if (isOwner && (!moduleAccess || moduleAccess.length === 0)) {
+      moduleAccess = [
+        'accounting', 'procurement', 'manufacturing', 'inventory', 'order_management', 'warehouse', 'supply_chain', 'crm', 'project_service', 'workforce', 'hr', 'ecommerce', 'marketing', 'pos', 'quality', 'maintenance', 'project', 'analytics', 'global_finance', 'international_trade', 'customer_experience', 'vendor_management', 'ai_analytics', 'ecommerce_global', 'localization', 'digital_currency'
+      ];
+    }
+    const permissions = (user.modulePermissions || []).map(mp => ({ module: mp.module, actions: mp.permissions })) || [];
 
     // Sync with HR data
     const hrData = await Employee.findOne({ 
@@ -567,6 +554,7 @@ router.get('/:id', isAuthenticated, async (req: Request, res) => {
     });
     const userWithHRData = {
       ...user,
+      isOwner,
       moduleAccess,
       permissions,
       hrData: hrData ? {

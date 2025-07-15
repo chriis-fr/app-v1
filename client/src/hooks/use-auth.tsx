@@ -39,6 +39,7 @@ interface RegisterData {
     name: string;
     type: string;
     industry: string;
+    settings?: OrganizationSettings & { tier?: string };
   };
   owner: {
     username: string;
@@ -47,6 +48,8 @@ interface RegisterData {
     firstName: string;
     lastName: string;
   };
+  selectedModules?: string[];
+  waitlistedModules?: string[];
 }
 
 interface AuthContextType {
@@ -59,6 +62,7 @@ interface AuthContextType {
   loginMutation: UseMutationResult<void, Error, LoginData>;
   registerMutation: UseMutationResult<void, Error, RegisterData>;
   setUser: React.Dispatch<React.SetStateAction<User | null>>;
+  getToken: () => string | null;
 }
 
 // Create context
@@ -213,8 +217,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = () => {
+    // Clear token from localStorage
+    localStorage.removeItem('token');
+    // Clear any other auth-related data
+    localStorage.removeItem('user');
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('authToken');
+    // Clear user state
     setUser(null);
+    // Clear any error state
+    setError(null);
+    // Redirect to auth page
     setLocation('/auth');
+  };
+
+  // Add a function to get the current token
+  const getToken = () => {
+    return localStorage.getItem('token');
   };
 
   return (
@@ -229,6 +248,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loginMutation,
         registerMutation,
         setUser,
+        getToken,
       }}
     >
       {children}

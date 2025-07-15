@@ -9,13 +9,18 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { organizationSettingsSchema, OrganizationSettings } from '../../../shared/schema';
 import { getAvailableCountries } from '@/config/countries';
-import { Camera, Upload, X } from 'lucide-react';
-import { useState } from 'react';
+import { Camera, Upload, X, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { BackButton } from '@/components/ui/back-button';
 import CompactSidebar from '@/components/layout/CompactSidebar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/components/ui/use-toast';
+import { hasFullAccess } from '@/utils/access';
+import { AISettings } from '@/components/ai';
+import { api } from '@/lib/api';
+import axios from 'axios';
 
 interface OrganizationFormData {
   name: string;
@@ -28,11 +33,150 @@ interface OrganizationFormData {
   website?: string;
 }
 
+const MODULES = ['hr', 'inventory', 'accounting', 'crm', 'pos'];
+
+function CustomFieldManager({ toast }: { toast: any }) {
+  const { user } = useAuth();
+  const [selectedModule, setSelectedModule] = useState('hr');
+  const [fields, setFields] = useState(((user?.organization?.settings as any)?.customFields?.[selectedModule]) || []);
+
+  useEffect(() => {
+    setFields(((user?.organization?.settings as any)?.customFields?.[selectedModule]) || []);
+  }, [selectedModule, user]);
+
+  const handleAddField = () => setFields([...fields, { name: '', type: 'string', required: false }]);
+  const handleFieldChange = (idx: number, key: string, value: any) => {
+    const updated = [...fields];
+    updated[idx][key] = value;
+    setFields(updated);
+  };
+  const handleRemoveField = (idx: number) => setFields(fields.filter((_: any, i: number) => i !== idx));
+
+  const handleSave = async () => {
+    await fetch(`/api/organization/custom-fields/${selectedModule}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ customFields: fields }),
+    });
+    toast({ title: 'Custom fields updated!' });
+  };
+
+  return (
+    <div className="my-8 p-4 border rounded bg-gray-50">
+      <h2 className="text-lg font-bold mb-2">Custom Fields</h2>
+      <select value={selectedModule} onChange={e => setSelectedModule(e.target.value)} className="mb-4">
+        {MODULES.map(m => <option key={m} value={m}>{m.toUpperCase()}</option>)}
+      </select>
+      <ul>
+        {fields.map((field: any, idx: number) => (
+          <li key={idx} className="flex gap-2 items-center mb-2">
+            <input value={field.name} onChange={e => handleFieldChange(idx, 'name', e.target.value)} placeholder="Field Name" className="border p-1 rounded" />
+            <select value={field.type} onChange={e => handleFieldChange(idx, 'type', e.target.value)} className="border p-1 rounded">
+              <option value="string">Text</option>
+              <option value="number">Number</option>
+              <option value="boolean">Checkbox</option>
+            </select>
+            <label className="flex items-center gap-1">
+              <input type="checkbox" checked={field.required} onChange={e => handleFieldChange(idx, 'required', e.target.checked)} /> Required
+            </label>
+            <button type="button" onClick={() => handleRemoveField(idx)} className="text-red-500">Remove</button>
+          </li>
+        ))}
+      </ul>
+      <div className="flex gap-2 mt-2">
+        <button type="button" onClick={handleAddField} className="bg-blue-100 px-2 py-1 rounded">Add Field</button>
+        <button type="button" onClick={handleSave} className="bg-green-100 px-2 py-1 rounded">Save</button>
+      </div>
+    </div>
+  );
+}
+
 export default function OrganizationSettingsPage() {
-  const { user, setUser } = useAuth();
+  const { user, setUser, getToken } = useAuth();
+  const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [organizationLogo, setOrganizationLogo] = useState<string | null>(user?.organization?.settings?.branding?.logo || null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+
+  // Add debugging for authentication
+  useEffect(() => {
+    console.log('=== Organization Settings Page Debug ===');
+    console.log('User:', user);
+    console.log('User ID:', user?.id);
+    console.log('User Role:', user?.role);
+    console.log('User isOwner:', user?.isOwner);
+    console.log('User organizationId:', user?.organizationId);
+    console.log('Token from auth hook:', getToken());
+    console.log('Token from localStorage:', localStorage.getItem('token'));
+    console.log('=====================================');
+  }, [user, getToken]);
+
+  // Add a test function to verify authentication
+  const testAuthentication = async () => {
+    try {
+      const token = getToken();
+      console.log('Testing authentication with token:', token);
+      
+      const response = await fetch('/api/auth/me', {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : ''
+        }
+      });
+      
+      console.log('Auth test response status:', response.status);
+      
+      if (response.ok) {
+        const userData = await response.json();
+        console.log('Auth test user data:', userData);
+        toast({
+          title: "Authentication Test",
+          description: "Authentication is working correctly.",
+        });
+      } else {
+        const errorText = await response.text();
+        console.log('Auth test error:', errorText);
+        toast({
+          title: "Authentication Test Failed",
+          description: `Status: ${response.status}, Error: ${errorText}`,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Auth test error:', error);
+      toast({
+        title: "Authentication Test Error",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Add a function to force re-authentication
+  const forceReAuth = () => {
+    console.log('Force re-authentication called');
+    localStorage.removeItem('token');
+    window.location.href = '/auth';
+  };
+
+  // Check if user is properly authenticated
+  const isUserAuthenticated = () => {
+    const token = getToken();
+    const hasUser = !!user;
+    const isOwner = user?.isOwner;
+    const isAdmin = user?.role === 'admin';
+    const hasOrgId = !!user?.organizationId;
+    
+    console.log('Authentication check:', {
+      hasToken: !!token,
+      hasUser,
+      isOwner,
+      isAdmin,
+      hasOrgId
+    });
+    
+    return token && hasUser && (isOwner || isAdmin) && hasOrgId;
+  };
 
   const form = useForm<OrganizationFormData>({
     defaultValues: {
@@ -48,10 +192,10 @@ export default function OrganizationSettingsPage() {
   });
 
   const settingsForm = useForm<OrganizationSettings>({
-    resolver: zodResolver(organizationSettingsSchema),
+    // resolver: zodResolver(organizationSettingsSchema),
     defaultValues: {
       theme: {
-        primaryColor: user?.organization?.settings?.theme?.primaryColor || '#282881',
+        primaryColor: user?.organization?.settings?.theme?.primaryColor || '#2563eb',
         secondaryColor: user?.organization?.settings?.theme?.secondaryColor || '#ffffff',
         darkMode: user?.organization?.settings?.theme?.darkMode || false,
       },
@@ -123,6 +267,93 @@ export default function OrganizationSettingsPage() {
         mandatory: user.organization.settings.benefits.mandatory,
         optional: user.organization.settings.benefits.optional,
       } : undefined,
+      ai: {
+        isEnabled: user?.organization?.settings?.ai?.isEnabled ?? true,
+        allowPersonalAI: user?.organization?.settings?.ai?.allowPersonalAI ?? true,
+        allowOrganizationAI: user?.organization?.settings?.ai?.allowOrganizationAI ?? true,
+        model: user?.organization?.settings?.ai?.model || 'gpt-3.5-turbo',
+        temperature: user?.organization?.settings?.ai?.temperature || 0.7,
+        maxTokens: user?.organization?.settings?.ai?.maxTokens || 1000,
+        moduleSettings: {
+          hr: {
+            enabled: user?.organization?.settings?.ai?.moduleSettings?.hr?.enabled ?? true,
+            canAccessEmployeeData: user?.organization?.settings?.ai?.moduleSettings?.hr?.canAccessEmployeeData ?? true,
+            canAccessPayrollData: user?.organization?.settings?.ai?.moduleSettings?.hr?.canAccessPayrollData ?? true,
+            canAccessHiringData: user?.organization?.settings?.ai?.moduleSettings?.hr?.canAccessHiringData ?? true,
+            canAccessPerformanceData: user?.organization?.settings?.ai?.moduleSettings?.hr?.canAccessPerformanceData ?? true,
+          },
+          finance: {
+            enabled: user?.organization?.settings?.ai?.moduleSettings?.finance?.enabled ?? true,
+            canAccessFinancialData: user?.organization?.settings?.ai?.moduleSettings?.finance?.canAccessFinancialData ?? true,
+            canAccessAccountingData: user?.organization?.settings?.ai?.moduleSettings?.finance?.canAccessAccountingData ?? true,
+            canAccessBudgetData: user?.organization?.settings?.ai?.moduleSettings?.finance?.canAccessBudgetData ?? true,
+            canAccessTaxData: user?.organization?.settings?.ai?.moduleSettings?.finance?.canAccessTaxData ?? true,
+          },
+          inventory: {
+            enabled: user?.organization?.settings?.ai?.moduleSettings?.inventory?.enabled ?? true,
+            canAccessStockData: user?.organization?.settings?.ai?.moduleSettings?.inventory?.canAccessStockData ?? true,
+            canAccessWarehouseData: user?.organization?.settings?.ai?.moduleSettings?.inventory?.canAccessWarehouseData ?? true,
+            canAccessSupplyChainData: user?.organization?.settings?.ai?.moduleSettings?.inventory?.canAccessSupplyChainData ?? true,
+          },
+          sales: {
+            enabled: user?.organization?.settings?.ai?.moduleSettings?.sales?.enabled ?? true,
+            canAccessCustomerData: user?.organization?.settings?.ai?.moduleSettings?.sales?.canAccessCustomerData ?? true,
+            canAccessSalesData: user?.organization?.settings?.ai?.moduleSettings?.sales?.canAccessSalesData ?? true,
+            canAccessCRMData: user?.organization?.settings?.ai?.moduleSettings?.sales?.canAccessCRMData ?? true,
+          },
+          general: {
+            enabled: user?.organization?.settings?.ai?.moduleSettings?.general?.enabled ?? true,
+            canAccessGeneralData: user?.organization?.settings?.ai?.moduleSettings?.general?.canAccessGeneralData ?? true,
+            canAccessAnalyticsData: user?.organization?.settings?.ai?.moduleSettings?.general?.canAccessAnalyticsData ?? true,
+          },
+        },
+      },
+    },
+  });
+
+  const aiSettingsForm = useForm({
+    defaultValues: {
+      ai: {
+        isEnabled: user?.organization?.settings?.ai?.isEnabled ?? true,
+        allowPersonalAI: user?.organization?.settings?.ai?.allowPersonalAI ?? true,
+        allowOrganizationAI: user?.organization?.settings?.ai?.allowOrganizationAI ?? true,
+        model: user?.organization?.settings?.ai?.model || 'gpt-3.5-turbo',
+        temperature: user?.organization?.settings?.ai?.temperature || 0.7,
+        maxTokens: user?.organization?.settings?.ai?.maxTokens || 1000,
+        moduleSettings: {
+          hr: {
+            enabled: user?.organization?.settings?.ai?.moduleSettings?.hr?.enabled ?? true,
+            canAccessEmployeeData: user?.organization?.settings?.ai?.moduleSettings?.hr?.canAccessEmployeeData ?? true,
+            canAccessPayrollData: user?.organization?.settings?.ai?.moduleSettings?.hr?.canAccessPayrollData ?? true,
+            canAccessHiringData: user?.organization?.settings?.ai?.moduleSettings?.hr?.canAccessHiringData ?? true,
+            canAccessPerformanceData: user?.organization?.settings?.ai?.moduleSettings?.hr?.canAccessPerformanceData ?? true,
+          },
+          finance: {
+            enabled: user?.organization?.settings?.ai?.moduleSettings?.finance?.enabled ?? true,
+            canAccessFinancialData: user?.organization?.settings?.ai?.moduleSettings?.finance?.canAccessFinancialData ?? true,
+            canAccessAccountingData: user?.organization?.settings?.ai?.moduleSettings?.finance?.canAccessAccountingData ?? true,
+            canAccessBudgetData: user?.organization?.settings?.ai?.moduleSettings?.finance?.canAccessBudgetData ?? true,
+            canAccessTaxData: user?.organization?.settings?.ai?.moduleSettings?.finance?.canAccessTaxData ?? true,
+          },
+          inventory: {
+            enabled: user?.organization?.settings?.ai?.moduleSettings?.inventory?.enabled ?? true,
+            canAccessStockData: user?.organization?.settings?.ai?.moduleSettings?.inventory?.canAccessStockData ?? true,
+            canAccessWarehouseData: user?.organization?.settings?.ai?.moduleSettings?.inventory?.canAccessWarehouseData ?? true,
+            canAccessSupplyChainData: user?.organization?.settings?.ai?.moduleSettings?.inventory?.canAccessSupplyChainData ?? true,
+          },
+          sales: {
+            enabled: user?.organization?.settings?.ai?.moduleSettings?.sales?.enabled ?? true,
+            canAccessCustomerData: user?.organization?.settings?.ai?.moduleSettings?.sales?.canAccessCustomerData ?? true,
+            canAccessSalesData: user?.organization?.settings?.ai?.moduleSettings?.sales?.canAccessSalesData ?? true,
+            canAccessCRMData: user?.organization?.settings?.ai?.moduleSettings?.sales?.canAccessCRMData ?? true,
+          },
+          general: {
+            enabled: user?.organization?.settings?.ai?.moduleSettings?.general?.enabled ?? true,
+            canAccessGeneralData: user?.organization?.settings?.ai?.moduleSettings?.general?.canAccessGeneralData ?? true,
+            canAccessAnalyticsData: user?.organization?.settings?.ai?.moduleSettings?.general?.canAccessAnalyticsData ?? true,
+          },
+        },
+      },
     },
   });
 
@@ -173,19 +404,62 @@ export default function OrganizationSettingsPage() {
 
   const onSubmit = async (data: OrganizationFormData) => {
     try {
+      console.log('=== onSubmit called ===');
+      console.log('Organization data received:', data);
+      
+      // Check if user is properly authenticated
+      if (!isUserAuthenticated()) {
+        toast({
+          title: "Authentication Required",
+          description: "Please log in again to update organization info.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Get authentication token
+      const token = getToken();
+      if (!token) {
+        throw new Error('No authentication token found. Please log in again.');
+      }
+
+      console.log('About to make api request for organization info...');
+      
       const response = await fetch('/api/organization', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(data),
       });
 
+      console.log('Fetch request completed');
+      console.log('Response status:', response.status);
+
       if (!response.ok) {
-        throw new Error('Failed to update organization');
+        const errorText = await response.text();
+        console.error('Response error:', errorText);
+        
+        if (response.status === 401) {
+          toast({
+            title: "Session Expired",
+            description: "Your session has expired. Please log in again.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        throw new Error(`Failed to update organization: ${response.status} ${errorText}`);
       }
 
       const updatedOrganization = await response.json();
+      console.log('Response data:', updatedOrganization);
+      
       setUser(prev => {
         if (!prev) return null;
         return {
@@ -193,26 +467,99 @@ export default function OrganizationSettingsPage() {
           organization: updatedOrganization
         };
       });
-    } catch (error) {
+      
+      toast({
+        title: "Organization Info saved",
+        description: "Your organization information has been updated successfully.",
+      });
+    } catch (error: any) {
       console.error('Error updating organization:', error);
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to update organization info. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
-  const onSettingsSubmit = async (data: OrganizationSettings) => {
+  // Add a function to save general settings (everything except AI)
+  const onGeneralSettingsSubmit = async (data: any) => {
     try {
+      setIsSavingSettings(true);
+      console.log('=== onGeneralSettingsSubmit called ===');
+      console.log('General settings data received:', data);
+      
+      // Check if user is properly authenticated
+      if (!isUserAuthenticated()) {
+        toast({
+          title: "Authentication Required",
+          description: "Please log in again to update settings.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      console.log('About to make api request for general settings...');
+      
+      // Get current settings and merge with general settings (excluding AI)
+      const currentSettings = user?.organization?.settings || {};
+      const { ai, ...generalSettings } = data; // Exclude AI settings
+      const updatedSettings = {
+        ...currentSettings,
+        ...generalSettings // This includes theme, branding, modules, etc.
+      };
+      
+      console.log('Updated general settings to send:', updatedSettings);
+      
+      // Use the auth hook's getToken function
+      const token = getToken();
+      console.log('Token from auth hook:', token);
+      console.log('Token type:', typeof token);
+      console.log('Token length:', token?.length);
+      
+      if (!token) {
+        throw new Error('No authentication token found. Please log in again.');
+      }
+      
+      // Use fetch with manual token handling like the auth hook
       const response = await fetch('/api/organization/settings', {
-        method: 'PATCH',
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ settings: data }),
+        body: JSON.stringify({
+          settings: updatedSettings
+        })
       });
 
+      console.log('Fetch request completed');
+      console.log('Response status:', response.status);
+
       if (!response.ok) {
-        throw new Error('Failed to update organization settings');
+        const errorText = await response.text();
+        console.error('Response error:', errorText);
+        
+        if (response.status === 401) {
+          // Token might be expired, redirect to login
+          toast({
+            title: "Session Expired",
+            description: "Your session has expired. Please log in again.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        throw new Error(`Failed to update general settings: ${response.status} ${errorText}`);
       }
 
       const updatedOrganization = await response.json();
+      console.log('Response data:', updatedOrganization);
+      
       setUser(prev => {
         if (!prev) return null;
         return {
@@ -220,18 +567,137 @@ export default function OrganizationSettingsPage() {
           organization: updatedOrganization
         };
       });
-    } catch (error) {
-      console.error('Error updating organization settings:', error);
+      
+      toast({
+        title: "General Settings saved",
+        description: "Your general settings have been updated successfully.",
+      });
+    } catch (error: any) {
+      console.error('Error updating general settings:', error);
+      console.error('Error details:', {
+        name: error?.name,
+        message: error?.message,
+        stack: error?.stack,
+        response: error?.response?.data
+      });
+      toast({
+        title: "Error",
+        description: error?.response?.data?.error || error?.message || "Failed to update general settings. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingSettings(false);
     }
   };
 
-  if (!user) {
-    setLocation('/auth');
-    return <div>Redirecting...</div>;
-  }
+  // Modify the existing AI settings save function to be more specific
+  const onAISettingsSubmit = async (data: any) => {
+    try {
+      setIsSavingSettings(true);
+      console.log('=== onAISettingsSubmit called ===');
+      console.log('AI settings data received:', data);
+      
+      // Check if user is properly authenticated
+      if (!isUserAuthenticated()) {
+        toast({
+          title: "Authentication Required",
+          description: "Please log in again to update settings.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
 
-  if (user.role !== 'admin' && user.role !== 'owner') {
-    setLocation('/dashboard');
+      console.log('About to make api request for AI settings...');
+      
+      // Get current settings and merge with AI settings only
+      const currentSettings = user?.organization?.settings || {};
+      const updatedSettings = {
+        ...currentSettings,
+        ai: data.ai // Only update the AI section
+      };
+      
+      console.log('Updated AI settings to send:', updatedSettings);
+      
+      // Use the auth hook's getToken function
+      const token = getToken();
+      console.log('Token from auth hook:', token);
+      console.log('Token type:', typeof token);
+      console.log('Token length:', token?.length);
+      
+      if (!token) {
+        throw new Error('No authentication token found. Please log in again.');
+      }
+      
+      // Use fetch with manual token handling like the auth hook
+      const response = await fetch('/api/organization/settings', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          settings: updatedSettings
+        })
+      });
+
+      console.log('Fetch request completed');
+      console.log('Response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Response error:', errorText);
+        
+        if (response.status === 401) {
+          // Token might be expired, redirect to login
+          toast({
+            title: "Session Expired",
+            description: "Your session has expired. Please log in again.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        throw new Error(`Failed to update AI settings: ${response.status} ${errorText}`);
+      }
+
+      const updatedOrganization = await response.json();
+      console.log('Response data:', updatedOrganization);
+      
+      setUser(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          organization: updatedOrganization
+        };
+      });
+      
+      toast({
+        title: "AI Settings saved",
+        description: "Your AI settings have been updated successfully.",
+      });
+    } catch (error: any) {
+      console.error('Error updating AI settings:', error);
+      console.error('Error details:', {
+        name: error?.name,
+        message: error?.message,
+        stack: error?.stack,
+        response: error?.response?.data
+      });
+      toast({
+        title: "Error",
+        description: error?.response?.data?.error || error?.message || "Failed to update AI settings. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingSettings(false);
+    }
+  };
+
+  if (!user || !hasFullAccess(user)) {
     return <div>Access denied. Redirecting...</div>;
   }
 
@@ -243,6 +709,47 @@ export default function OrganizationSettingsPage() {
           <div className="mb-6">
             <BackButton />
           </div>
+
+          {/* Debug Information - Only show when not authenticated */}
+          {!isUserAuthenticated() && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+              <h4 className="font-semibold text-yellow-800 mb-2">Debug Information</h4>
+              <div className="text-sm text-yellow-700 space-y-1">
+                <p>User ID: {user?.id || 'Not set'}</p>
+                <p>User Role: {user?.role || 'Not set'}</p>
+                <p>Is Owner: {user?.isOwner ? 'Yes' : 'No'}</p>
+                <p>Is Admin: {user?.role === 'admin' ? 'Yes' : 'No'}</p>
+                <p>Organization ID: {user?.organizationId || 'Not set'}</p>
+                <p>Token: {getToken() ? 'Present' : 'Missing'}</p>
+                <p>Authentication Status: {isUserAuthenticated() ? '✅ Authenticated' : '❌ Not Authenticated'}</p>
+              </div>
+              <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+                <p className="font-semibold">⚠️ Authentication Issues Detected:</p>
+                <ul className="list-disc list-inside mt-1">
+                  {!getToken() && <li>Missing authentication token</li>}
+                  {!user && <li>No user data available</li>}
+                  {user && !user.isOwner && user?.role !== 'admin' && <li>User is not an owner or admin</li>}
+                  {user && !user.organizationId && <li>No organization ID</li>}
+                </ul>
+              </div>
+              <div className="flex gap-2 mt-2">
+                <Button 
+                  onClick={testAuthentication} 
+                  variant="outline" 
+                  size="sm"
+                >
+                  Test Authentication
+                </Button>
+                <Button 
+                  onClick={forceReAuth} 
+                  variant="destructive" 
+                  size="sm"
+                >
+                  Force Re-Login
+                </Button>
+              </div>
+            </div>
+          )}
 
           <Card>
             <CardHeader>
@@ -303,19 +810,80 @@ export default function OrganizationSettingsPage() {
                     <Input id="name" {...form.register('name')} />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="type">Type</Label>
-                    <Input id="type" {...form.register('type')} />
+                    <Label htmlFor="type">Business Type</Label>
+                    <Select
+                      value={form.watch('type')}
+                      onValueChange={(value) => form.setValue('type', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Business Type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="sme">Small & Medium Enterprise</SelectItem>
+                        <SelectItem value="startup">Startup</SelectItem>
+                        <SelectItem value="corporate">Corporate</SelectItem>
+                        <SelectItem value="enterprise">Enterprise</SelectItem>
+                        <SelectItem value="ngo">Non-Governmental Organization</SelectItem>
+                        <SelectItem value="government">Government</SelectItem>
+                        <SelectItem value="business">General Business</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="industry">Industry</Label>
-                    <Input id="industry" {...form.register('industry')} />
+                    <Select
+                      value={form.watch('industry')}
+                      onValueChange={(value) => form.setValue('industry', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Industry" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="retail">Retail</SelectItem>
+                        <SelectItem value="healthcare">Healthcare</SelectItem>
+                        <SelectItem value="finance">Finance</SelectItem>
+                        <SelectItem value="manufacturing">Manufacturing</SelectItem>
+                        <SelectItem value="education">Education</SelectItem>
+                        <SelectItem value="technology">Technology</SelectItem>
+                        <SelectItem value="logistics">Logistics</SelectItem>
+                        <SelectItem value="agriculture">Agriculture</SelectItem>
+                        <SelectItem value="energy">Energy</SelectItem>
+                        <SelectItem value="hospitality">Hospitality</SelectItem>
+                        <SelectItem value="real_estate">Real Estate</SelectItem>
+                        <SelectItem value="media">Media</SelectItem>
+                        <SelectItem value="transportation">Transportation</SelectItem>
+                        <SelectItem value="construction">Construction</SelectItem>
+                        <SelectItem value="government">Government</SelectItem>
+                        <SelectItem value="nonprofit">Non-Profit</SelectItem>
+                        <SelectItem value="professional_services">Professional Services</SelectItem>
+                        <SelectItem value="food_beverage">Food & Beverage</SelectItem>
+                        <SelectItem value="telecommunications">Telecommunications</SelectItem>
+                        <SelectItem value="automotive">Automotive</SelectItem>
+                        <SelectItem value="pharmaceuticals">Pharmaceuticals</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="size">Size</Label>
-                    <Input id="size" {...form.register('size')} />
+                    <Select
+                      value={form.watch('size')}
+                      onValueChange={(value) => form.setValue('size', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Company Size" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1-10">1-10 employees</SelectItem>
+                        <SelectItem value="11-50">11-50 employees</SelectItem>
+                        <SelectItem value="51-200">51-200 employees</SelectItem>
+                        <SelectItem value="201-500">201-500 employees</SelectItem>
+                        <SelectItem value="501-1000">501-1000 employees</SelectItem>
+                        <SelectItem value="1000+">1000+ employees</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
@@ -374,22 +942,136 @@ export default function OrganizationSettingsPage() {
                   <TabsTrigger value="payroll">Payroll</TabsTrigger>
                   <TabsTrigger value="benefits">Benefits</TabsTrigger>
                   <TabsTrigger value="compliance">Compliance</TabsTrigger>
+                  <TabsTrigger value="ai">AI Assistant</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="general">
-              <form onSubmit={settingsForm.handleSubmit(onSettingsSubmit)} className="space-y-6">
+                  <form onSubmit={settingsForm.handleSubmit(onGeneralSettingsSubmit)} className="space-y-6">
                 <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Theme</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <h3 className="text-lg font-medium">Theme & Branding Colors</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="primaryColor">Primary Color</Label>
-                      <Input id="primaryColor" type="color" {...settingsForm.register('theme.primaryColor')} />
+                            <Label htmlFor="primaryColor" className="text-sm font-medium">Primary Color</Label>
+                            <div className="flex items-center space-x-3">
+                              <div 
+                                className="w-12 h-12 rounded-lg border-2 border-gray-200 shadow-sm cursor-pointer"
+                                style={{ backgroundColor: settingsForm.watch('theme.primaryColor') }}
+                                onClick={() => document.getElementById('primaryColor')?.click()}
+                              />
+                              <Input 
+                                id="primaryColor" 
+                                type="color" 
+                                className="w-16 h-10 cursor-pointer"
+                                {...settingsForm.register('theme.primaryColor')} 
+                              />
+                              <Input 
+                                type="text" 
+                                value={settingsForm.watch('theme.primaryColor')}
+                                onChange={(e) => settingsForm.setValue('theme.primaryColor', e.target.value)}
+                                className="flex-1"
+                                placeholder="#2563eb"
+                              />
                     </div>
+                            <p className="text-xs text-muted-foreground">
+                              This color is used for buttons, links, and primary actions
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="secondaryColor">Secondary Color</Label>
-                      <Input id="secondaryColor" type="color" {...settingsForm.register('theme.secondaryColor')} />
+                            <Label htmlFor="secondaryColor" className="text-sm font-medium">Secondary Color</Label>
+                            <div className="flex items-center space-x-3">
+                              <div 
+                                className="w-12 h-12 rounded-lg border-2 border-gray-200 shadow-sm cursor-pointer"
+                                style={{ backgroundColor: settingsForm.watch('theme.secondaryColor') }}
+                                onClick={() => document.getElementById('secondaryColor')?.click()}
+                              />
+                              <Input 
+                                id="secondaryColor" 
+                                type="color" 
+                                className="w-16 h-10 cursor-pointer"
+                                {...settingsForm.register('theme.secondaryColor')} 
+                              />
+                              <Input 
+                                type="text" 
+                                value={settingsForm.watch('theme.secondaryColor')}
+                                onChange={(e) => settingsForm.setValue('theme.secondaryColor', e.target.value)}
+                                className="flex-1"
+                                placeholder="#ffffff"
+                              />
                     </div>
+                            <p className="text-xs text-muted-foreground">
+                              This color is used for backgrounds and secondary elements
+                            </p>
                   </div>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+                        <h4 className="text-sm font-medium mb-3">Color Preview</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          <div className="space-y-2">
+                            <div 
+                              className="h-8 rounded-md"
+                              style={{ backgroundColor: settingsForm.watch('theme.primaryColor') }}
+                            />
+                            <p className="text-xs text-center">Primary Color</p>
+                          </div>
+                          <div className="space-y-2">
+                            <div 
+                              className="h-8 rounded-md border"
+                              style={{ backgroundColor: settingsForm.watch('theme.secondaryColor') }}
+                            />
+                            <p className="text-xs text-center">Secondary Color</p>
+                          </div>
+                          <div className="space-y-2">
+                            <Button 
+                              className="w-full"
+                              style={{ backgroundColor: settingsForm.watch('theme.primaryColor') }}
+                            >
+                              Sample Button
+                            </Button>
+                            <p className="text-xs text-center">Button Preview</p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                        <h4 className="text-sm font-medium mb-3">Quick Color Presets</h4>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                          {[
+                            { name: 'Blue', primary: '#2563eb', secondary: '#ffffff' },
+                            { name: 'Purple', primary: '#7c3aed', secondary: '#ffffff' },
+                            { name: 'Green', primary: '#059669', secondary: '#ffffff' },
+                            { name: 'Orange', primary: '#ea580c', secondary: '#ffffff' },
+                            { name: 'Red', primary: '#dc2626', secondary: '#ffffff' },
+                            { name: 'Teal', primary: '#0d9488', secondary: '#ffffff' },
+                            { name: 'Indigo', primary: '#4f46e5', secondary: '#ffffff' },
+                            { name: 'Pink', primary: '#db2777', secondary: '#ffffff' }
+                          ].map((preset) => (
+                            <button
+                              key={preset.name}
+                              type="button"
+                              className="p-3 rounded-lg border-2 border-gray-200 hover:border-gray-300 transition-colors"
+                              onClick={() => {
+                                settingsForm.setValue('theme.primaryColor', preset.primary);
+                                settingsForm.setValue('theme.secondaryColor', preset.secondary);
+                              }}
+                            >
+                              <div className="flex items-center space-x-2">
+                                <div 
+                                  className="w-4 h-4 rounded-full"
+                                  style={{ backgroundColor: preset.primary }}
+                                />
+                                <span className="text-xs font-medium">{preset.name}</span>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      
                   <div className="space-y-2">
                     <Label htmlFor="darkMode">Dark Mode</Label>
                         <Switch
@@ -456,14 +1138,21 @@ export default function OrganizationSettingsPage() {
                   </div>
                 </div>
 
-                <Button type="submit" className="w-full">
-                  Save Settings
+                    <Button type="submit" className="w-full" disabled={isSavingSettings}>
+                      {isSavingSettings ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Saving Settings...
+                        </>
+                      ) : (
+                        'Save Settings'
+                      )}
                 </Button>
               </form>
                 </TabsContent>
 
                 <TabsContent value="accounting">
-                  <form onSubmit={settingsForm.handleSubmit(onSettingsSubmit)} className="space-y-6">
+                  <form onSubmit={settingsForm.handleSubmit(onGeneralSettingsSubmit)} className="space-y-6">
                     <div className="space-y-4">
                       <h3 className="text-lg font-medium">Fiscal Year</h3>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -538,7 +1227,7 @@ export default function OrganizationSettingsPage() {
                     <div className="space-y-4">
                       <h3 className="text-lg font-medium">Tax Jurisdictions</h3>
                       <div className="space-y-4">
-                        {settingsForm.watch('accounting.taxJurisdictions')?.map((jurisdiction, index) => (
+                        {settingsForm.watch('accounting.taxJurisdictions')?.map((jurisdiction: any, index: number) => (
                           <div key={index} className="p-4 border rounded-lg space-y-4">
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                               <div className="space-y-2">
@@ -570,7 +1259,7 @@ export default function OrganizationSettingsPage() {
                                 const jurisdictions = settingsForm.watch('accounting.taxJurisdictions') || [];
                                 settingsForm.setValue(
                                   'accounting.taxJurisdictions',
-                                  jurisdictions.filter((_, i) => i !== index)
+                                  jurisdictions.filter((_: any, i: number) => i !== index)
                                 );
                               }}
                             >
@@ -599,7 +1288,7 @@ export default function OrganizationSettingsPage() {
                 </TabsContent>
 
                 <TabsContent value="payroll">
-                  <form onSubmit={settingsForm.handleSubmit(onSettingsSubmit)} className="space-y-6">
+                  <form onSubmit={settingsForm.handleSubmit(onGeneralSettingsSubmit)} className="space-y-6">
                     <div className="space-y-4">
                       <h3 className="text-lg font-medium">Payment Settings</h3>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -652,7 +1341,7 @@ export default function OrganizationSettingsPage() {
                     <div className="space-y-4">
                       <h3 className="text-lg font-medium">Deductions</h3>
                       <div className="space-y-2">
-                        {settingsForm.watch('payroll.deductions')?.map((deduction, index) => (
+                        {settingsForm.watch('payroll.deductions')?.map((deduction: any, index: number) => (
                           <div key={index} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div className="space-y-2">
                               <Label>Type</Label>
@@ -714,11 +1403,11 @@ export default function OrganizationSettingsPage() {
                 </TabsContent>
 
                 <TabsContent value="benefits">
-                  <form onSubmit={settingsForm.handleSubmit(onSettingsSubmit)} className="space-y-6">
+                  <form onSubmit={settingsForm.handleSubmit(onGeneralSettingsSubmit)} className="space-y-6">
                     <div className="space-y-4">
                       <h3 className="text-lg font-medium">Mandatory Benefits</h3>
                       <div className="space-y-4">
-                        {settingsForm.watch('benefits.mandatory')?.map((benefit, index) => (
+                        {settingsForm.watch('benefits.mandatory')?.map((benefit: any, index: number) => (
                           <div key={index} className="p-4 border rounded-lg space-y-4">
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                               <div className="space-y-2">
@@ -795,7 +1484,7 @@ export default function OrganizationSettingsPage() {
                                 const benefits = settingsForm.watch('benefits.mandatory') || [];
                                 settingsForm.setValue(
                                   'benefits.mandatory',
-                                  benefits.filter((_, i) => i !== index)
+                                  benefits.filter((_: any, i: number) => i !== index)
                                 );
                               }}
                             >
@@ -820,7 +1509,7 @@ export default function OrganizationSettingsPage() {
                     <div className="space-y-4">
                       <h3 className="text-lg font-medium">Optional Benefits</h3>
                       <div className="space-y-4">
-                        {settingsForm.watch('benefits.optional')?.map((benefit, index) => (
+                        {settingsForm.watch('benefits.optional')?.map((benefit: any, index: number) => (
                           <div key={index} className="p-4 border rounded-lg space-y-4">
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                               <div className="space-y-2">
@@ -897,7 +1586,7 @@ export default function OrganizationSettingsPage() {
                                 const benefits = settingsForm.watch('benefits.optional') || [];
                                 settingsForm.setValue(
                                   'benefits.optional',
-                                  benefits.filter((_, i) => i !== index)
+                                  benefits.filter((_: any, i: number) => i !== index)
                                 );
                               }}
                             >
@@ -926,13 +1615,13 @@ export default function OrganizationSettingsPage() {
                 </TabsContent>
 
                 <TabsContent value="compliance">
-                  <form onSubmit={settingsForm.handleSubmit(onSettingsSubmit)} className="space-y-6">
+                  <form onSubmit={settingsForm.handleSubmit(onGeneralSettingsSubmit)} className="space-y-6">
                     <div className="space-y-4">
                       <h3 className="text-lg font-medium">Required Reports</h3>
                       <div className="space-y-2">
                         <Label>Required Reports</Label>
                         <div className="space-y-2">
-                          {settingsForm.watch('accounting.compliance.requiredReports')?.map((report, index) => (
+                          {settingsForm.watch('accounting.compliance.requiredReports')?.map((report: string, index: number) => (
                             <div key={index} className="flex items-center space-x-2">
                               <Input
                                 value={report}
@@ -976,7 +1665,7 @@ export default function OrganizationSettingsPage() {
                       <div className="space-y-2">
                         <Label>Filing Deadlines</Label>
                         <div className="space-y-2">
-                          {Object.entries(settingsForm.watch('accounting.compliance.filingDeadlines') || {}).map(([report, deadlines], index) => (
+                          {Object.entries(settingsForm.watch('accounting.compliance.filingDeadlines') || {} as Record<string, string[]>).map(([report, deadlines], index: number) => (
                             <div key={index} className="space-y-2">
                               <div className="flex items-center space-x-2">
                                 <Input
@@ -1003,7 +1692,7 @@ export default function OrganizationSettingsPage() {
                                 </Button>
                               </div>
                               <div className="pl-4 space-y-2">
-                                {deadlines.map((deadline, deadlineIndex) => (
+                                {deadlines.map((deadline: string, deadlineIndex: number) => (
                                   <div key={deadlineIndex} className="flex items-center space-x-2">
                                     <Input
                                       value={deadline}
@@ -1073,7 +1762,7 @@ export default function OrganizationSettingsPage() {
                       <div className="space-y-2">
                         <Label>Required Documentation</Label>
                         <div className="space-y-2">
-                          {settingsForm.watch('accounting.compliance.documentation')?.map((doc, index) => (
+                          {settingsForm.watch('accounting.compliance.documentation')?.map((doc: string, index: number) => (
                             <div key={index} className="flex items-center space-x-2">
                               <Input
                                 value={doc}
@@ -1114,6 +1803,319 @@ export default function OrganizationSettingsPage() {
 
                     <Button type="submit" className="w-full">
                       Save Compliance Settings
+                    </Button>
+                  </form>
+                </TabsContent>
+
+                <TabsContent value="ai">
+                  <form onSubmit={(e) => {
+                    e.preventDefault();
+                    console.log('AI form submitted');
+                    const formData = aiSettingsForm.getValues();
+                    console.log('AI form data:', formData);
+                    onAISettingsSubmit(formData);
+                  }} className="space-y-6">
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-medium">AI Assistant Settings</h3>
+                      
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label htmlFor="aiEnabled">Enable AI Assistant</Label>
+                            <p className="text-sm text-muted-foreground">Allow AI features throughout the application</p>
+                          </div>
+                          <Switch
+                            id="aiEnabled"
+                            checked={aiSettingsForm.watch('ai.isEnabled')}
+                            onCheckedChange={(checked) => aiSettingsForm.setValue('ai.isEnabled', checked)}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label htmlFor="personalAI">Allow Personal AI</Label>
+                            <p className="text-sm text-muted-foreground">Users can use AI for personal assistance</p>
+                          </div>
+                          <Switch
+                            id="personalAI"
+                            checked={aiSettingsForm.watch('ai.allowPersonalAI')}
+                            onCheckedChange={(checked) => aiSettingsForm.setValue('ai.allowPersonalAI', checked)}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label htmlFor="organizationAI">Allow Organization AI</Label>
+                            <p className="text-sm text-muted-foreground">AI can access organization-wide data</p>
+                          </div>
+                          <Switch
+                            id="organizationAI"
+                            checked={aiSettingsForm.watch('ai.allowOrganizationAI')}
+                            onCheckedChange={(checked) => aiSettingsForm.setValue('ai.allowOrganizationAI', checked)}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <h4 className="text-md font-medium">AI Model Configuration</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="aiModel">Model</Label>
+                            <Select
+                              value={aiSettingsForm.watch('ai.model')}
+                              onValueChange={(value) => aiSettingsForm.setValue('ai.model', value)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select Model" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo</SelectItem>
+                                <SelectItem value="gpt-4">GPT-4</SelectItem>
+                                <SelectItem value="claude-3">Claude 3</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="aiTemperature">Temperature</Label>
+                            <Input 
+                              id="aiTemperature" 
+                              type="number" 
+                              step="0.1"
+                              min="0"
+                              max="2"
+                              {...aiSettingsForm.register('ai.temperature')} 
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="aiMaxTokens">Max Tokens</Label>
+                            <Input 
+                              id="aiMaxTokens" 
+                              type="number" 
+                              {...aiSettingsForm.register('ai.maxTokens')} 
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <h4 className="text-md font-medium">Module-Specific AI Settings</h4>
+                        
+                        <div className="space-y-4">
+                          <div className="border rounded-lg p-4">
+                            <div className="flex items-center justify-between mb-2">
+                              <Label>HR Module AI</Label>
+                              <Switch
+                                checked={aiSettingsForm.watch('ai.moduleSettings.hr.enabled')}
+                                onCheckedChange={(checked) => aiSettingsForm.setValue('ai.moduleSettings.hr.enabled', checked)}
+                              />
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 text-sm">
+                              <div className="flex items-center space-x-2">
+                                <Switch
+                                  checked={aiSettingsForm.watch('ai.moduleSettings.hr.canAccessEmployeeData')}
+                                  onCheckedChange={(checked) => aiSettingsForm.setValue('ai.moduleSettings.hr.canAccessEmployeeData', checked)}
+                                />
+                                <span>Employee Data</span>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <Switch
+                                  checked={aiSettingsForm.watch('ai.moduleSettings.hr.canAccessPayrollData')}
+                                  onCheckedChange={(checked) => aiSettingsForm.setValue('ai.moduleSettings.hr.canAccessPayrollData', checked)}
+                                />
+                                <span>Payroll Data</span>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <Switch
+                                  checked={aiSettingsForm.watch('ai.moduleSettings.hr.canAccessHiringData')}
+                                  onCheckedChange={(checked) => aiSettingsForm.setValue('ai.moduleSettings.hr.canAccessHiringData', checked)}
+                                />
+                                <span>Hiring Data</span>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <Switch
+                                  checked={aiSettingsForm.watch('ai.moduleSettings.hr.canAccessPerformanceData')}
+                                  onCheckedChange={(checked) => aiSettingsForm.setValue('ai.moduleSettings.hr.canAccessPerformanceData', checked)}
+                                />
+                                <span>Performance Data</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="border rounded-lg p-4">
+                            <div className="flex items-center justify-between mb-2">
+                              <Label>Finance Module AI</Label>
+                              <Switch
+                                checked={aiSettingsForm.watch('ai.moduleSettings.finance.enabled')}
+                                onCheckedChange={(checked) => aiSettingsForm.setValue('ai.moduleSettings.finance.enabled', checked)}
+                              />
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 text-sm">
+                              <div className="flex items-center space-x-2">
+                                <Switch
+                                  checked={aiSettingsForm.watch('ai.moduleSettings.finance.canAccessFinancialData')}
+                                  onCheckedChange={(checked) => aiSettingsForm.setValue('ai.moduleSettings.finance.canAccessFinancialData', checked)}
+                                />
+                                <span>Financial Data</span>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <Switch
+                                  checked={aiSettingsForm.watch('ai.moduleSettings.finance.canAccessAccountingData')}
+                                  onCheckedChange={(checked) => aiSettingsForm.setValue('ai.moduleSettings.finance.canAccessAccountingData', checked)}
+                                />
+                                <span>Accounting Data</span>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <Switch
+                                  checked={aiSettingsForm.watch('ai.moduleSettings.finance.canAccessBudgetData')}
+                                  onCheckedChange={(checked) => aiSettingsForm.setValue('ai.moduleSettings.finance.canAccessBudgetData', checked)}
+                                />
+                                <span>Budget Data</span>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <Switch
+                                  checked={aiSettingsForm.watch('ai.moduleSettings.finance.canAccessTaxData')}
+                                  onCheckedChange={(checked) => aiSettingsForm.setValue('ai.moduleSettings.finance.canAccessTaxData', checked)}
+                                />
+                                <span>Tax Data</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="border rounded-lg p-4">
+                            <div className="flex items-center justify-between mb-2">
+                              <Label>Inventory Module AI</Label>
+                              <Switch
+                                checked={aiSettingsForm.watch('ai.moduleSettings.inventory.enabled')}
+                                onCheckedChange={(checked) => aiSettingsForm.setValue('ai.moduleSettings.inventory.enabled', checked)}
+                              />
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 text-sm">
+                              <div className="flex items-center space-x-2">
+                                <Switch
+                                  checked={aiSettingsForm.watch('ai.moduleSettings.inventory.canAccessStockData')}
+                                  onCheckedChange={(checked) => aiSettingsForm.setValue('ai.moduleSettings.inventory.canAccessStockData', checked)}
+                                />
+                                <span>Stock Data</span>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <Switch
+                                  checked={aiSettingsForm.watch('ai.moduleSettings.inventory.canAccessWarehouseData')}
+                                  onCheckedChange={(checked) => aiSettingsForm.setValue('ai.moduleSettings.inventory.canAccessWarehouseData', checked)}
+                                />
+                                <span>Warehouse Data</span>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <Switch
+                                  checked={aiSettingsForm.watch('ai.moduleSettings.inventory.canAccessSupplyChainData')}
+                                  onCheckedChange={(checked) => aiSettingsForm.setValue('ai.moduleSettings.inventory.canAccessSupplyChainData', checked)}
+                                />
+                                <span>Supply Chain Data</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="border rounded-lg p-4">
+                            <div className="flex items-center justify-between mb-2">
+                              <Label>Sales Module AI</Label>
+                              <Switch
+                                checked={aiSettingsForm.watch('ai.moduleSettings.sales.enabled')}
+                                onCheckedChange={(checked) => aiSettingsForm.setValue('ai.moduleSettings.sales.enabled', checked)}
+                              />
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 text-sm">
+                              <div className="flex items-center space-x-2">
+                                <Switch
+                                  checked={aiSettingsForm.watch('ai.moduleSettings.sales.canAccessCustomerData')}
+                                  onCheckedChange={(checked) => aiSettingsForm.setValue('ai.moduleSettings.sales.canAccessCustomerData', checked)}
+                                />
+                                <span>Customer Data</span>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <Switch
+                                  checked={aiSettingsForm.watch('ai.moduleSettings.sales.canAccessSalesData')}
+                                  onCheckedChange={(checked) => aiSettingsForm.setValue('ai.moduleSettings.sales.canAccessSalesData', checked)}
+                                />
+                                <span>Sales Data</span>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <Switch
+                                  checked={aiSettingsForm.watch('ai.moduleSettings.sales.canAccessCRMData')}
+                                  onCheckedChange={(checked) => aiSettingsForm.setValue('ai.moduleSettings.sales.canAccessCRMData', checked)}
+                                />
+                                <span>CRM Data</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="border rounded-lg p-4">
+                            <div className="flex items-center justify-between mb-2">
+                              <Label>General AI</Label>
+                              <Switch
+                                checked={aiSettingsForm.watch('ai.moduleSettings.general.enabled')}
+                                onCheckedChange={(checked) => aiSettingsForm.setValue('ai.moduleSettings.general.enabled', checked)}
+                              />
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 text-sm">
+                              <div className="flex items-center space-x-2">
+                                <Switch
+                                  checked={aiSettingsForm.watch('ai.moduleSettings.general.canAccessGeneralData')}
+                                  onCheckedChange={(checked) => aiSettingsForm.setValue('ai.moduleSettings.general.canAccessGeneralData', checked)}
+                                />
+                                <span>General Data</span>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <Switch
+                                  checked={aiSettingsForm.watch('ai.moduleSettings.general.canAccessAnalyticsData')}
+                                  onCheckedChange={(checked) => aiSettingsForm.setValue('ai.moduleSettings.general.canAccessAnalyticsData', checked)}
+                                />
+                                <span>Analytics Data</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <Button type="submit" className="w-full" disabled={isSavingSettings}>
+                      {isSavingSettings ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Saving AI Settings...
+                        </>
+                      ) : (
+                        'Save AI Settings'
+                      )}
+                    </Button>
+                    
+                    {/* Test button */}
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={async () => {
+                        try {
+                          console.log('Testing API connection...');
+                          const response = await fetch('/api/test', {
+                            headers: {
+                              'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                            },
+                          });
+                          const data = await response.json();
+                          console.log('Test response:', data);
+                          toast({
+                            title: "API Test",
+                            description: "API is working: " + JSON.stringify(data),
+                          });
+                        } catch (error) {
+                          console.error('API test failed:', error);
+                          toast({
+                            title: "API Test Failed",
+                            description: "Error: " + error,
+                            variant: "destructive",
+                          });
+                        }
+                      }}
+                    >
+                      Test API Connection
                     </Button>
                   </form>
                 </TabsContent>
@@ -1164,6 +2166,8 @@ export default function OrganizationSettingsPage() {
               </div>
             </Card>
           )}
+
+                          <CustomFieldManager toast={toast} />
         </div>
       </div>
     </div>

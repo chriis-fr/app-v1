@@ -1,6 +1,6 @@
 import { ColumnDef } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
-import { ArrowUpDown } from 'lucide-react';
+import { ArrowUpDown, DollarSign } from 'lucide-react';
 
 export interface Credential {
   id: string;
@@ -24,6 +24,9 @@ export interface Employee {
   joinDate: string;
   credentials?: Credential[];
   canLogin: boolean;
+  salaryAmount?: number;
+  payoutMethod?: string;
+  currencyPreference?: string;
 }
 
 export const columns: ColumnDef<Employee>[] = [

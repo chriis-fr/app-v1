@@ -1,7 +1,9 @@
 import { useAuth } from './use-auth';
+import { useOrganization } from '@/contexts/OrganizationContext';
 
 export function useRoleAccess() {
   const { user } = useAuth();
+  const { organization } = useOrganization();
 
   const isOwner = () => {
     return user?.role === 'owner';
@@ -43,10 +45,23 @@ export function useRoleAccess() {
     return false;
   };
 
-  const canAccessModule = (module: string) => {
+  const hasModule = (module: string) => {
     if (isOwner()) return true;
-    if (!user?.moduleAccess) return false;
-    return user.moduleAccess.includes(module);
+    if (organization?.enabledModules) {
+      return organization.enabledModules.includes(module);
+    }
+    if (user?.moduleAccess) {
+      return user.moduleAccess.includes(module);
+    }
+    return false;
+  };
+
+  const isTier = (tier: string) => {
+    return organization?.tier === tier;
+  };
+
+  const canAccessModule = (module: string) => {
+    return hasModule(module);
   };
 
   return {
@@ -58,6 +73,8 @@ export function useRoleAccess() {
     canAccessDepartment,
     canManageUsers,
     canCreateUser,
-    canAccessModule
+    canAccessModule,
+    hasModule,
+    isTier
   };
 } 

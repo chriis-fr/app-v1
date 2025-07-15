@@ -7,6 +7,25 @@ export interface AuthRequest extends Request {
   user?: Express.User;
 } 
 
+export interface AuthenticatedRequest extends Request {
+  user: {
+    id: string;
+    organizationId: string;
+    role: string;
+    email: string;
+    isOwner: boolean;
+    moduleAccess: string[];
+    permissions: {
+      module: string;
+      actions: string[];
+    }[];
+    modulePermissions: {
+      module: string;
+      permissions: string[];
+    }[];
+  };
+}
+
 export interface TaxSystem {
   type: 'VAT' | 'GST' | 'SalesTax' | 'Federal-State-Local' | 'Unitary' | 'Federal';
   rates: {

@@ -1,51 +1,66 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle, Mail, Database, BarChart, Users, Settings, Globe, Zap } from 'lucide-react';
+import { useAuth } from '@/hooks/use-auth';
 
 function getTokenFromUrl() {
-  if (typeof window === 'undefined') return '';
-  const params = new URLSearchParams(window.location.search);
-  return params.get('token') || '';
+  const urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get('token');
+}
+
+function getEmailFromUrl() {
+  const urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get('email');
 }
 
 export default function ActivatePage() {
-  const [, setLocation] = useLocation();
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [token, setToken] = useState<string | null>(null);
+  const [email, setEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
-  const token = getTokenFromUrl();
+  const { setUser } = useAuth();
+  const [, setLocation] = useLocation();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    if (!password || password.length < 8) {
-      setError('Password must be at least 8 characters.');
+  useEffect(() => {
+    const urlToken = getTokenFromUrl();
+    const urlEmail = getEmailFromUrl();
+    setToken(urlToken);
+    setEmail(urlEmail);
+  }, []);
+
+  // Auto-activate when token and email are available
+  useEffect(() => {
+    if (token && email && !loading && !success && !error) {
+      handleActivation();
+    }
+  }, [token, email]);
+
+  const handleActivation = async () => {
+    if (!token || !email) {
+      setError('Invalid activation link. Please check your email for the correct link.');
       return;
     }
-    if (password !== confirmPassword) {
-      setError('Passwords do not match.');
-      return;
-    }
+    
     setLoading(true);
     try {
       const response = await fetch('/api/users/activate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, password })
+        body: JSON.stringify({ token, email })
       });
+      
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Activation failed');
+        throw new Error(data.message || 'Activation failed');
       }
+      
       setSuccess(true);
-      setTimeout(() => setLocation('/login'), 2000);
+      
+      // Redirect to dashboard after a short delay
+      setTimeout(() => setLocation('/dashboard'), 2000);
     } catch (err: any) {
       setError(err.message || 'Activation failed');
     } finally {
@@ -53,58 +68,143 @@ export default function ActivatePage() {
     }
   };
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-white via-gray-50 to-gray-100">
-      <Card className="w-full max-w-md p-8 shadow-lg">
-        <h1 className="text-2xl font-bold mb-4 text-center">Activate Your Account</h1>
-        {success ? (
-          <Alert className="mb-4">
-            <CheckCircle2 className="h-5 w-5 text-green-600 mr-2 inline" />
-            <AlertTitle>Account Activated!</AlertTitle>
-            <AlertDescription>
-              Your account is now active. Redirecting to login...
-            </AlertDescription>
-          </Alert>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {error && (
-              <Alert variant="destructive">
-                <XCircle className="h-5 w-5 text-red-600 mr-2 inline" />
-                <AlertTitle>Activation Error</AlertTitle>
-                <AlertDescription>{error}</AlertDescription>
+  // If no token, show message to check email
+  if (!token || !email) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 relative overflow-hidden">
+        {/* Background Icons */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute top-20 left-10 text-blue-200/30">
+            <Database size={60} />
+          </div>
+          <div className="absolute top-40 right-20 text-indigo-200/30">
+            <BarChart size={50} />
+          </div>
+          <div className="absolute bottom-40 left-20 text-purple-200/30">
+            <Users size={70} />
+          </div>
+          <div className="absolute bottom-20 right-10 text-blue-200/30">
+            <Settings size={40} />
+          </div>
+          <div className="absolute top-1/2 left-1/4 text-indigo-200/20">
+            <Globe size={80} />
+          </div>
+          <div className="absolute top-1/3 right-1/3 text-purple-200/20">
+            <Zap size={45} />
+          </div>
+        </div>
+
+        <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
+          <Card className="w-full max-w-md p-8 shadow-2xl border-0 bg-white/80 backdrop-blur-sm">
+            <div className="text-center">
+              {/* Logo */}
+              <div className="mb-6">
+                <div className="mx-auto w-20 h-20 bg-white rounded-2xl flex items-center justify-center mb-4 shadow-lg">
+                <img src="https://chains-erp.com/chainsnobg.png" 
+                    alt="Chains ERP Logo" 
+                    className='border rounded-2xl'
+                   />
+                </div>
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
+                  Chains ERP&trade;
+                </h1>
+                <p className="text-gray-600 text-sm">Enterprise Resource Planning</p>
+              </div>
+
+              <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-6">
+                <Mail className="h-8 w-8 text-blue-600" />
+              </div>
+              
+              <h2 className="text-2xl font-bold mb-4 text-gray-800">Check Your Email</h2>
+              <p className="text-gray-600 mb-6 leading-relaxed">
+                We've sent you an activation link. Please check your email and click the link to activate your account and unlock the full power of Chains ERP.
+              </p>
+              
+              <Alert className="mb-6 border-blue-200 bg-blue-50">
+                <AlertTitle className="text-blue-800">Activation Required</AlertTitle>
+                <AlertDescription className="text-blue-700">
+                  Your account needs to be activated before you can access the platform. Please check your email for the activation link.
+                </AlertDescription>
               </Alert>
-            )}
-            <div className="space-y-2">
-              <Label htmlFor="password">New Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                minLength={8}
-                required
-                placeholder="Enter a strong password"
-              />
+              
+              <button 
+                onClick={() => setLocation('/auth')}
+                className="mt-4 px-4 py-2 border border-blue-300 text-blue-700 rounded-md hover:bg-blue-50 transition-colors"
+              >
+                Back to Login
+              </button>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                value={confirmPassword}
-                onChange={e => setConfirmPassword(e.target.value)}
-                minLength={8}
-                required
-                placeholder="Re-enter your password"
-              />
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 relative overflow-hidden">
+      {/* Background Icons */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute top-20 left-10 text-blue-200/30">
+          <Database size={60} />
+        </div>
+        <div className="absolute top-40 right-20 text-indigo-200/30">
+          <BarChart size={50} />
+        </div>
+        <div className="absolute bottom-40 left-20 text-purple-200/30">
+          <Users size={70} />
+        </div>
+        <div className="absolute bottom-20 right-10 text-blue-200/30">
+          <Settings size={40} />
+        </div>
+        <div className="absolute top-1/2 left-1/4 text-indigo-200/20">
+          <Globe size={80} />
+        </div>
+        <div className="absolute top-1/3 right-1/3 text-purple-200/20">
+          <Zap size={45} />
+        </div>
+      </div>
+
+      <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
+        <Card className="w-full max-w-md p-8 shadow-2xl border-0 bg-white/80 backdrop-blur-sm">
+          {/* Logo */}
+          <div className="text-center mb-6">
+            <div className="mx-auto w-20 h-20 bg-white rounded-2xl flex items-center justify-center mb-4 shadow-lg">
+              <img
+                src="https://chains-erp.com/chainsnobg.png"
+                alt="Chains ERP Logo"
+                className="w-full h-full object-contain border rounded-2xl"
+               />
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2 inline" /> : <CheckCircle2 className="h-4 w-4 mr-2 inline" />}
-              Activate Account
-            </Button>
-          </form>
-        )}
-      </Card>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
+              Chains ERP&trade;
+            </h1>
+            <p className="text-gray-600 text-sm">Empowering Businesses, driving growth</p>
+          </div>
+
+          <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Activating Your Account</h2>
+          
+          {success ? (
+            <Alert className="mb-6 border-green-200 bg-green-50">
+              <CheckCircle2 className="h-5 w-5 text-green-600 mr-2 inline" />
+              <AlertTitle className="text-green-800">Account Activated!</AlertTitle>
+              <AlertDescription className="text-green-700">
+                Your account is now active. Welcome to Chains ERP! Redirecting to dashboard...
+              </AlertDescription>
+            </Alert>
+          ) : loading ? (
+            <div className="text-center">
+              <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
+              <p className="text-gray-600">Activating your account...</p>
+            </div>
+          ) : error ? (
+            <Alert variant="destructive" className="border-red-200 bg-red-50">
+              <XCircle className="h-5 w-5 text-red-600 mr-2 inline" />
+              <AlertTitle className="text-red-800">Activation Error</AlertTitle>
+              <AlertDescription className="text-red-700">{error}</AlertDescription>
+            </Alert>
+          ) : null}
+        </Card>
+      </div>
     </div>
   );
 } 

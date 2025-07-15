@@ -26,7 +26,9 @@ import {
   MoreVertical,
   Activity,
   BadgeCheck,
-  BadgeAlert
+  BadgeAlert,
+  Loader2,
+  Sparkles
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -74,6 +76,7 @@ export default function UsersPage() {
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [activatingUsers, setActivatingUsers] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (currentUser && currentUser.organization && currentUser.organization.id) {
@@ -125,6 +128,49 @@ export default function UsersPage() {
         title: 'Error',
         description: 'Failed to delete user',
         variant: 'destructive',
+      });
+    }
+  };
+
+  const handleSendActivation = async (userId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    // Add user to activating set
+    setActivatingUsers(prev => new Set(prev).add(userId));
+    
+    try {
+      const response = await fetch(`/api/users/${userId}/send-activation`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to send activation token');
+      }
+      
+      const data = await response.json();
+      toast({
+        title: 'Success',
+        description: `Activation email sent to ${data.userEmail}. The user will receive an email with activation instructions.`,
+      });
+      
+      // Refresh the user list to show updated status
+      fetchUsers();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to send activation token',
+        variant: 'destructive',
+      });
+    } finally {
+      // Remove user from activating set
+      setActivatingUsers(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(userId);
+        return newSet;
       });
     }
   };
@@ -282,10 +328,49 @@ export default function UsersPage() {
                               <Badge variant="secondary" className="ml-1 bg-green-100 text-green-800">Active</Badge>
                             )}
                             {u.emailVerified === false && (
-                              <Badge variant="outline" className="ml-1 bg-yellow-100 text-yellow-800">Email Not Verified</Badge>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger>
+                                    <XCircle className="h-4 w-4 text-red-500 ml-1" />
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Email Not Verified</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
                             )}
                             {u.emailVerified && (
-                              <Badge variant="secondary" className="ml-1 bg-blue-100 text-blue-800">Email Verified</Badge>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger>
+                                    <CheckCircle2 className="h-4 w-4 text-green-500 ml-1" />
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Email Verified</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+                            {u.isActive === false && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="ml-2 h-6 px-2 text-xs"
+                                onClick={(e) => handleSendActivation(u.id, e)}
+                                disabled={activatingUsers.has(u.id)}
+                              >
+                                {activatingUsers.has(u.id) ? (
+                                  <>
+                                    <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                                    Sending...
+                                  </>
+                                ) : (
+                                  <>
+                                    <BadgeCheck className="mr-1 h-3 w-3" />
+                                    Activate
+                                  </>
+                                )}
+                              </Button>
                             )}
                           </div>
                           <p className="text-sm text-gray-500">{u.email}</p>
@@ -314,6 +399,25 @@ export default function UsersPage() {
                                 <Trash className="mr-2 h-4 w-4" />
                                 Delete User
                               </DropdownMenuItem>
+                              {u.isActive === false && (
+                                <DropdownMenuItem 
+                                  onClick={(e) => handleSendActivation(u.id, e)}
+                                  disabled={activatingUsers.has(u.id)}
+                                  className={activatingUsers.has(u.id) ? 'opacity-50 cursor-not-allowed' : ''}
+                                >
+                                  {activatingUsers.has(u.id) ? (
+                                    <>
+                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                      Activating...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <BadgeCheck className="mr-2 h-4 w-4" />
+                                      Activate User
+                                    </>
+                                  )}
+                                </DropdownMenuItem>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         )}
@@ -392,6 +496,26 @@ export default function UsersPage() {
                       )}
 
                       <div className="flex justify-end space-x-2">
+                        {u.isActive === false && (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={(e) => handleSendActivation(u.id, e)}
+                            disabled={activatingUsers.has(u.id)}
+                          >
+                            {activatingUsers.has(u.id) ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Activating...
+                              </>
+                            ) : (
+                              <>
+                                <BadgeCheck className="mr-2 h-4 w-4" />
+                                Activate User
+                              </>
+                            )}
+                          </Button>
+                        )}
                         <Button
                           variant="outline"
                           size="sm"
