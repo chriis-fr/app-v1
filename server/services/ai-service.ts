@@ -129,72 +129,100 @@ class AIService {
 
       // Get comprehensive organization data including notifications, meetings, procurements
       let organizationData: ComprehensiveOrganizationData | null = null;
+      let orgInfo: any = null;
       try {
         if (request.organization_id) {
           organizationData = await OrganizationDataService.getComprehensiveOrganizationData(request.organization_id);
-          console.log('📊 Comprehensive Organization Data Retrieved:', {
-            name: organizationData.name,
-            employeeCount: organizationData.employeeCount,
-            departments: organizationData.departments,
-            recentHires: organizationData.recentHires,
-            turnoverRate: organizationData.turnoverRate,
-            notifications: organizationData.notifications.length,
-            meetings: organizationData.meetings.length,
-            procurements: organizationData.procurements.length,
-            alerts: organizationData.alerts.length
-          });
+          // Fetch org info (name, type, industry, country, taxId, address, website, settings, etc.)
+          // For this, we can use the first part of organizationData, or fetch from Prisma if needed
+          // For now, use organizationData as orgInfo
+          orgInfo = organizationData;
         }
       } catch (error) {
         console.error('⚠️ Error fetching organization data:', error);
         // Continue without organization data if there's an error
       }
 
+      // --- MISSING FIELDS CHECK ---
+      let missingFields: string[] = [];
+      if (orgInfo) {
+        // Top-level org info
+        if (!orgInfo.name) missingFields.push('Organization Name');
+        if (!orgInfo.type) missingFields.push('Business Type');
+        if (!orgInfo.industry) missingFields.push('Industry');
+        if (!orgInfo.country) missingFields.push('Country');
+        if (!orgInfo.taxId) missingFields.push('Tax ID');
+        if (!orgInfo.address) missingFields.push('Address');
+        if (!orgInfo.website) missingFields.push('Website');
+        // Settings (branding, accounting, integrations, etc.)
+        const settings = orgInfo.settings || {};
+        if (settings.branding) {
+          if (!settings.branding.companyName) missingFields.push('Branding: Company Name');
+          if (!settings.branding.email) missingFields.push('Branding: Email');
+          if (!settings.branding.phone) missingFields.push('Branding: Phone');
+          if (!settings.branding.address) missingFields.push('Branding: Address');
+        }
+        if (settings.accounting) {
+          if (!settings.accounting.fiscalYearStart) missingFields.push('Accounting: Fiscal Year Start');
+          if (!settings.accounting.fiscalYearEnd) missingFields.push('Accounting: Fiscal Year End');
+          if (!settings.accounting.currency) missingFields.push('Accounting: Currency');
+          if (!settings.accounting.taxRates || Object.keys(settings.accounting.taxRates).length === 0) missingFields.push('Accounting: Tax Rates');
+        }
+        if (settings.integrations) {
+          if (!settings.integrations.paymentGateways || settings.integrations.paymentGateways.length === 0) missingFields.push('Integrations: Payment Gateways');
+        }
+      }
+      // --- END MISSING FIELDS CHECK ---
+
       // Add comprehensive organization data context if available
       if (organizationData) {
-        const dataContext = `\n\nCOMPREHENSIVE ORGANIZATION DATA CONTEXT:
-Organization: ${organizationData.name}
-Total Employees: ${organizationData.employeeCount}
-Active Employees: ${organizationData.activeEmployees}
-Departments: ${organizationData.departments.join(', ')}
-Recent Hires (30 days): ${organizationData.recentHires}
-Turnover Rate: ${organizationData.turnoverRate.toFixed(1)}%
-${organizationData.averageSalary ? `Average Salary: $${organizationData.averageSalary.toLocaleString()}` : ''}
-${organizationData.totalPayroll ? `Total Payroll: $${organizationData.totalPayroll.toLocaleString()}` : ''}
-
-Department Breakdown:
-${Object.entries(organizationData.departmentStats).map(([dept, stats]) => 
-  `${dept}: ${stats.count} employees (${stats.positions.join(', ')})`
-).join('\n')}
-
-NOTIFICATIONS (${organizationData.notifications.length}):
-${organizationData.notifications.slice(0, 5).map(n => 
-  `- ${n.title} (${n.priority} priority, ${n.isRead ? 'read' : 'unread'}, ${n.department || 'general'})`
-).join('\n')}
-
-UPCOMING MEETINGS (${organizationData.meetings.filter(m => m.status === 'scheduled' && m.startTime > new Date()).length}):
-${organizationData.meetings.filter(m => m.status === 'scheduled' && m.startTime > new Date()).slice(0, 5).map(m => 
-  `- ${m.title} (${m.organizerName}, ${new Date(m.startTime).toLocaleString()}, ${m.department || 'general'})`
-).join('\n')}
-
-PENDING PROCUREMENTS (${organizationData.procurements.filter(p => p.status === 'pending').length}):
-${organizationData.procurements.filter(p => p.status === 'pending').slice(0, 5).map(p => 
-  `- ${p.title} ($${p.requestedAmount}, ${p.priority} priority, ${p.department})`
-).join('\n')}
-
-ALERTS:
-${organizationData.alerts.slice(0, 5).map(a => 
-  `- ${a.message} (${a.priority} priority, ${a.department || 'general'})`
-).join('\n')}
-
-RECENT ACTIVITY:
-${organizationData.recentActivity.slice(0, 5).map(a => 
-  `- ${a.description} (${new Date(a.timestamp).toLocaleString()}, ${a.department || 'general'})`
-).join('\n')}
-
-IMPORTANT: Use this real data when answering questions about the organization. You have access to notifications, meetings, procurements, and recent activity. Consider this context when providing advice and insights.
-
-CRITICAL: Do NOT generate fake meetings, notifications, or procurements. Only reference the actual data provided above. If asked about meetings, notifications, or procurements that are not in this data, say "I don't have any [meetings/notifications/procurements] data available at the moment."`;
-
+        const dataContext = [
+          '',
+          'COMPREHENSIVE ORGANIZATION DATA CONTEXT:',
+          `Organization: ${organizationData.name}`,
+          `Total Employees: ${organizationData.employeeCount}`,
+          `Active Employees: ${organizationData.activeEmployees}`,
+          `Departments: ${organizationData.departments.join(', ')}`,
+          `Recent Hires (30 days): ${organizationData.recentHires}`,
+          `Turnover Rate: ${organizationData.turnoverRate.toFixed(1)}%`,
+          organizationData.averageSalary ? `Average Salary: $${organizationData.averageSalary.toLocaleString()}` : '',
+          organizationData.totalPayroll ? `Total Payroll: $${organizationData.totalPayroll.toLocaleString()}` : '',
+          '',
+          'Department Breakdown:',
+          ...Object.entries(organizationData.departmentStats).map(([dept, stats]) =>
+            `${dept}: ${stats.count} employees (${stats.positions.join(', ')})`
+          ),
+          '',
+          `NOTIFICATIONS (${organizationData.notifications.length}):`,
+          ...organizationData.notifications.slice(0, 5).map(n =>
+            `- ${n.title} (${n.priority} priority, ${n.isRead ? 'read' : 'unread'}, ${n.department || 'general'})`
+          ),
+          '',
+          `UPCOMING MEETINGS (${organizationData.meetings.filter(m => m.status === 'scheduled' && m.startTime > new Date()).length}):`,
+          ...organizationData.meetings.filter(m => m.status === 'scheduled' && m.startTime > new Date()).slice(0, 5).map(m =>
+            `- ${m.title} (${m.organizerName}, ${new Date(m.startTime).toLocaleString()}, ${m.department || 'general'})`
+          ),
+          '',
+          `PENDING PROCUREMENTS (${organizationData.procurements.filter(p => p.status === 'pending').length}):`,
+          ...organizationData.procurements.filter(p => p.status === 'pending').slice(0, 5).map(p =>
+            `- ${p.title} ($${p.requestedAmount}, ${p.priority} priority, ${p.department})`
+          ),
+          '',
+          'ALERTS:',
+          ...organizationData.alerts.slice(0, 5).map(a =>
+            `- ${a.message} (${a.priority} priority, ${a.department || 'general'})`
+          ),
+          '',
+          'RECENT ACTIVITY:',
+          ...organizationData.recentActivity.slice(0, 5).map(a =>
+            `- ${a.description} (${new Date(a.timestamp).toLocaleString()}, ${a.department || 'general'})`
+          ),
+          '',
+          'IMPORTANT: Use this real data when answering questions about the organization. You have access to notifications, meetings, procurements, and recent activity. Consider this context when providing advice and insights.',
+          '',
+          'CRITICAL: Do NOT generate fake meetings, notifications, or procurements. Only reference the actual data provided above. If asked about meetings, notifications, or procurements that are not in this data, say "I don\'t have any [meetings/notifications/procurements] data available at the moment."',
+          ''
+        ].join('\n');
         messages[0].content += dataContext;
       }
 
@@ -211,14 +239,7 @@ CRITICAL: Do NOT generate fake meetings, notifications, or procurements. Only re
 
       // Add detailed context information
       if (request.context) {
-        const contextInfo = `Current Session Context:
-- Organization: ${request.context.organization_name || 'Chains ERP'}
-- User: ${request.context.user_name || 'Unknown User'}
-- User Role: ${request.context.user_role || 'User'}
-- Department: ${request.context.department || 'General'}
-- User ID: ${request.context.user_id || 'Unknown'}
-
-Remember this context for the entire conversation and always address the user by their name when appropriate.`;
+        const contextInfo = `Current Session Context:\n- Organization: ${request.context.organization_name || 'Chains ERP'}\n- User: ${request.context.user_name || 'Unknown User'}\n- User Role: ${request.context.user_role || 'User'}\n- Department: ${request.context.department || 'General'}\n- User ID: ${request.context.user_id || 'Unknown'}\n\nRemember this context for the entire conversation and always address the user by their name when appropriate.`;
         messages.push({ role: 'system', content: contextInfo });
       }
 
@@ -227,11 +248,19 @@ Remember this context for the entire conversation and always address the user by
 
       const aiResponse = await this.callGroqAPI(messages);
       
+      // Prepend missing fields reminder if needed
+      let finalResponse = aiResponse;
+      const isOwner = request.context?.user_role === 'owner' || request.context?.isOwner;
+      const isHR = request.context?.department?.toLowerCase() === 'hr' || request.context?.user_role === 'hr';
+      if ((isOwner || isHR) && missingFields.length > 0) {
+        finalResponse = `⚠️ Important: Your organization is missing the following required information: ${missingFields.join(', ')}.\nPlease fill these fields in the Organization Settings for full functionality.\n\n` + aiResponse;
+      }
+
       // Generate suggestions based on the conversation
-      const suggestions = this.generateSuggestions(request.message, aiResponse, request.context);
+      const suggestions = this.generateSuggestions(request.message, finalResponse, request.context);
 
       return {
-        text: aiResponse,
+        text: finalResponse,
         context: request.context,
         suggestions,
         confidence: 0.85,

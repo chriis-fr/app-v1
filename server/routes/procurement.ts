@@ -999,6 +999,13 @@ router.get('/expenses', isAuthenticated, async (req: any, res) => {
       return res.status(401).json({ error: 'User not authenticated' });
     }
 
+    console.log('Fetching expense requests for user:', {
+      userId: req.user.id,
+      organizationId: req.user.organizationId,
+      role: req.user.role,
+      isOwner: req.user.isOwner
+    });
+
     const { status, category, department, page = 1, limit = 10 } = req.query;
     const skip = (Number(page) - 1) * Number(limit);
 
@@ -1006,6 +1013,8 @@ router.get('/expenses', isAuthenticated, async (req: any, res) => {
     if (status) where.status = status;
     if (category) where.category = category;
     if (department) where.department = department;
+
+    console.log('Expense requests query where clause:', where);
 
     const expenses = await (prisma as any).expenseRequest.findMany({
       where,
@@ -1021,6 +1030,12 @@ router.get('/expenses', isAuthenticated, async (req: any, res) => {
     });
 
     const total = await (prisma as any).expenseRequest.count({ where });
+
+    console.log('Expense requests found:', {
+      count: expenses.length,
+      total: total,
+      expenses: expenses.map((e: any) => ({ id: e.id, title: e.title, status: e.status, requester: e.requester }))
+    });
 
     res.json({
       expenses,
@@ -1142,23 +1157,28 @@ router.post('/expenses', isAuthenticated, async (req: any, res) => {
       await Promise.all(notificationPromises);
     }
 
-    // Also notify managers and admins
-    const managersAndAdmins = await (prisma as any).user.findMany({
+    // Also notify managers, admins, and owners
+    const managersAdminsAndOwners = await (prisma as any).user.findMany({
       where: {
         organizationId: req.user.organizationId,
-        role: { in: ['admin', 'manager'] },
-        id: { not: req.user.id }
+        OR: [
+          { role: { in: ['admin', 'manager'] } },
+          { isOwner: true }
+        ],
+        id: { not: req.user.id } // Exclude the requester
       },
       select: {
         id: true,
         firstName: true,
         lastName: true,
-        email: true
+        email: true,
+        role: true,
+        isOwner: true
       }
     });
 
-    if (managersAndAdmins.length > 0) {
-      const adminNotificationPromises = managersAndAdmins.map((admin: any) =>
+    if (managersAdminsAndOwners.length > 0) {
+      const adminNotificationPromises = managersAdminsAndOwners.map((admin: any) =>
         (prisma as any).notification.create({
           data: {
             title: 'Expense Request Requires Approval',
@@ -1184,6 +1204,82 @@ router.post('/expenses', isAuthenticated, async (req: any, res) => {
   } catch (error) {
     console.error('Error creating expense request:', error);
     res.status(500).json({ error: 'Failed to create expense request' });
+  }
+});
+
+// Approve or reject expense request
+router.patch('/expenses/:id/approve', isAuthenticated, async (req: any, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+
+    const { id } = req.params;
+    const { status, rejectionReason } = req.body;
+
+    if (!status || !['approved', 'rejected'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid status. Must be "approved" or "rejected"' });
+    }
+
+    // Check if user can approve (owner, admin, manager, executive, accounting)
+    const canApprove = req.user.isOwner || 
+                      ['admin', 'manager', 'executive', 'accounting'].includes(req.user.role);
+
+    if (!canApprove) {
+      return res.status(403).json({ error: 'You do not have permission to approve expense requests' });
+    }
+
+    // Get the expense request to check if user is not approving their own request
+    const expenseRequest = await (prisma as any).expenseRequest.findUnique({
+      where: { id },
+      include: { requester: { select: { id: true, firstName: true, lastName: true } } }
+    });
+
+    if (!expenseRequest) {
+      return res.status(404).json({ error: 'Expense request not found' });
+    }
+
+    // Prevent users from approving their own requests
+    if (expenseRequest.requesterId === req.user.id) {
+      return res.status(403).json({ error: 'You cannot approve your own expense request' });
+    }
+
+    // Update the expense request
+    const updatedExpense = await (prisma as any).expenseRequest.update({
+      where: { id },
+      data: {
+        status,
+        approvedBy: req.user.id,
+        approvedAt: new Date(),
+        rejectionReason: status === 'rejected' ? rejectionReason : null
+      },
+      include: {
+        requester: { select: { firstName: true, lastName: true, email: true } },
+        approvedByUser: { select: { firstName: true, lastName: true, email: true } }
+      }
+    });
+
+    // Create notification for the requester
+    await (prisma as any).notification.create({
+      data: {
+        title: `Expense Request ${status === 'approved' ? 'Approved' : 'Rejected'}`,
+        message: `Your expense request "${expenseRequest.title}" has been ${status} by ${req.user.firstName} ${req.user.lastName}`,
+        type: 'expense_approval',
+        userId: expenseRequest.requesterId,
+        organizationId: String(req.user.organizationId),
+        metadata: JSON.stringify({
+          expenseId: id,
+          status: status,
+          approver: `${req.user.firstName} ${req.user.lastName}`,
+          rejectionReason: rejectionReason
+        })
+      }
+    });
+
+    res.json(updatedExpense);
+  } catch (error) {
+    console.error('Error approving expense request:', error);
+    res.status(500).json({ error: 'Failed to approve expense request' });
   }
 });
 
