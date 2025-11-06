@@ -75,6 +75,7 @@ app.use((req, res, next) => {
     }
 
     // ALWAYS serve the app on port 5000
+    // Currently running on port 5002 for production
     const port = process.env.PORT || 5002;
     const maxRetries = 3;
     let currentTry = 0;
